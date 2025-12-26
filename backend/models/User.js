@@ -25,9 +25,9 @@ const userSchema = new mongoose.Schema(
       select: false,
     },
     roles: {
-      type: { String },
+      type: String,
       default: USER,
-      enum: { ADMIN, USER, PET_OWNER, SUPER_ADMIN },
+      enum: [ADMIN, USER, PET_OWNER, SUPER_ADMIN],
     },
     isVerified: {
       type: Boolean,
