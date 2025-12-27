@@ -3,4 +3,10 @@ import User from "../models/User.js";
 
 const createUser = async (data) => await User.create(data);
 
-export default { createUser };
+const getUser = async () => {
+  const users = await User.find();
+
+  return users;
+};
+
+export default { createUser, getUser };
