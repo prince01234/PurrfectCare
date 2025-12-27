@@ -21,4 +21,16 @@ const getUser = async (req, res) => {
   }
 };
 
-export default { createUser, getUser };
+const getUserById = async (req, res) => {
+  try {
+    const user = await userService.getUserById(req.params.id);
+    res.status(200).send(user);
+  } catch (error) {
+    console.error("Error fetching user by ID:", error);
+    const statusCode = error.statusCode || 400;
+    const message = error.message || "Failed to fetch user by ID";
+    res.status(statusCode).send({ error: message });
+  }
+};
+
+export default { createUser, getUser, getUserById };

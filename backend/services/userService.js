@@ -9,4 +9,17 @@ const getUser = async () => {
   return users;
 };
 
-export default { createUser, getUser };
+const getUserById = async (id) => {
+  const user = await User.findById(id);
+
+  if (!user) {
+    throw {
+      statusCode: 404,
+      message: "User not found",
+    };
+  }
+
+  return user;
+};
+
+export default { createUser, getUser, getUserById };
