@@ -48,4 +48,19 @@ const updateUser = async (req, res) => {
   }
 };
 
-export default { createUser, getUser, getUserById, updateUser };
+const deleteUser = async (req, res) => {
+  try {
+    const deletedUser = await userService.deleteUser(req.params.id);
+
+    res.status(200).json({
+      message: `User ${deletedUser.name} with id: ${deletedUser.id} deleted successfully`,
+    });
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    const statusCode = error.statusCode || 400;
+    const message = error.message || "Failed to delete user";
+    res.status(statusCode).send({ error: message });
+  }
+};
+
+export default { createUser, getUser, getUserById, updateUser, deleteUser };

@@ -34,4 +34,18 @@ const updateUser = async (id, body) => {
   return updatedUser;
 };
 
-export default { createUser, getUser, getUserById, updateUser };
+const deleteUser = async (id) => {
+  const deletedUser = await User.findByIdAndDelete(id);
+
+  // If no user found, throw an error
+  if (!deletedUser) {
+    throw {
+      statusCode: 404,
+      message: "User not found",
+    };
+  }
+
+  return deletedUser;
+};
+
+export default { createUser, getUser, getUserById, updateUser, deleteUser };

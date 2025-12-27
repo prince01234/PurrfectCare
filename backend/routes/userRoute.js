@@ -15,4 +15,7 @@ router.get("/:id", userController.getUserById);
 //URL: /api/users/:id
 router.put("/:id", userController.updateUser);
 
+//URL: /api/users/:id
+router.delete("/:id", userController.deleteUser);
+
 export default router;
