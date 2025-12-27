@@ -22,4 +22,16 @@ const getUserById = async (id) => {
   return user;
 };
 
-export default { createUser, getUser, getUserById };
+const updateUser = async (id, body) => {
+  const updatedUser = await User.findByIdAndUpdate(id, body, { new: true });
+
+  if (!updatedUser) {
+    throw {
+      statusCode: 404,
+      message: "User not found",
+    };
+  }
+  return updatedUser;
+};
+
+export default { createUser, getUser, getUserById, updateUser };

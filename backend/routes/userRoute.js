@@ -12,4 +12,7 @@ router.get("/", userController.getUser);
 //URL: /api/users/:id
 router.get("/:id", userController.getUserById);
 
+//URL: /api/users/:id
+router.put("/:id", userController.updateUser);
+
 export default router;

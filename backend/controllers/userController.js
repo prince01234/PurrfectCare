@@ -33,4 +33,19 @@ const getUserById = async (req, res) => {
   }
 };
 
-export default { createUser, getUser, getUserById };
+const updateUser = async (req, res) => {
+  const id = req.params.id;
+
+  try {
+    const updatedUser = await userService.updateUser(id, req.body);
+
+    res.status(200).send(updatedUser);
+  } catch (error) {
+    console.error("Error updating user:", error);
+    const statusCode = error.statusCode || 400;
+    const message = error.message || "Failed to update user";
+    res.status(statusCode).send({ error: message });
+  }
+};
+
+export default { createUser, getUser, getUserById, updateUser };
