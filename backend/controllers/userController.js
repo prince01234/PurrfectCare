@@ -6,7 +6,8 @@ const createUser = async (req, res) => {
 
         res.status(201).send(user);
     } catch (error) {
-        res.status(400).send({ error: error.message });
+        console.error('Error creating user:', error);
+        res.status(400).send({ error: 'Failed to create user' });
     }
 };
 
