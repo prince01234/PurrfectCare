@@ -6,15 +6,15 @@ const loginUser = async (req, res) => {
 
   try {
     if (!data) {
-      return res.status(400).send("Required data are missing.");
+      return res.status(400).json({ message: "Required data is missing." });
     }
 
     if (!data.email) {
-      return res.status(400).send("Email is required.");
+      return res.status(400).json({ message: "Email is required." });
     }
 
     if (!data.password) {
-      return res.status(400).send("Password is required.");
+      return res.status(400).json({ message: "Password is required." });
     }
     const user = await authService.login(data);
 
