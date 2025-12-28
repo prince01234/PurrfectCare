@@ -6,7 +6,7 @@ const loginUser = async (req, res) => {
 
   try {
     if (!data) {
-      return res.status(400).json({ message: "Required data are missing." });
+      return res.status(400).json({ message: "Required data is missing." });
     }
 
     if (!data.email) {
