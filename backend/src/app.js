@@ -5,6 +5,7 @@ import config from "../config/config.js";
 import connectDB from "../config/dbConnection.js";
 
 import userRoutes from "../routes/userRoute.js";
+import authRoutes from "../routes/authRoute.js";
 
 const app = express();
 
@@ -21,7 +22,11 @@ app.get("/", (req, res) => {
   });
 });
 
+// User Routes
 app.use("/api/users", userRoutes);
+
+// Auth Routes
+app.use("/api/auth", authRoutes);
 
 app.listen(config.port, () => {
   console.log(`Server is running at port http://localhost:${config.port}...`);

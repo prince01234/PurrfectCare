@@ -7,6 +7,7 @@ const config = {
   name: process.env.NAME || "",
   port: process.env.PORT || "",
   version: process.env.VERSION || "",
+  jwtSecret: process.env.JWT_SECRET || "",
 };
 
 export default config;
