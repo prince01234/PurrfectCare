@@ -3,4 +3,49 @@ import User from "../models/User.js";
 
 const createUser = async (data) => await User.create(data);
 
-export default { createUser };
+const getUser = async () => {
+  const users = await User.find();
+
+  return users;
+};
+
+const getUserById = async (id) => {
+  const user = await User.findById(id);
+
+  if (!user) {
+    throw {
+      statusCode: 404,
+      message: "User not found",
+    };
+  }
+
+  return user;
+};
+
+const updateUser = async (id, body) => {
+  const updatedUser = await User.findByIdAndUpdate(id, body, { new: true });
+
+  if (!updatedUser) {
+    throw {
+      statusCode: 404,
+      message: "User not found",
+    };
+  }
+  return updatedUser;
+};
+
+const deleteUser = async (id) => {
+  const deletedUser = await User.findByIdAndDelete(id);
+
+  // If no user found, throw an error
+  if (!deletedUser) {
+    throw {
+      statusCode: 404,
+      message: "User not found",
+    };
+  }
+
+  return deletedUser;
+};
+
+export default { createUser, getUser, getUserById, updateUser, deleteUser };

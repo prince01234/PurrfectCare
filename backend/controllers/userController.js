@@ -1,14 +1,66 @@
-import userService from '../services/userService.js';
+import userService from "../services/userService.js";
 
 const createUser = async (req, res) => {
-    try {
-        const user = await userService.createUser(req.body);
+  try {
+    const user = await userService.createUser(req.body);
 
-        res.status(201).send(user);
-    } catch (error) {
-        console.error('Error creating user:', error);
-        res.status(400).send({ error: 'Failed to create user' });
-    }
+    res.status(201).send(user);
+  } catch (error) {
+    console.error("Error creating user:", error);
+    res.status(400).send({ error: "Failed to create user" });
+  }
 };
 
-export default { createUser };
+const getUser = async (req, res) => {
+  try {
+    const users = await userService.getUser();
+    res.status(200).send(users);
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    res.status(400).send({ error: "Failed to fetch users" });
+  }
+};
+
+const getUserById = async (req, res) => {
+  try {
+    const user = await userService.getUserById(req.params.id);
+    res.status(200).send(user);
+  } catch (error) {
+    console.error("Error fetching user by ID:", error);
+    const statusCode = error.statusCode || 400;
+    const message = error.message || "Failed to fetch user by ID";
+    res.status(statusCode).send({ error: message });
+  }
+};
+
+const updateUser = async (req, res) => {
+  const id = req.params.id;
+
+  try {
+    const updatedUser = await userService.updateUser(id, req.body);
+
+    res.status(200).send(updatedUser);
+  } catch (error) {
+    console.error("Error updating user:", error);
+    const statusCode = error.statusCode || 400;
+    const message = error.message || "Failed to update user";
+    res.status(statusCode).send({ error: message });
+  }
+};
+
+const deleteUser = async (req, res) => {
+  try {
+    const deletedUser = await userService.deleteUser(req.params.id);
+
+    res.status(200).json({
+      message: `User ${deletedUser.name} with id: ${deletedUser.id} deleted successfully`,
+    });
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    const statusCode = error.statusCode || 400;
+    const message = error.message || "Failed to delete user";
+    res.status(statusCode).send({ error: message });
+  }
+};
+
+export default { createUser, getUser, getUserById, updateUser, deleteUser };
