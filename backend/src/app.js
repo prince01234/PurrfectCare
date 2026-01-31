@@ -1,13 +1,13 @@
 import express from "express";
 import bodyParser from "body-parser";
 
-import config from "../config/config.js";
-import connectDB from "../config/dbConnection.js";
+import config from "./config/config.js";
+import connectDB from "./config/dbConnection.js";
 
-import userRoutes from "../routes/userRoute.js";
-import authRoutes from "../routes/authRoute.js";
+import userRoutes from "./routes/userRoute.js";
+import authRoutes from "./routes/authRoute.js";
 
-import logger from "../middlewares/logger.js";
+import logger from "./middlewares/logger.js";
 
 const app = express();
 
