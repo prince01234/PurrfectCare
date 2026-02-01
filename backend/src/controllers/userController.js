@@ -3,7 +3,6 @@ import userService from "../services/userService.js";
 const createUser = async (req, res) => {
   try {
     const user = await userService.createUser(req.body);
-
     res.status(201).send(user);
   } catch (error) {
     console.error("Error creating user:", error);
@@ -37,8 +36,29 @@ const updateUser = async (req, res) => {
   const id = req.params.id;
 
   try {
-    const updatedUser = await userService.updateUser(id, req.body);
+    // Validate file if provided
+    if (req.file) {
+      const allowedMimeTypes = [
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+      ];
+      if (!allowedMimeTypes.includes(req.file.mimetype)) {
+        return res.status(400).send({
+          error: "Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed",
+        });
+      }
 
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (req.file.size > maxSize) {
+        return res.status(400).send({
+          error: "File too large. Maximum size is 5MB",
+        });
+      }
+    }
+
+    const updatedUser = await userService.updateUser(id, req.body, req.file);
     res.status(200).send(updatedUser);
   } catch (error) {
     console.error("Error updating user:", error);
@@ -53,7 +73,7 @@ const deleteUser = async (req, res) => {
     const deletedUser = await userService.deleteUser(req.params.id);
 
     res.status(200).json({
-      message: `User ${deletedUser.name} with id: ${deletedUser.id} deleted successfully`,
+      message: `User ${deletedUser.name} with id: ${deletedUser._id} deleted successfully`,
     });
   } catch (error) {
     console.error("Error deleting user:", error);
@@ -63,4 +83,10 @@ const deleteUser = async (req, res) => {
   }
 };
 
-export default { createUser, getUser, getUserById, updateUser, deleteUser };
+export default {
+  createUser,
+  getUser,
+  getUserById,
+  updateUser,
+  deleteUser,
+};

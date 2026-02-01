@@ -11,6 +11,7 @@ import authRoutes from "./routes/authRoute.js";
 import petRoutes from "./routes/petRoute.js";
 
 import logger from "./middlewares/logger.js";
+import connectCloudinary from "./config/cloudinary.js";
 
 const app = express();
 
@@ -30,6 +31,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 connectDB();
+connectCloudinary();
 
 app.use(logger);
 
