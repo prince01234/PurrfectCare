@@ -1,14 +1,31 @@
 import Pet, { isValidObjectId, toObjectId } from "../models/Pet.js";
+import User from "../models/User.js";
+import uploadFile from "../utils/file.js";
+import { PET_OWNER, USER } from "../constants/roles.js";
 
-const createPet = async (userId, data) => {
+const createPet = async (userId, data, files) => {
   // Remove userId from body if user tries to set it (security)
   delete data.userId;
+
+  // Upload photos if provided
+  let photoUrls = [];
+  if (files && files.length > 0) {
+    const uploadedFiles = await uploadFile(files);
+    photoUrls = uploadedFiles.map((item) => item?.url).filter((url) => url); // Filter out null values
+  }
 
   // Create pet with authenticated userId
   const pet = await Pet.create({
     ...data,
     userId: userId,
+    photos: photoUrls,
   });
+
+  // Update user role to PET_OWNER if they are still a normal USER
+  const user = await User.findById(userId);
+  if (user && user.roles === USER) {
+    await User.findByIdAndUpdate(userId, { roles: PET_OWNER });
+  }
 
   return pet;
 };
@@ -81,7 +98,7 @@ const getPetById = async (petId, userId) => {
   return pet;
 };
 
-const updatePet = async (petId, userId, body) => {
+const updatePet = async (petId, userId, body, files) => {
   if (!isValidObjectId(petId)) {
     throw { statusCode: 400, message: "Invalid pet ID" };
   }
@@ -98,12 +115,120 @@ const updatePet = async (petId, userId, body) => {
   }
 
   // Remove fields that shouldn't be updated
-  const { userId: _, isDeleted, deletedAt, ...updateData } = body;
+  const {
+    userId: _,
+    isDeleted,
+    deletedAt,
+    photos: existingPhotos,
+    ...updateData
+  } = body;
+
+  // Handle new photo uploads
+  if (files && files.length > 0) {
+    const uploadedFiles = await uploadFile(files, pet.photos || []);
+    const newPhotoUrls = uploadedFiles
+      .map((item) => item?.url)
+      .filter((url) => url); // Filter out null values
+
+    // Replace photos or append to existing ones
+    if (body.replacePhotos === "true" || body.replacePhotos === true) {
+      updateData.photos = newPhotoUrls;
+    } else {
+      // Append new photos to existing ones
+      updateData.photos = [...(pet.photos || []), ...newPhotoUrls];
+    }
+  }
 
   const updatedPet = await Pet.findByIdAndUpdate(petId, updateData, {
     new: true,
     runValidators: true,
   });
+
+  return updatedPet;
+};
+
+const addPetPhotos = async (petId, userId, files) => {
+  if (!isValidObjectId(petId)) {
+    throw { statusCode: 400, message: "Invalid pet ID" };
+  }
+
+  if (!files || files.length === 0) {
+    throw { statusCode: 400, message: "No files provided" };
+  }
+
+  const pet = await Pet.findById(petId);
+
+  if (!pet || pet.isDeleted) {
+    throw { statusCode: 404, message: "Pet not found" };
+  }
+
+  if (pet.userId.toString() !== userId) {
+    throw { statusCode: 403, message: "Access denied" };
+  }
+
+  // Check if adding new photos would exceed limit
+  const currentPhotoCount = pet.photos?.length || 0;
+  if (currentPhotoCount + files.length > 10) {
+    throw {
+      statusCode: 400,
+      message: `Cannot add ${files.length} photos. Maximum 10 photos allowed. Current: ${currentPhotoCount}`,
+    };
+  }
+
+  // Upload new photos
+  const uploadedFiles = await uploadFile(files, pet.photos || []);
+  const newPhotoUrls = uploadedFiles
+    .map((item) => item?.url)
+    .filter((url) => url); // Filter out null values
+
+  // Check if we have any new photos after duplicate filtering
+  if (newPhotoUrls.length === 0) {
+    throw {
+      statusCode: 400,
+      message: "All uploaded photos are duplicates of existing photos",
+    };
+  }
+
+  // Update pet with new photos
+  const updatedPet = await Pet.findByIdAndUpdate(
+    petId,
+    { $push: { photos: { $each: newPhotoUrls } } },
+    { new: true },
+  );
+
+  return updatedPet;
+};
+
+const deletePetPhoto = async (petId, userId, photoUrl) => {
+  if (!isValidObjectId(petId)) {
+    throw { statusCode: 400, message: "Invalid pet ID" };
+  }
+
+  if (!photoUrl) {
+    throw { statusCode: 400, message: "Photo URL is required" };
+  }
+
+  const pet = await Pet.findById(petId);
+
+  if (!pet || pet.isDeleted) {
+    throw { statusCode: 404, message: "Pet not found" };
+  }
+
+  if (pet.userId.toString() !== userId) {
+    throw { statusCode: 403, message: "Access denied" };
+  }
+
+  // Check if photo exists in pet's photos
+  if (!pet.photos || !pet.photos.includes(photoUrl)) {
+    throw { statusCode: 404, message: "Photo not found" };
+  }
+
+  // Remove photo URL from pet
+  const updatedPet = await Pet.findByIdAndUpdate(
+    petId,
+    { $pull: { photos: photoUrl } },
+    { new: true },
+  );
 
   return updatedPet;
 };
@@ -124,7 +249,7 @@ const deletePet = async (petId, userId) => {
     throw { statusCode: 403, message: "Access denied" };
   }
 
-  // Soft delete
+  // Soft delete (photos are kept for potential restore)
   const deletedPet = await Pet.findByIdAndUpdate(
     petId,
     { isDeleted: true, deletedAt: new Date() },
@@ -132,6 +257,27 @@ const deletePet = async (petId, userId) => {
   );
 
   return deletedPet;
+};
+
+const permanentlyDeletePet = async (petId, userId) => {
+  if (!isValidObjectId(petId)) {
+    throw { statusCode: 400, message: "Invalid pet ID" };
+  }
+
+  const pet = await Pet.findById(petId);
+
+  if (!pet) {
+    throw { statusCode: 404, message: "Pet not found" };
+  }
+
+  if (pet.userId.toString() !== userId) {
+    throw { statusCode: 403, message: "Access denied" };
+  }
+
+  // Permanently delete pet
+  await Pet.findByIdAndDelete(petId);
+
+  return pet;
 };
 
 const restorePet = async (petId, userId) => {
@@ -206,7 +352,10 @@ export default {
   getPetsByUserId,
   getPetById,
   updatePet,
+  addPetPhotos,
+  deletePetPhoto,
   deletePet,
+  permanentlyDeletePet,
   restorePet,
   getPetStatistics,
 };
