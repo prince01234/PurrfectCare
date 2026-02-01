@@ -47,11 +47,24 @@ export default function LoginPage() {
           _id: response.data._id,
           name: response.data.name,
           email: response.data.email,
+          isVerified: response.data.isVerified,
+          hasCompletedOnboarding: response.data.hasCompletedOnboarding,
+          userIntent: response.data.userIntent as
+            | "pet_owner"
+            | "looking_to_adopt"
+            | "exploring"
+            | null,
         },
         response.data.authToken,
       );
       toast.success(`Welcome back, ${response.data.name}!`);
-      router.push("/dashboard");
+
+      // Redirect based on onboarding status
+      if (!response.data.hasCompletedOnboarding) {
+        router.push("/onboarding");
+      } else {
+        router.push("/dashboard");
+      }
     }
 
     setIsLoading(false);

@@ -5,25 +5,54 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 interface ApiResponse<T = unknown> {
   data?: T;
   error?: string;
+  errorCode?: string;
 }
+
+// Helper to get auth token from cookies
+const getAuthToken = (): string | null => {
+  if (typeof window === "undefined") return null;
+  const cookies = document.cookie.split(";");
+  for (const cookie of cookies) {
+    const [name, value] = cookie.trim().split("=");
+    if (name === "authToken") {
+      return value;
+    }
+  }
+  return null;
+};
 
 async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {},
+  requiresAuth: boolean = false,
 ): Promise<ApiResponse<T>> {
   try {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      ...(options.headers as Record<string, string>),
+    };
+
+    // Add auth token if required or available
+    if (requiresAuth) {
+      const token = getAuthToken();
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+    }
+
     const response = await fetch(`${API_URL}${endpoint}`, {
       ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
+      headers,
+      credentials: "include", // Include cookies in request
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      return { error: data.message || "Something went wrong" };
+      return {
+        error: data.error || data.message || "Something went wrong",
+        errorCode: data.code,
+      };
     }
 
     return { data };
@@ -32,15 +61,24 @@ async function apiRequest<T>(
   }
 }
 
+// Helper to check if error is verification required
+export const isVerificationError = (errorCode?: string) =>
+  errorCode === "EMAIL_NOT_VERIFIED";
+
 export const authApi = {
   login: (email: string, password: string) =>
-    apiRequest<{ _id: string; name: string; email: string; authToken: string }>(
-      "/api/auth/login",
-      {
-        method: "POST",
-        body: JSON.stringify({ email, password }),
-      },
-    ),
+    apiRequest<{
+      _id: string;
+      name: string;
+      email: string;
+      authToken: string;
+      isVerified: boolean;
+      hasCompletedOnboarding: boolean;
+      userIntent: string | null;
+    }>("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    }),
 
   register: (
     name: string,
@@ -86,6 +124,42 @@ export const authApi = {
       method: "POST",
       body: JSON.stringify({ email }),
     }),
+};
+
+export const userApi = {
+  completeOnboarding: (userId: string, userIntent?: string) =>
+    apiRequest<{
+      message: string;
+      user: {
+        _id: string;
+        name: string;
+        email: string;
+        hasCompletedOnboarding: boolean;
+        userIntent: string | null;
+      };
+    }>(
+      `/api/users/${userId}/onboarding`,
+      {
+        method: "POST",
+        body: JSON.stringify({ userIntent }),
+      },
+      true, // requires auth
+    ),
+
+  getUserById: (userId: string) =>
+    apiRequest<{
+      _id: string;
+      name: string;
+      email: string;
+      hasCompletedOnboarding: boolean;
+      userIntent: string | null;
+    }>(
+      `/api/users/${userId}`,
+      {
+        method: "GET",
+      },
+      true, // requires auth
+    ),
 };
 
 export default apiRequest;

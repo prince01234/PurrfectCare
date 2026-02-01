@@ -13,6 +13,9 @@ interface User {
   _id: string;
   name: string;
   email: string;
+  isVerified?: boolean;
+  hasCompletedOnboarding?: boolean;
+  userIntent?: "pet_owner" | "looking_to_adopt" | "exploring" | null;
 }
 
 interface AuthContextType {
@@ -20,6 +23,7 @@ interface AuthContextType {
   token: string | null;
   login: (user: User, token: string) => void;
   logout: () => void;
+  updateUser: (userData: Partial<User>) => void;
   isLoading: boolean;
 }
 
@@ -55,8 +59,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("user");
   };
 
+  const updateUser = (userData: Partial<User>) => {
+    if (user) {
+      const updatedUser = { ...user, ...userData };
+      setUser(updatedUser);
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, isLoading }}>
+    <AuthContext.Provider
+      value={{ user, token, login, logout, updateUser, isLoading }}
+    >
       {children}
     </AuthContext.Provider>
   );
