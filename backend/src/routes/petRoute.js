@@ -7,6 +7,9 @@ const router = express.Router();
 // All pet routes require authentication
 router.use(auth);
 
+// URL: /api/pets/stats
+router.get("/stats", petController.getPetStatistics);
+
 // URL: /api/pets
 router.post("/", petController.createPet);
 
@@ -21,5 +24,8 @@ router.put("/:id", petController.updatePet);
 
 // URL: /api/pets/:id
 router.delete("/:id", petController.deletePet);
+
+// URL: /api/pets/:id/restore
+router.patch("/:id/restore", petController.restorePet);
 
 export default router;
