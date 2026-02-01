@@ -9,6 +9,7 @@ import connectDB from "./config/dbConnection.js";
 import userRoutes from "./routes/userRoute.js";
 import authRoutes from "./routes/authRoute.js";
 import petRoutes from "./routes/petRoute.js";
+import healthRoutes from "./routes/healthRoute.js";
 
 import logger from "./middlewares/logger.js";
 import connectCloudinary from "./config/cloudinary.js";
@@ -51,6 +52,9 @@ app.use("/api/auth", authRoutes);
 
 // Pet Routes
 app.use("/api/pets", petRoutes);
+
+// Health Routes (global health overview)
+app.use("/api/health", healthRoutes);
 
 app.listen(config.port, () => {
   console.log(`Server is running at port http://localhost:${config.port}...`);
