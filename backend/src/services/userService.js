@@ -67,10 +67,41 @@ const deleteUser = async (id) => {
   return deletedUser;
 };
 
+const completeOnboarding = async (id, userIntent) => {
+  const user = await User.findById(id);
+
+  if (!user) {
+    throw {
+      statusCode: 404,
+      message: "User not found",
+    };
+  }
+
+  const validIntents = ["pet_owner", "looking_to_adopt", "exploring"];
+  if (userIntent && !validIntents.includes(userIntent)) {
+    throw {
+      statusCode: 400,
+      message: "Invalid user intent",
+    };
+  }
+
+  const updatedUser = await User.findByIdAndUpdate(
+    id,
+    {
+      hasCompletedOnboarding: true,
+      userIntent: userIntent || null,
+    },
+    { new: true },
+  );
+
+  return updatedUser;
+};
+
 export default {
   createUser,
   getUser,
   getUserById,
   updateUser,
   deleteUser,
+  completeOnboarding,
 };

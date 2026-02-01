@@ -83,10 +83,37 @@ const deleteUser = async (req, res) => {
   }
 };
 
+const completeOnboarding = async (req, res) => {
+  try {
+    const { userIntent } = req.body;
+    const updatedUser = await userService.completeOnboarding(
+      req.params.id,
+      userIntent,
+    );
+
+    res.status(200).json({
+      message: "Onboarding completed successfully",
+      user: {
+        _id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        hasCompletedOnboarding: updatedUser.hasCompletedOnboarding,
+        userIntent: updatedUser.userIntent,
+      },
+    });
+  } catch (error) {
+    console.error("Error completing onboarding:", error);
+    const statusCode = error.statusCode || 400;
+    const message = error.message || "Failed to complete onboarding";
+    res.status(statusCode).send({ error: message });
+  }
+};
+
 export default {
   createUser,
   getUser,
   getUserById,
   updateUser,
   deleteUser,
+  completeOnboarding,
 };

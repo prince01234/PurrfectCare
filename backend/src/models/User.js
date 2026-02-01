@@ -63,6 +63,17 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+
+    //for onboarding
+    hasCompletedOnboarding: {
+      type: Boolean,
+      default: false,
+    },
+    userIntent: {
+      type: String,
+      enum: ["pet_owner", "looking_to_adopt", "exploring", null],
+      default: null,
+    },
   },
   {
     timestamps: true,
