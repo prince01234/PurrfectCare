@@ -4,9 +4,7 @@ import MedicalRecord, {
 } from "../models/MedicalRecord.js";
 import Pet from "../models/Pet.js";
 
-/**
- * Verify pet ownership before any operation
- */
+// Verify pet ownership before any operation
 const verifyPetOwnership = async (petId, userId) => {
   if (!isValidObjectId(petId)) {
     throw { statusCode: 400, message: "Invalid pet ID" };
@@ -28,9 +26,7 @@ const verifyPetOwnership = async (petId, userId) => {
   return pet;
 };
 
-/**
- * Create a new medical record
- */
+// Create a new medical record
 const createMedicalRecord = async (petId, userId, data) => {
   await verifyPetOwnership(petId, userId);
 
@@ -45,9 +41,7 @@ const createMedicalRecord = async (petId, userId, data) => {
   return medicalRecord;
 };
 
-/**
- * Get all medical records for a pet
- */
+// Get all medical records for a pet
 const getMedicalRecordsByPetId = async (petId, userId, queryParams = {}) => {
   await verifyPetOwnership(petId, userId);
 
@@ -106,9 +100,7 @@ const getMedicalRecordsByPetId = async (petId, userId, queryParams = {}) => {
   };
 };
 
-/**
- * Get a single medical record by ID
- */
+// Get a single medical record by ID
 const getMedicalRecordById = async (recordId, petId, userId) => {
   await verifyPetOwnership(petId, userId);
 
@@ -129,9 +121,7 @@ const getMedicalRecordById = async (recordId, petId, userId) => {
   return medicalRecord;
 };
 
-/**
- * Update a medical record
- */
+// Update a medical record
 const updateMedicalRecord = async (recordId, petId, userId, data) => {
   await verifyPetOwnership(petId, userId);
 
@@ -160,9 +150,7 @@ const updateMedicalRecord = async (recordId, petId, userId, data) => {
   return updatedRecord;
 };
 
-/**
- * Soft delete a medical record
- */
+// Soft delete a medical record
 const deleteMedicalRecord = async (recordId, petId, userId) => {
   await verifyPetOwnership(petId, userId);
 
@@ -188,9 +176,7 @@ const deleteMedicalRecord = async (recordId, petId, userId) => {
   return deletedRecord;
 };
 
-/**
- * Get follow-up reminders for a pet
- */
+// Get follow-up reminders for a pet
 const getFollowUpReminders = async (petId, userId) => {
   await verifyPetOwnership(petId, userId);
 
@@ -226,9 +212,7 @@ const getFollowUpReminders = async (petId, userId) => {
   return { upcoming, overdue };
 };
 
-/**
- * Get medical record statistics for a pet
- */
+// Get medical record statistics for a pet
 const getMedicalStats = async (petId, userId) => {
   await verifyPetOwnership(petId, userId);
 

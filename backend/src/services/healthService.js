@@ -6,9 +6,7 @@ import Vaccination, {
 import MedicalRecord from "../models/MedicalRecord.js";
 import CareLog from "../models/CareLog.js";
 
-/**
- * Verify pet ownership before any operation
- */
+// Verify pet ownership before any operation
 const verifyPetOwnership = async (petId, userId) => {
   if (!isValidObjectId(petId)) {
     throw { statusCode: 400, message: "Invalid pet ID" };
@@ -30,9 +28,7 @@ const verifyPetOwnership = async (petId, userId) => {
   return pet;
 };
 
-/**
- * Get complete health overview for a pet
- */
+// Get complete health overview for a pet
 const getHealthOverview = async (petId, userId) => {
   const pet = await verifyPetOwnership(petId, userId);
   const petObjectId = toObjectId(petId);
@@ -161,9 +157,7 @@ const getHealthOverview = async (petId, userId) => {
   };
 };
 
-/**
- * Get health overview for all pets of a user
- */
+// Get health overview for all pets of a user
 const getAllPetsHealthOverview = async (userId) => {
   const pets = await Pet.find({ userId: userId, isDeleted: false });
 

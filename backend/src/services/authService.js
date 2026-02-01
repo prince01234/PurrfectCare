@@ -18,9 +18,6 @@ const login = async (data) => {
     throw new Error("Email or password is incorrect");
   }
 
-  // Allow unverified users to login - they can browse but not perform actions
-  // The requireVerified middleware will block protected actions
-
   return {
     _id: user._id,
     name: user.name,

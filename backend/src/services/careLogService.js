@@ -1,9 +1,7 @@
 import CareLog, { isValidObjectId, toObjectId } from "../models/CareLog.js";
 import Pet from "../models/Pet.js";
 
-/**
- * Verify pet ownership before any operation
- */
+//Verify pet ownership before any operation
 const verifyPetOwnership = async (petId, userId) => {
   if (!isValidObjectId(petId)) {
     throw { statusCode: 400, message: "Invalid pet ID" };
@@ -25,9 +23,7 @@ const verifyPetOwnership = async (petId, userId) => {
   return pet;
 };
 
-/**
- * Create a new care log entry
- */
+//Create a new care log entry
 const createCareLog = async (petId, userId, data) => {
   await verifyPetOwnership(petId, userId);
 
@@ -42,9 +38,7 @@ const createCareLog = async (petId, userId, data) => {
   return careLog;
 };
 
-/**
- * Get all care logs for a pet
- */
+//Get all care logs for a pet
 const getCareLogsByPetId = async (petId, userId, queryParams = {}) => {
   await verifyPetOwnership(petId, userId);
 
@@ -108,9 +102,7 @@ const getCareLogsByPetId = async (petId, userId, queryParams = {}) => {
   };
 };
 
-/**
- * Get a single care log by ID
- */
+//Get a single care log by ID
 const getCareLogById = async (logId, petId, userId) => {
   await verifyPetOwnership(petId, userId);
 
@@ -131,9 +123,7 @@ const getCareLogById = async (logId, petId, userId) => {
   return careLog;
 };
 
-/**
- * Update a care log entry
- */
+//Update a care log entry
 const updateCareLog = async (logId, petId, userId, data) => {
   await verifyPetOwnership(petId, userId);
 
@@ -161,9 +151,7 @@ const updateCareLog = async (logId, petId, userId, data) => {
   return updatedLog;
 };
 
-/**
- * Soft delete a care log entry
- */
+//Soft delete a care log entry
 const deleteCareLog = async (logId, petId, userId) => {
   await verifyPetOwnership(petId, userId);
 
@@ -189,9 +177,7 @@ const deleteCareLog = async (logId, petId, userId) => {
   return deletedLog;
 };
 
-/**
- * Get care log statistics for a pet
- */
+//Get care log statistics for a pet
 const getCareLogStats = async (petId, userId) => {
   await verifyPetOwnership(petId, userId);
 
@@ -241,9 +227,7 @@ const getCareLogStats = async (petId, userId) => {
   };
 };
 
-/**
- * Get care logs summary for today
- */
+//Get care logs summary for today
 const getTodayCareLogs = async (petId, userId) => {
   await verifyPetOwnership(petId, userId);
 

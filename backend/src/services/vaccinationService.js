@@ -4,9 +4,7 @@ import Vaccination, {
 } from "../models/Vaccination.js";
 import Pet from "../models/Pet.js";
 
-/**
- * Verify pet ownership before any operation
- */
+// Verify pet ownership before any operation
 const verifyPetOwnership = async (petId, userId) => {
   if (!isValidObjectId(petId)) {
     throw { statusCode: 400, message: "Invalid pet ID" };
@@ -28,9 +26,7 @@ const verifyPetOwnership = async (petId, userId) => {
   return pet;
 };
 
-/**
- * Create a new vaccination record
- */
+// Create a new vaccination record
 const createVaccination = async (petId, userId, data) => {
   await verifyPetOwnership(petId, userId);
 
@@ -45,9 +41,7 @@ const createVaccination = async (petId, userId, data) => {
   return vaccination;
 };
 
-/**
- * Get all vaccination records for a pet
- */
+// Get all vaccination records for a pet
 const getVaccinationsByPetId = async (petId, userId, queryParams = {}) => {
   await verifyPetOwnership(petId, userId);
 
@@ -98,9 +92,7 @@ const getVaccinationsByPetId = async (petId, userId, queryParams = {}) => {
   };
 };
 
-/**
- * Get a single vaccination record by ID
- */
+// Get a single vaccination record by ID
 const getVaccinationById = async (vaccinationId, petId, userId) => {
   await verifyPetOwnership(petId, userId);
 
@@ -121,9 +113,7 @@ const getVaccinationById = async (vaccinationId, petId, userId) => {
   return vaccination;
 };
 
-/**
- * Update a vaccination record
- */
+// Update a vaccination record
 const updateVaccination = async (vaccinationId, petId, userId, data) => {
   await verifyPetOwnership(petId, userId);
 
@@ -152,9 +142,7 @@ const updateVaccination = async (vaccinationId, petId, userId, data) => {
   return updatedVaccination;
 };
 
-/**
- * Soft delete a vaccination record
- */
+// Soft delete a vaccination record
 const deleteVaccination = async (vaccinationId, petId, userId) => {
   await verifyPetOwnership(petId, userId);
 
@@ -180,9 +168,7 @@ const deleteVaccination = async (vaccinationId, petId, userId) => {
   return deletedVaccination;
 };
 
-/**
- * Get upcoming and overdue vaccinations for a pet
- */
+// Get upcoming and overdue vaccinations for a pet
 const getVaccinationReminders = async (petId, userId) => {
   await verifyPetOwnership(petId, userId);
 
@@ -219,9 +205,7 @@ const getVaccinationReminders = async (petId, userId) => {
   return { upcoming, overdue };
 };
 
-/**
- * Get vaccination statistics for a pet
- */
+// Get vaccination statistics for a pet
 const getVaccinationStats = async (petId, userId) => {
   await verifyPetOwnership(petId, userId);
 
