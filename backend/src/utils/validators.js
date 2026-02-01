@@ -1,15 +1,11 @@
 import mongoose from "mongoose";
 
-/**
- * Validate if a string is a valid MongoDB ObjectId
- */
+//Validate if a string is a valid MongoDB ObjectId
 export const isValidObjectId = (id) => {
   return mongoose.Types.ObjectId.isValid(id);
 };
 
-/**
- * Validate pet creation data
- */
+// Validate pet creation data
 export const validatePetData = (data) => {
   const errors = [];
 
@@ -81,9 +77,7 @@ export const validatePetData = (data) => {
   };
 };
 
-/**
- * Sanitize pet data before saving
- */
+// Sanitize pet data before saving
 export const sanitizePetData = (data) => {
   const sanitized = { ...data };
 

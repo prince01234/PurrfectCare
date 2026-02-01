@@ -5,16 +5,12 @@ import http from "http";
 
 const CLOUDINARY_FOLDER = "PurrfectCare";
 
-/**
- * Generate SHA256 hash of a buffer
- */
+// Generate SHA256 hash of a buffer
 function generateHash(buffer) {
   return crypto.createHash("sha256").update(buffer).digest("hex");
 }
 
-/**
- * Fetch image from URL and return its buffer
- */
+// Fetch image from URL and return its buffer
 async function fetchImageFromUrl(imageUrl) {
   return new Promise((resolve, reject) => {
     const protocol = imageUrl.startsWith("https") ? https : http;
