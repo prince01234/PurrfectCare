@@ -2,6 +2,7 @@ import express from "express";
 import multer from "multer";
 import petController from "../controllers/petController.js";
 import { auth, requireVerified } from "../middlewares/auth.js";
+import { petHealthRouter } from "./healthRoute.js";
 
 const router = express.Router();
 
@@ -79,5 +80,13 @@ router.delete(
 
 // URL: /api/pets/:id/restore - Restore soft-deleted pet
 router.patch("/:id/restore", auth, requireVerified, petController.restorePet);
+
+// ==========================================
+// HEALTH & CARE ROUTES (nested under pets)
+// ==========================================
+
+// Mount health routes for each pet
+// URL: /api/pets/:petId/health/*
+router.use("/:petId/health", petHealthRouter);
 
 export default router;
