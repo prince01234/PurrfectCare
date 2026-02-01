@@ -1,10 +1,7 @@
 import { verifyJWT } from "../utils/jwt.js";
 import User from "../models/User.js";
 
-/**
- * Basic authentication middleware
- * Checks if user is logged in (token valid)
- */
+// Authentication middleware
 const auth = async (req, res, next) => {
   let authToken;
 
@@ -36,11 +33,7 @@ const auth = async (req, res, next) => {
   }
 };
 
-/**
- * Optional authentication middleware
- * Allows both authenticated and unauthenticated users
- * Use for browsing/viewing content
- */
+// Optional authentication middleware
 const optionalAuth = async (req, res, next) => {
   let authToken;
 
@@ -66,11 +59,7 @@ const optionalAuth = async (req, res, next) => {
   next();
 };
 
-/**
- * Verification required middleware
- * Must be used AFTER auth middleware
- * Blocks unverified users from performing actions
- */
+// Blocks unverified users from performing actions
 const requireVerified = async (req, res, next) => {
   if (!req.user) {
     return res
@@ -102,11 +91,7 @@ const requireVerified = async (req, res, next) => {
   }
 };
 
-/**
- * Role-based authorization middleware
- * Must be used AFTER auth middleware
- * @param {string[]} allowedRoles - Array of roles that can access the route
- */
+ //Role-based authorization middleware
 const requireRole = (...allowedRoles) => {
   return async (req, res, next) => {
     if (!req.user) {

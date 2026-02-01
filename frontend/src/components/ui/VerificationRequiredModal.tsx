@@ -78,7 +78,7 @@ export default function VerificationRequiredModal({
                   <Button
                     onClick={onResendEmail}
                     isLoading={isResending}
-                    className="!bg-gradient-to-r !from-amber-400 !to-orange-400 !shadow-amber-200"
+                    className="bg-linear-to-r! from-amber-400! to-orange-400! shadow-amber-200!"
                   >
                     <Mail className="w-5 h-5" />
                     Resend Verification Email

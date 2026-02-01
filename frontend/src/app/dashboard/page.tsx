@@ -34,7 +34,7 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-violet-50 via-white to-cyan-50">
+      <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-violet-50 via-white to-cyan-50">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
@@ -64,7 +64,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-cyan-50">
+    <div className="min-h-screen bg-linear-to-br from-violet-50 via-white to-cyan-50">
       {/* Verification Modal */}
       <VerificationRequiredModal
         isOpen={showVerificationModal}
@@ -98,7 +98,7 @@ export default function DashboardPage() {
             <Button
               variant="outline"
               onClick={handleLogout}
-              className="!w-auto !py-2 !px-4"
+              className="w-auto! py-2! px-4!"
             >
               <LogOut className="w-4 h-4" />
               <span className="hidden sm:inline">Logout</span>
@@ -116,7 +116,7 @@ export default function DashboardPage() {
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <ShieldAlert className="w-5 h-5 text-amber-500 flex-shrink-0" />
+              <ShieldAlert className="w-5 h-5 text-amber-500 shrink-0" />
               <p className="text-sm text-amber-800">
                 <span className="font-medium">Email not verified.</span>{" "}
                 <span className="hidden sm:inline">
@@ -149,7 +149,7 @@ export default function DashboardPage() {
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ type: "spring", delay: 0.2 }}
-              className="w-20 h-20 bg-gradient-to-br from-violet-400 to-cyan-400 rounded-full flex items-center justify-center shadow-lg relative"
+              className="w-20 h-20 bg-linear-to-br from-violet-400 to-cyan-400 rounded-full flex items-center justify-center shadow-lg relative"
             >
               <User className="w-10 h-10 text-white" />
               {/* Verification Badge */}
@@ -193,7 +193,7 @@ export default function DashboardPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-gradient-to-r from-violet-500 via-purple-500 to-cyan-500 rounded-2xl p-6 text-white mb-6"
+            className="bg-linear-to-r from-violet-500 via-purple-500 to-cyan-500 rounded-2xl p-6 text-white mb-6"
           >
             <h3 className="text-xl md:text-2xl font-semibold mb-2">
               🎉 Welcome to PurrfectCare!
@@ -261,7 +261,7 @@ export default function DashboardPage() {
                       });
                     }
                   }}
-                  className={`bg-gradient-to-br ${action.color} p-4 rounded-2xl text-white shadow-lg hover:shadow-xl transition-shadow relative`}
+                  className={`bg-linear-to-br ${action.color} p-4 rounded-2xl text-white shadow-lg hover:shadow-xl transition-shadow relative`}
                 >
                   {action.requiresVerification && !user.isVerified && (
                     <div className="absolute top-2 right-2">

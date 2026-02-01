@@ -113,14 +113,14 @@ export default function OnboardingPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-orange-50 to-white">
+      <div className="min-h-screen flex items-center justify-center bg-linear-to-b from-orange-50 to-white">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-violet-500"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-orange-50 via-rose-50/30 to-white flex flex-col">
+    <div className="min-h-screen bg-linear-to-b from-orange-50 via-rose-50/30 to-white flex flex-col">
       {/* Main Content */}
       <div className="flex-1 flex flex-col items-center px-6 pt-12 pb-6 max-w-md mx-auto w-full">
         {/* Paw Icon */}
@@ -128,7 +128,7 @@ export default function OnboardingPage() {
           initial={{ scale: 0, rotate: -180 }}
           animate={{ scale: 1, rotate: 0 }}
           transition={{ type: "spring", duration: 0.8 }}
-          className="w-24 h-24 rounded-full bg-gradient-to-br from-rose-400 to-orange-400 flex items-center justify-center shadow-lg shadow-rose-200 mb-6"
+          className="w-24 h-24 rounded-full bg-linear-to-br from-rose-400 to-orange-400 flex items-center justify-center shadow-lg shadow-rose-200 mb-6"
         >
           <PawPrint className="w-12 h-12 text-white" />
         </motion.div>
@@ -184,7 +184,7 @@ export default function OnboardingPage() {
                 }`}
               >
                 <div
-                  className={`w-14 h-14 rounded-full ${option.bgColor} flex items-center justify-center flex-shrink-0`}
+                  className={`w-14 h-14 rounded-full ${option.bgColor} flex items-center justify-center shrink-0`}
                 >
                   <span className={option.iconColor}>{option.icon}</span>
                 </div>
@@ -195,7 +195,7 @@ export default function OnboardingPage() {
                   <p className="text-sm text-gray-500">{option.description}</p>
                 </div>
                 <div
-                  className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                  className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
                     selectedIntent === option.id
                       ? "border-violet-500 bg-violet-500"
                       : "border-gray-300"
@@ -230,8 +230,8 @@ export default function OnboardingPage() {
             disabled={!selectedIntent}
             className={`${
               !selectedIntent
-                ? "!bg-gradient-to-r !from-rose-300 !to-orange-300 !shadow-none"
-                : "!bg-gradient-to-r !from-rose-400 !to-orange-400 !shadow-lg !shadow-rose-200"
+                ? "bg-linear-to-r! from-rose-300! to-orange-300! shadow-none!"
+                : "bg-linear-to-r! from-rose-400! to-orange-400! shadow-lg! shadow-rose-200!"
             }`}
           >
             Continue
