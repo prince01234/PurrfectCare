@@ -18,6 +18,11 @@ const petSchema = new mongoose.Schema(
     species: {
       type: String,
       required: [true, "Species is required"],
+      enum: {
+        values: ["dog", "cat", "bird", "rabbit", "hamster", "fish", "other"],
+        message: "{VALUE} is not a valid species",
+      },
+      lowercase: true,
     },
     breed: {
       type: String,
@@ -28,6 +33,7 @@ const petSchema = new mongoose.Schema(
       type: String,
       required: [true, "Gender is required"],
       enum: ["male", "female", "unknown"],
+      lowercase: true,
     },
     dateOfBirth: {
       type: Date,
@@ -91,5 +97,11 @@ petSchema.index({ species: 1 });
 petSchema.index({ isDeleted: 1 });
 
 const Pet = mongoose.model("Pet", petSchema);
+
+// Helper function to validate ObjectId
+export const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
+
+// Helper function to convert string to ObjectId
+export const toObjectId = (id) => new mongoose.Types.ObjectId(id);
 
 export default Pet;

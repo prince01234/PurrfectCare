@@ -20,6 +20,13 @@ const loginUser = async (req, res) => {
 
     const authToken = createJWT(user);
 
+    res.cookie("authToken", authToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
     res.json({ ...user, authToken });
   } catch (error) {
     res.status(400).json({ message: error.message });
