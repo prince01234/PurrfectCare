@@ -1,9 +1,6 @@
 import vaccinationService from "../services/vaccinationService.js";
 
-/**
- * Create a new vaccination record for a pet
- * POST /api/pets/:petId/vaccinations
- */
+//Create a new vaccination record for a pet
 const createVaccination = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -33,10 +30,7 @@ const createVaccination = async (req, res) => {
   }
 };
 
-/**
- * Get all vaccination records for a pet
- * GET /api/pets/:petId/vaccinations
- */
+// Get all vaccination records for a pet
 const getVaccinations = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -66,10 +60,7 @@ const getVaccinations = async (req, res) => {
   }
 };
 
-/**
- * Get a single vaccination record by ID
- * GET /api/pets/:petId/vaccinations/:vaccinationId
- */
+// Get a single vaccination record by ID
 const getVaccinationById = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -90,10 +81,7 @@ const getVaccinationById = async (req, res) => {
   }
 };
 
-/**
- * Update a vaccination record
- * PUT /api/pets/:petId/vaccinations/:vaccinationId
- */
+// Update a vaccination record
 const updateVaccination = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -124,10 +112,7 @@ const updateVaccination = async (req, res) => {
   }
 };
 
-/**
- * Delete a vaccination record
- * DELETE /api/pets/:petId/vaccinations/:vaccinationId
- */
+// Delete a vaccination record
 const deleteVaccination = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -146,10 +131,7 @@ const deleteVaccination = async (req, res) => {
   }
 };
 
-/**
- * Get vaccination reminders (upcoming and overdue)
- * GET /api/pets/:petId/vaccinations/reminders
- */
+// Get vaccination reminders (upcoming and overdue)
 const getVaccinationReminders = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -169,10 +151,7 @@ const getVaccinationReminders = async (req, res) => {
   }
 };
 
-/**
- * Get vaccination statistics for a pet
- * GET /api/pets/:petId/vaccinations/stats
- */
+// Get vaccination statistics for a pet
 const getVaccinationStats = async (req, res) => {
   try {
     const userId = req.user._id;

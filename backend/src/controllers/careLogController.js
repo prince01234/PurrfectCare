@@ -1,9 +1,6 @@
 import careLogService from "../services/careLogService.js";
 
-/**
- * Create a new care log entry for a pet
- * POST /api/pets/:petId/care-logs
- */
+//Create a new care log entry for a pet
 const createCareLog = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -29,10 +26,7 @@ const createCareLog = async (req, res) => {
   }
 };
 
-/**
- * Get all care logs for a pet
- * GET /api/pets/:petId/care-logs
- */
+//Get all care logs for a pet
 const getCareLogs = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -64,10 +58,7 @@ const getCareLogs = async (req, res) => {
   }
 };
 
-/**
- * Get a single care log by ID
- * GET /api/pets/:petId/care-logs/:logId
- */
+//Get a single care log by ID
 const getCareLogById = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -84,10 +75,7 @@ const getCareLogById = async (req, res) => {
   }
 };
 
-/**
- * Update a care log entry
- * PUT /api/pets/:petId/care-logs/:logId
- */
+//Update a care log entry
 const updateCareLog = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -118,10 +106,7 @@ const updateCareLog = async (req, res) => {
   }
 };
 
-/**
- * Delete a care log entry
- * DELETE /api/pets/:petId/care-logs/:logId
- */
+//Delete a care log entry
 const deleteCareLog = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -140,10 +125,7 @@ const deleteCareLog = async (req, res) => {
   }
 };
 
-/**
- * Get care log statistics for a pet
- * GET /api/pets/:petId/care-logs/stats
- */
+//Get care log statistics for a pet
 const getCareLogStats = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -160,10 +142,7 @@ const getCareLogStats = async (req, res) => {
   }
 };
 
-/**
- * Get today's care logs for a pet
- * GET /api/pets/:petId/care-logs/today
- */
+//Get today's care logs for a pet
 const getTodayCareLogs = async (req, res) => {
   try {
     const userId = req.user._id;

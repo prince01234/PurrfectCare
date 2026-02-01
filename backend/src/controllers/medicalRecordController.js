@@ -1,9 +1,6 @@
 import medicalRecordService from "../services/medicalRecordService.js";
 
-/**
- * Create a new medical record for a pet
- * POST /api/pets/:petId/medical-records
- */
+// Create a new medical record for a pet
 const createMedicalRecord = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -33,10 +30,7 @@ const createMedicalRecord = async (req, res) => {
   }
 };
 
-/**
- * Get all medical records for a pet
- * GET /api/pets/:petId/medical-records
- */
+// Get all medical records for a pet
 const getMedicalRecords = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -67,10 +61,7 @@ const getMedicalRecords = async (req, res) => {
   }
 };
 
-/**
- * Get a single medical record by ID
- * GET /api/pets/:petId/medical-records/:recordId
- */
+// Get a single medical record by ID
 const getMedicalRecordById = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -91,10 +82,7 @@ const getMedicalRecordById = async (req, res) => {
   }
 };
 
-/**
- * Update a medical record
- * PUT /api/pets/:petId/medical-records/:recordId
- */
+// Update a medical record
 const updateMedicalRecord = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -125,10 +113,7 @@ const updateMedicalRecord = async (req, res) => {
   }
 };
 
-/**
- * Delete a medical record
- * DELETE /api/pets/:petId/medical-records/:recordId
- */
+// Delete a medical record
 const deleteMedicalRecord = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -147,10 +132,7 @@ const deleteMedicalRecord = async (req, res) => {
   }
 };
 
-/**
- * Get follow-up reminders (upcoming and overdue)
- * GET /api/pets/:petId/medical-records/follow-ups
- */
+// Get follow-up reminders (upcoming and overdue)
 const getFollowUpReminders = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -170,10 +152,7 @@ const getFollowUpReminders = async (req, res) => {
   }
 };
 
-/**
- * Get medical record statistics for a pet
- * GET /api/pets/:petId/medical-records/stats
- */
+// Get medical record statistics for a pet
 const getMedicalStats = async (req, res) => {
   try {
     const userId = req.user._id;

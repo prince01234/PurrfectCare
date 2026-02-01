@@ -1,9 +1,6 @@
 import healthService from "../services/healthService.js";
 
-/**
- * Get complete health overview for a pet
- * GET /api/pets/:petId/health
- */
+//  Get complete health overview for a pet
 const getHealthOverview = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -20,10 +17,7 @@ const getHealthOverview = async (req, res) => {
   }
 };
 
-/**
- * Get health overview for all pets of the user
- * GET /api/health/overview
- */
+//Get health overview for all pets of the user
 const getAllPetsHealthOverview = async (req, res) => {
   try {
     const userId = req.user._id;
