@@ -7,6 +7,22 @@ const createPet = async (userId, data, files) => {
   // Remove userId from body if user tries to set it (security)
   delete data.userId;
 
+  // Check if user already has a pet with this name
+  if (data.name) {
+    const existingPet = await Pet.findOne({
+      userId,
+      name: data.name,
+      isDeleted: false,
+    });
+
+    if (existingPet) {
+      throw {
+        statusCode: 400,
+        message: `You already have a pet named "${data.name}". You cannot add same pet twice.`,
+      };
+    }
+  }
+
   // Upload photos if provided
   let photoUrls = [];
   if (files && files.length > 0) {
@@ -122,6 +138,23 @@ const updatePet = async (petId, userId, body, files) => {
     photos: existingPhotos,
     ...updateData
   } = body;
+
+  // Check if user is trying to change pet name to one that already exists
+  if (updateData.name && updateData.name !== pet.name) {
+    const existingPet = await Pet.findOne({
+      userId,
+      name: updateData.name,
+      isDeleted: false,
+      _id: { $ne: petId }, // Exclude current pet from check
+    });
+
+    if (existingPet) {
+      throw {
+        statusCode: 400,
+        message: `You already have a pet named "${updateData.name}". Pet names must be unique for each user.`,
+      };
+    }
+  }
 
   // Handle new photo uploads
   if (files && files.length > 0) {
