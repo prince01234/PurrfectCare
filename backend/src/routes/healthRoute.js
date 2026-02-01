@@ -7,17 +7,8 @@ import { auth } from "../middlewares/auth.js";
 
 const router = express.Router();
 
-// ==========================================
-// GLOBAL HEALTH ROUTES (for all pets)
-// ==========================================
-
 // URL: /api/health/overview - Get health overview for all user's pets
 router.get("/overview", auth, healthController.getAllPetsHealthOverview);
-
-// ==========================================
-// PET-SPECIFIC HEALTH ROUTES
-// Note: These are mounted under /api/pets/:petId in the main pet routes
-// ==========================================
 
 // Create a sub-router for pet-specific health routes
 const petHealthRouter = express.Router({ mergeParams: true });

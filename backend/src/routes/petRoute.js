@@ -15,10 +15,6 @@ const upload = multer({
   },
 });
 
-// ==========================================
-// BROWSING ROUTES (auth only, no verification required)
-// ==========================================
-
 // URL: /api/pets/stats - View pet statistics
 router.get("/stats", auth, petController.getPetStatistics);
 
@@ -27,10 +23,6 @@ router.get("/", auth, petController.getPets);
 
 // URL: /api/pets/:id - View single pet
 router.get("/:id", auth, petController.getPetById);
-
-// ==========================================
-// ACTION ROUTES (auth + verification required)
-// ==========================================
 
 // URL: /api/pets - Create new pet
 router.post(
@@ -81,11 +73,6 @@ router.delete(
 // URL: /api/pets/:id/restore - Restore soft-deleted pet
 router.patch("/:id/restore", auth, requireVerified, petController.restorePet);
 
-// ==========================================
-// HEALTH & CARE ROUTES (nested under pets)
-// ==========================================
-
-// Mount health routes for each pet
 // URL: /api/pets/:petId/health/*
 router.use("/:petId/health", petHealthRouter);
 

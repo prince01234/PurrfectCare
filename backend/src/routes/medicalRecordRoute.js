@@ -4,10 +4,6 @@ import { auth, requireVerified } from "../middlewares/auth.js";
 
 const router = express.Router({ mergeParams: true }); // Enable access to parent route params (petId)
 
-// ==========================================
-// BROWSING ROUTES (auth only, no verification required)
-// ==========================================
-
 // URL: /api/pets/:petId/medical-records/stats - Get medical record statistics
 router.get("/stats", auth, medicalRecordController.getMedicalStats);
 
@@ -19,10 +15,6 @@ router.get("/", auth, medicalRecordController.getMedicalRecords);
 
 // URL: /api/pets/:petId/medical-records/:recordId - Get a single medical record
 router.get("/:recordId", auth, medicalRecordController.getMedicalRecordById);
-
-// ==========================================
-// ACTION ROUTES (auth + verification required)
-// ==========================================
 
 // URL: /api/pets/:petId/medical-records - Create a new medical record
 router.post(
