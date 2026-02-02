@@ -3,6 +3,7 @@ import MedicalRecord, {
   toObjectId,
 } from "../models/MedicalRecord.js";
 import Pet from "../models/Pet.js";
+import reminderService from "./reminderService.js";
 
 // Verify pet ownership before any operation
 const verifyPetOwnership = async (petId, userId) => {
@@ -28,7 +29,7 @@ const verifyPetOwnership = async (petId, userId) => {
 
 // Create a new medical record
 const createMedicalRecord = async (petId, userId, data) => {
-  await verifyPetOwnership(petId, userId);
+  const pet = await verifyPetOwnership(petId, userId);
 
   // Remove petId from body if provided (we use the URL param)
   delete data.petId;
@@ -37,6 +38,20 @@ const createMedicalRecord = async (petId, userId, data) => {
     ...data,
     petId: petId,
   });
+
+  // Auto-create reminder for follow-up date
+  if (medicalRecord.followUpDate) {
+    try {
+      await reminderService.createMedicalFollowUpReminder(
+        medicalRecord,
+        pet,
+        userId,
+      );
+    } catch (error) {
+      console.error("Failed to create medical follow-up reminder:", error);
+      // Don't fail the record creation if reminder fails
+    }
+  }
 
   return medicalRecord;
 };
