@@ -3,6 +3,7 @@ import Vaccination, {
   toObjectId,
 } from "../models/Vaccination.js";
 import Pet from "../models/Pet.js";
+import reminderService from "./reminderService.js";
 
 // Verify pet ownership before any operation
 const verifyPetOwnership = async (petId, userId) => {
@@ -28,7 +29,7 @@ const verifyPetOwnership = async (petId, userId) => {
 
 // Create a new vaccination record
 const createVaccination = async (petId, userId, data) => {
-  await verifyPetOwnership(petId, userId);
+  const pet = await verifyPetOwnership(petId, userId);
 
   // Remove petId from body if provided (we use the URL param)
   delete data.petId;
@@ -37,6 +38,16 @@ const createVaccination = async (petId, userId, data) => {
     ...data,
     petId: petId,
   });
+
+  // Auto-create reminder for next vaccination due date
+  if (vaccination.nextDueDate) {
+    try {
+      await reminderService.createVaccinationReminder(vaccination, pet, userId);
+    } catch (error) {
+      console.error("Failed to create vaccination reminder:", error);
+      // Don't fail the vaccination creation if reminder fails
+    }
+  }
 
   return vaccination;
 };
