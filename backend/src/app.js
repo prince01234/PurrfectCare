@@ -11,6 +11,10 @@ import authRoutes from "./routes/authRoute.js";
 import petRoutes from "./routes/petRoute.js";
 import healthRoutes from "./routes/healthRoute.js";
 import { userReminderRouter } from "./routes/reminderRoute.js";
+import productRoutes from "./routes/productRoute.js";
+import cartRoutes from "./routes/cartRoute.js";
+import orderRoutes from "./routes/orderRoute.js";
+import adminApplicationRoutes from "./routes/adminApplicationRoute.js";
 
 import logger from "./middlewares/logger.js";
 import connectCloudinary from "./config/cloudinary.js";
@@ -60,6 +64,12 @@ app.use("/api/health", healthRoutes);
 
 // Reminder Routes (user-level reminders)
 app.use("/api/reminders", userReminderRouter);
+
+// Marketplace Routes
+app.use("/api/products", productRoutes);
+app.use("/api/cart", cartRoutes);
+app.use("/api/orders", orderRoutes);
+app.use("/api/admin", adminApplicationRoutes);
 
 // Start reminder scheduler
 reminderScheduler.startScheduler();
