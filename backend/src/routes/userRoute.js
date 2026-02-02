@@ -1,17 +1,9 @@
 import express from "express";
-import multer from "multer";
 import userController from "../controllers/userController.js";
 import { auth, requireVerified } from "../middlewares/auth.js";
+import { uploadProfileImage } from "../utils/file.js";
 
 const router = express.Router();
-
-// Configure multer for memory storage
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
-  },
-});
 
 // URL: /api/users - Create user (admin only, usually registration is via auth)
 router.post("/", userController.createUser);
@@ -27,7 +19,7 @@ router.put(
   "/:id",
   auth,
   requireVerified,
-  upload.single("profileImage"),
+  uploadProfileImage.single("profileImage"),
   userController.updateUser,
 );
 
