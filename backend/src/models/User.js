@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { ADMIN, USER, PET_OWNER, SUPER_ADMIN } from "../constants/roles.js";
+import { SERVICE_TYPES } from "../constants/serviceTypes.js";
 
 const userSchema = new mongoose.Schema(
   {
@@ -28,6 +29,15 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: USER,
       enum: [ADMIN, USER, PET_OWNER, SUPER_ADMIN],
+    },
+    // Service type for admins (veterinary, grooming, training, pet_sitting, pet_adoption, marketplace, etc.)
+    serviceType: {
+      type: String,
+      default: null,
+      enum: {
+        values: SERVICE_TYPES,
+        message: "{VALUE} is not a valid service type",
+      },
     },
     isVerified: {
       type: Boolean,

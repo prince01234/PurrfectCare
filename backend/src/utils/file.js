@@ -2,6 +2,7 @@ import { v2 as cloudinary } from "cloudinary";
 import crypto from "crypto";
 import https from "https";
 import http from "http";
+import multer from "multer";
 
 const CLOUDINARY_FOLDER = "PurrfectCare";
 
@@ -26,8 +27,7 @@ async function fetchImageFromUrl(imageUrl) {
   });
 }
 
-
-async function uploadFile(files, existingImageUrls = null) {
+async function uploadFileWithMetadata(files, existingImageUrls = null) {
   const uploadResults = [];
   const existingUrls = Array.isArray(existingImageUrls)
     ? existingImageUrls
@@ -96,4 +96,43 @@ async function uploadFile(files, existingImageUrls = null) {
   return uploadResults;
 }
 
-export default uploadFile;
+// Upload files and extract URLs
+export async function uploadFile(files, existingImageUrls = null) {
+  const uploadResults = await uploadFileWithMetadata(files, existingImageUrls);
+  return uploadResults.map((result) => result.url || result.secure_url);
+}
+
+// Delete file from Cloudinary
+export async function deleteFile(publicId) {
+  try {
+    if (!publicId) return;
+    await cloudinary.uploader.destroy(publicId);
+  } catch (error) {
+    console.error("Error deleting file from Cloudinary:", error);
+  }
+}
+
+// Helper to extract public ID from Cloudinary URL
+function extractPublicId(url) {
+  const match = url.match(/\/([^\/]+)\.[a-z]+$/i);
+  return match ? match[1] : null;
+}
+
+// Multer configurations for different file uploads
+export const uploadProfileImage = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+});
+
+export const uploadProductImages = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedMimes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    allowedMimes.includes(file.mimetype)
+      ? cb(null, true)
+      : cb(new Error("Invalid file type. Only JPEG, PNG, WebP, GIF allowed."));
+  },
+});
+
+export default uploadFileWithMetadata;
