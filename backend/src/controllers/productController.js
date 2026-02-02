@@ -1,4 +1,5 @@
 import productService from "../services/productService.js";
+import { uploadFile, deleteFile } from "../utils/file.js";
 
 // Get all products (Public)
 const getProducts = async (req, res) => {
@@ -30,7 +31,15 @@ const getProductById = async (req, res) => {
 const createProduct = async (req, res) => {
   try {
     const adminId = req.user._id;
-    const product = await productService.createProduct(adminId, req.body);
+    const data = { ...req.body };
+
+    // Handle image uploads
+    if (req.files && req.files.length > 0) {
+      const uploadedImages = await uploadFile(req.files);
+      data.images = uploadedImages;
+    }
+
+    const product = await productService.createProduct(adminId, data);
     res.status(201).send(product);
   } catch (error) {
     console.error("Error creating product:", error);
@@ -51,10 +60,18 @@ const createProduct = async (req, res) => {
 const updateProduct = async (req, res) => {
   try {
     const adminId = req.user._id;
+    const data = { ...req.body };
+
+    // Handle image uploads
+    if (req.files && req.files.length > 0) {
+      const uploadedImages = await uploadFile(req.files);
+      data.images = uploadedImages;
+    }
+
     const product = await productService.updateProduct(
       req.params.id,
       adminId,
-      req.body,
+      data,
     );
     res.status(200).send(product);
   } catch (error) {
