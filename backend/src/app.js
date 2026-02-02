@@ -10,9 +10,11 @@ import userRoutes from "./routes/userRoute.js";
 import authRoutes from "./routes/authRoute.js";
 import petRoutes from "./routes/petRoute.js";
 import healthRoutes from "./routes/healthRoute.js";
+import { userReminderRouter } from "./routes/reminderRoute.js";
 
 import logger from "./middlewares/logger.js";
 import connectCloudinary from "./config/cloudinary.js";
+import reminderScheduler from "./jobs/reminderScheduler.js";
 
 const app = express();
 
@@ -55,6 +57,12 @@ app.use("/api/pets", petRoutes);
 
 // Health Routes (global health overview)
 app.use("/api/health", healthRoutes);
+
+// Reminder Routes (user-level reminders)
+app.use("/api/reminders", userReminderRouter);
+
+// Start reminder scheduler
+reminderScheduler.startScheduler();
 
 app.listen(config.port, () => {
   console.log(`Server is running at port http://localhost:${config.port}...`);
