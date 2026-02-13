@@ -22,11 +22,11 @@ export default function Button({
 
   const variants = {
     primary:
-      "bg-gradient-to-r from-violet-500 via-purple-500 to-cyan-400 text-white shadow-lg shadow-violet-500/30 hover:shadow-xl hover:shadow-violet-500/40 active:scale-[0.98]",
+      "bg-emerald-600 text-white shadow-lg shadow-emerald-600/25 hover:bg-emerald-700 hover:shadow-emerald-600/30 active:scale-[0.98]",
     secondary:
       "bg-gray-100 text-gray-700 hover:bg-gray-200 active:scale-[0.98]",
     outline:
-      "border-2 border-gray-200 text-gray-700 hover:border-violet-400 hover:text-violet-600 active:scale-[0.98]",
+      "border-2 border-gray-200 text-gray-700 hover:border-emerald-500 hover:text-emerald-600 active:scale-[0.98]",
   };
 
   return (
