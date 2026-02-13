@@ -50,7 +50,8 @@ export default function RegisterPage() {
           "Registration successful! Please check your email to verify your account.",
       );
       setTimeout(() => {
-        router.push("/login");
+        const emailParam = encodeURIComponent(data.email);
+        router.push(`/verify-email?email=${emailParam}`);
       }, 2000);
     }
 
