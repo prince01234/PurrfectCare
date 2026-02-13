@@ -31,8 +31,6 @@ const verifyPetOwnership = async (petId, userId) => {
 const createMedicalRecord = async (petId, userId, data) => {
   const pet = await verifyPetOwnership(petId, userId);
 
-  // Remove petId from body if provided (we use the URL param)
-  delete data.petId;
 
   const medicalRecord = await MedicalRecord.create({
     ...data,
