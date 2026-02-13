@@ -81,10 +81,6 @@ const resetPassword = async (req, res) => {
   const query = req.query;
 
   try {
-    if (!query.token || !query.userId) {
-      return res.status(400).send("Token and user ID are required.");
-    }
-
     if (!input.password) {
       return res.status(400).send("Password is required.");
     }
@@ -97,11 +93,22 @@ const resetPassword = async (req, res) => {
       return res.status(400).send("Passwords do not match.");
     }
 
-    const data = await authService.resetPassword(
-      query.userId,
-      query.token,
-      input.password,
-    );
+    const hasLinkParams = query.token && query.userId;
+    const hasOtpParams = input.email && input.otp;
+
+    if (!hasLinkParams && !hasOtpParams) {
+      return res
+        .status(400)
+        .send("Reset token or code with email is required.");
+    }
+
+    const data = await authService.resetPassword({
+      userId: query.userId,
+      token: query.token,
+      email: input.email,
+      otp: input.otp,
+      newPassword: input.password,
+    });
 
     res.status(201).json(data);
   } catch (error) {
@@ -109,17 +116,47 @@ const resetPassword = async (req, res) => {
   }
 };
 
-const verifyAccount = async (req, res) => {
-  const { userId, token } = req.query;
+const verifyResetOtp = async (req, res) => {
+  const input = req.body;
 
   try {
-    if (!userId || !token) {
-      return res
-        .status(400)
-        .send("User ID and verification token are required.");
+    if (!input.email) {
+      return res.status(400).send("Email address is required.");
     }
 
-    const data = await authService.verifyAccount(userId, token);
+    if (!input.otp) {
+      return res.status(400).send("Reset code is required.");
+    }
+
+    const data = await authService.verifyResetOtp(input.email, input.otp);
+
+    res.status(200).json(data);
+  } catch (error) {
+    res.status(error.statusCode || 500).send(error.message);
+  }
+};
+
+const verifyAccount = async (req, res) => {
+  const { userId, token } = req.query;
+  const { email, otp } = req.body;
+
+  try {
+    if (!userId && !email) {
+      return res
+        .status(400)
+        .send("User ID or email is required for verification.");
+    }
+
+    if (!token && !otp) {
+      return res.status(400).send("Verification token or code is required.");
+    }
+
+    const data = await authService.verifyAccount({
+      userId,
+      token,
+      email,
+      otp,
+    });
 
     res.status(201).json(data);
   } catch (error) {
@@ -154,6 +191,7 @@ export default {
   loginUser,
   forgotPassword,
   resetPassword,
+  verifyResetOtp,
   verifyAccount,
   resendVerification,
   logout,

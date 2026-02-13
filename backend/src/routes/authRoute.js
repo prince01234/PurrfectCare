@@ -15,6 +15,9 @@ router.post("/forgot-password", authController.forgotPassword);
 // URL: /api/auth/reset-password
 router.post("/reset-password", authController.resetPassword);
 
+// URL: /api/auth/verify-reset-otp
+router.post("/verify-reset-otp", authController.verifyResetOtp);
+
 // URL: /api/auth/verify-email/:userId/:token
 router.post("/verify-email", authController.verifyAccount);
 
