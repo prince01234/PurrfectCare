@@ -111,6 +111,15 @@ export const authApi = {
       },
     ),
 
+  verifyResetOtp: (email: string, otp: string) =>
+    apiRequest<{ userId: string; token: string }>(
+      "/api/auth/verify-reset-otp",
+      {
+        method: "POST",
+        body: JSON.stringify({ email, otp }),
+      },
+    ),
+
   verifyEmail: (userId: string, token: string) =>
     apiRequest<{ message: string }>(
       `/api/auth/verify-email?userId=${userId}&token=${token}`,
@@ -119,10 +128,27 @@ export const authApi = {
       },
     ),
 
+  verifyEmailWithOtp: (email: string, otp: string) =>
+    apiRequest<{ message: string }>("/api/auth/verify-email", {
+      method: "POST",
+      body: JSON.stringify({ email, otp }),
+    }),
+
   resendVerification: (email: string) =>
     apiRequest<{ message: string }>("/api/auth/resend-verification", {
       method: "POST",
       body: JSON.stringify({ email }),
+    }),
+
+  resetPasswordWithOtp: (
+    email: string,
+    otp: string,
+    password: string,
+    confirmPassword: string,
+  ) =>
+    apiRequest<{ message: string }>("/api/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ email, otp, password, confirmPassword }),
     }),
 };
 
