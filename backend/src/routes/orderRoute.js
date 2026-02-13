@@ -4,8 +4,6 @@ import { auth, requireVerified } from "../middlewares/auth.js";
 
 const router = express.Router();
 
-// All order routes require authentication
-
 // URL: /api/orders - Create order from cart
 router.post("/", auth, requireVerified, orderController.createOrder);
 
@@ -17,5 +15,21 @@ router.get("/:id", auth, orderController.getOrderById);
 
 // URL: /api/orders/:id/cancel - Cancel order
 router.put("/:id/cancel", auth, requireVerified, orderController.cancelOrder);
+
+// URL: /api/orders/:id/payment/khalti - Initiate Khalti payment
+router.post(
+  "/:id/payment/khalti",
+  auth,
+  requireVerified,
+  orderController.orderPaymentViaKhalti,
+);
+
+// URL: /api/orders/:id/confirm-payment - Confirm payment after Khalti callback
+router.put(
+  "/:id/confirm-payment",
+  auth,
+  requireVerified,
+  orderController.confirmOrderPayment,
+);
 
 export default router;

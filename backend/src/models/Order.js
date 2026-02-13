@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { ORDER_STATUSES } from "../constants/marketplace.js";
+import { ORDER_STATUSES, PAYMENT_METHODS } from "../constants/marketplace.js";
 
 const orderItemSchema = new mongoose.Schema(
   {
@@ -80,13 +80,27 @@ const orderSchema = new mongoose.Schema(
       default: null,
       trim: true,
     },
+
+    // Payment method chosen by user
+    paymentMethod: {
+      type: String,
+      required: [true, "Payment method is required"],
+      enum: {
+        values: PAYMENT_METHODS,
+        message: "{VALUE} is not a valid payment method",
+      },
+      lowercase: true,
+    },
+
+    // Reference to the payment record
+    payment: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Payment",
+      default: null,
+    },
   },
   {
     timestamps: true,
-    payment: {
-      type: mongoose.Types.ObjectId,
-      ref: "Payment",
-    },
   },
 );
 
