@@ -83,6 +83,10 @@ const orderSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    payment: {
+      type: mongoose.Types.ObjectId,
+      ref: "Payment",
+    },
   },
 );
 
