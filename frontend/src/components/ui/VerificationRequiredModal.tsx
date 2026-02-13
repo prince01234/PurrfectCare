@@ -63,7 +63,7 @@ export default function VerificationRequiredModal({
                 </h2>
                 <p className="text-gray-500">
                   Please verify your email address to perform this action. Check
-                  your inbox for the verification link.
+                  your inbox for the verification code or link.
                 </p>
                 {userEmail && (
                   <p className="text-sm text-gray-400 mt-2">
@@ -78,7 +78,7 @@ export default function VerificationRequiredModal({
                   <Button
                     onClick={onResendEmail}
                     isLoading={isResending}
-                    className="bg-linear-to-r! from-amber-400! to-orange-400! shadow-amber-200!"
+                    className="bg-amber-500! hover:bg-amber-600! text-white! shadow-amber-200!"
                   >
                     <Mail className="w-5 h-5" />
                     Resend Verification Email
