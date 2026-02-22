@@ -5,6 +5,10 @@ const resetPasswordSchema = new mongoose.Schema({
     type: String,
     required: [true, "Reset password token is required."],
   },
+  otpHash: {
+    type: String,
+    default: null,
+  },
   expiresAt: {
     type: Date,
     default: () => Date.now() + 3600000, // 1 hour from now

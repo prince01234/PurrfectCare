@@ -5,6 +5,10 @@ const accountVerificationSchema = new mongoose.Schema({
     type: String,
     required: [true, "Account verification token is required."],
   },
+  otpHash: {
+    type: String,
+    default: null,
+  },
   expiresAt: {
     type: Date,
     default: () => Date.now() + 3600000, // 1 hour from now

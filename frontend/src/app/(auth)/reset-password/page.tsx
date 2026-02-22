@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Lock, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { Lock, CheckCircle, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 
 import AuthLayout from "@/components/auth/AuthLayout";
@@ -23,16 +23,13 @@ function ResetPasswordContent() {
 
   const userId = searchParams.get("userId");
   const token = searchParams.get("token");
+  const isLinkMode = Boolean(userId && token);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<ResetPasswordFormData>({
+  const linkForm = useForm<ResetPasswordFormData>({
     resolver: zodResolver(resetPasswordSchema),
   });
 
-  const onSubmit = async (data: ResetPasswordFormData) => {
+  const onSubmitLink = async (data: ResetPasswordFormData) => {
     if (!userId || !token) {
       toast.error("Invalid reset link. Please request a new one.");
       return;
@@ -61,37 +58,6 @@ function ResetPasswordContent() {
       router.push("/login");
     }, 2000);
   };
-
-  if (!userId || !token) {
-    return (
-      <AuthLayout variant="login">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center"
-        >
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", delay: 0.2 }}
-            className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6"
-          >
-            <AlertCircle className="w-10 h-10 text-red-500" />
-          </motion.div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
-            Invalid Reset Link
-          </h1>
-          <p className="text-gray-500 mb-8">
-            This password reset link is invalid or has expired. Please request a
-            new one.
-          </p>
-          <Link href="/forgot-password">
-            <Button>Request New Link</Button>
-          </Link>
-        </motion.div>
-      </AuthLayout>
-    );
-  }
 
   if (isSuccess) {
     return (
@@ -124,6 +90,29 @@ function ResetPasswordContent() {
     );
   }
 
+  if (!isLinkMode) {
+    return (
+      <AuthLayout variant="login">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center"
+        >
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
+            Invalid Reset Link
+          </h1>
+          <p className="text-gray-500 mb-8">
+            This password reset link is invalid or has expired. Please request a
+            new one.
+          </p>
+          <Link href="/forgot-password">
+            <Button>Request New Code</Button>
+          </Link>
+        </motion.div>
+      </AuthLayout>
+    );
+  }
+
   return (
     <AuthLayout variant="login">
       <motion.div
@@ -137,15 +126,17 @@ function ResetPasswordContent() {
         <p className="text-gray-500 text-center mb-8">
           Enter your new password below
         </p>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <form
+          onSubmit={linkForm.handleSubmit(onSubmitLink)}
+          className="space-y-5"
+        >
           <Input
             label="New Password"
             icon={Lock}
             type="password"
             placeholder="Enter new password"
-            error={errors.password?.message}
-            {...register("password")}
+            error={linkForm.formState.errors.password?.message}
+            {...linkForm.register("password")}
           />
 
           <Input
@@ -153,8 +144,8 @@ function ResetPasswordContent() {
             icon={Lock}
             type="password"
             placeholder="Confirm new password"
-            error={errors.confirmPassword?.message}
-            {...register("confirmPassword")}
+            error={linkForm.formState.errors.confirmPassword?.message}
+            {...linkForm.register("confirmPassword")}
           />
 
           <Button type="submit" isLoading={isLoading}>

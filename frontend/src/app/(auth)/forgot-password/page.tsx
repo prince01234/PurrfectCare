@@ -5,8 +5,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Mail, ArrowLeft, CheckCircle } from "lucide-react";
+import { Mail, ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
 
 import AuthLayout from "@/components/auth/AuthLayout";
 import Input from "@/components/ui/Input";
@@ -19,7 +20,7 @@ import { authApi } from "@/lib/api";
 
 export default function ForgotPasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [isEmailSent, setIsEmailSent] = useState(false);
+  const router = useRouter();
 
   const {
     register,
@@ -40,44 +41,10 @@ export default function ForgotPasswordPage() {
       return;
     }
 
-    toast.success("Reset link sent! Check your email.");
-    setIsEmailSent(true);
+    toast.success("Reset code sent! Check your email.");
     setIsLoading(false);
+    router.push(`/reset-password-otp?email=${encodeURIComponent(data.email)}`);
   };
-
-  if (isEmailSent) {
-    return (
-      <AuthLayout variant="login">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center"
-        >
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", delay: 0.2 }}
-            className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6"
-          >
-            <CheckCircle className="w-10 h-10 text-green-500" />
-          </motion.div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
-            Check Your Email
-          </h1>
-          <p className="text-gray-500 mb-8">
-            We&apos;ve sent a password reset link to your email address. Please
-            check your inbox and follow the instructions.
-          </p>
-          <Link href="/login">
-            <Button variant="outline">
-              <ArrowLeft className="w-4 h-4" />
-              Back to Login
-            </Button>
-          </Link>
-        </motion.div>
-      </AuthLayout>
-    );
-  }
 
   return (
     <AuthLayout variant="login">
@@ -112,7 +79,7 @@ export default function ForgotPasswordPage() {
           />
 
           <Button type="submit" isLoading={isLoading}>
-            Send Reset Link
+            Send Reset Code
           </Button>
         </form>
       </motion.div>
