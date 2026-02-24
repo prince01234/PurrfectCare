@@ -96,17 +96,19 @@ const orderPaymentViaKhalti = async (id, user) => {
     };
   }
 
-  const transactionId = crypto.randomUUID();
-
-  const orderPayment = await Payment.create({
-    amount: order.totalAmount,
-    method: "khalti",
-    transactionId,
-  });
-
-  await Order.findByIdAndUpdate(id, {
-    payment: orderPayment._id,
-  });
+  // Reuse existing payment if one already exists, otherwise create new
+  let orderPayment = order.payment;
+  if (!orderPayment || orderPayment.status === "failed") {
+    const transactionId = crypto.randomUUID();
+    orderPayment = await Payment.create({
+      amount: order.totalAmount,
+      method: "khalti",
+      transactionId,
+    });
+    await Order.findByIdAndUpdate(id, {
+      payment: orderPayment._id,
+    });
+  }
 
   // Fetch full user for customer info
   const fullUser = await User.findById(user._id);
