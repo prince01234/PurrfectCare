@@ -12,10 +12,13 @@ const payViaKhalti = async (data) => {
   if (!data.purchaseOrderName)
     throw { message: "Purchase order name is required." };
 
+  // Use dedicated return URL (frontend) or fall back to appUrl
+  const frontendUrl = config.khalti.returnUrl || config.appUrl;
+
   const body = {
-    return_url: `${config.appUrl}/orders/${data.purchaseOrderId}/payment/khalti`,
+    return_url: `${frontendUrl}/orders/${data.purchaseOrderId}/payment/khalti`,
     amount: data.amount,
-    website_url: config.appUrl,
+    website_url: frontendUrl,
     purchase_order_id: data.purchaseOrderId,
     purchase_order_name: data.purchaseOrderName,
     customer_info: {
@@ -25,17 +28,31 @@ const payViaKhalti = async (data) => {
     },
   };
 
-  const response = await axios.post(
-    `${config.khalti.apiUrl}/epayment/initiate/`,
-    body,
-    {
-      headers: {
-        Authorization: `Key ${config.khalti.apiKey}`,
+  try {
+    const response = await axios.post(
+      `${config.khalti.apiUrl}/epayment/initiate/`,
+      body,
+      {
+        headers: {
+          Authorization: `Key ${config.khalti.apiKey}`,
+        },
       },
-    },
-  );
+    );
 
-  return response.data;
+    return response.data;
+  } catch (error) {
+    // Extract meaningful error from Khalti's response
+    const khaltiError =
+      error.response?.data?.detail ||
+      error.response?.data?.message ||
+      (typeof error.response?.data === "string" ? error.response.data : null) ||
+      error.message;
+    console.error("Khalti API error:", error.response?.status, error.response?.data);
+    throw {
+      statusCode: error.response?.status || 500,
+      message: `Khalti payment error: ${khaltiError}`,
+    };
+  }
 };
 
 export default { payViaKhalti };
