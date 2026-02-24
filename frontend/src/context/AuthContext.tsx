@@ -35,12 +35,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const storedToken = Cookies.get("authToken");
+    // Try cookie first, then localStorage fallback
+    const storedToken = Cookies.get("authToken") || localStorage.getItem("authToken");
     const storedUser = localStorage.getItem("user");
 
     if (storedToken && storedUser) {
       setToken(storedToken);
       setUser(JSON.parse(storedUser));
+      // Re-sync cookie if it was missing but localStorage had the token
+      if (!Cookies.get("authToken")) {
+        Cookies.set("authToken", storedToken, { expires: 7, path: "/" });
+      }
     }
     setIsLoading(false);
   }, []);
@@ -48,14 +53,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = (userData: User, authToken: string) => {
     setUser(userData);
     setToken(authToken);
-    Cookies.set("authToken", authToken, { expires: 1 });
+    Cookies.set("authToken", authToken, { expires: 7, path: "/" });
+    localStorage.setItem("authToken", authToken);
     localStorage.setItem("user", JSON.stringify(userData));
   };
 
   const logout = () => {
     setUser(null);
     setToken(null);
-    Cookies.remove("authToken");
+    Cookies.remove("authToken", { path: "/" });
+    localStorage.removeItem("authToken");
     localStorage.removeItem("user");
   };
 
