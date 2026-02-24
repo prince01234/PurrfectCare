@@ -17,7 +17,6 @@ import {
   Search,
   MapPin,
   ChevronRight,
-  Star,
   Facebook,
   Instagram,
   Twitter,
@@ -255,7 +254,7 @@ export default function LandingPage() {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-linear-to-br from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">
                 <PawPrint className="w-5 h-5 text-white" />
               </div>
               <span className="font-bold text-xl text-gray-900">
@@ -301,7 +300,7 @@ export default function LandingPage() {
               </Link>
               <Link
                 href="/register"
-                className="bg-gradient-to-r from-pink-500 to-rose-500 text-white px-5 py-2.5 rounded-full font-medium hover:shadow-lg hover:shadow-pink-500/30 transition-all"
+                className="bg-linear-to-r from-pink-500 to-rose-500 text-white px-5 py-2.5 rounded-full font-medium hover:shadow-lg hover:shadow-pink-500/30 transition-all"
               >
                 Get Started
               </Link>
@@ -347,7 +346,7 @@ export default function LandingPage() {
               </Link>
               <Link
                 href="/register"
-                className="bg-gradient-to-r from-pink-500 to-rose-500 text-white px-5 py-3 rounded-full font-medium text-center"
+                className="bg-linear-to-r from-pink-500 to-rose-500 text-white px-5 py-3 rounded-full font-medium text-center"
               >
                 Get Started
               </Link>
@@ -357,7 +356,7 @@ export default function LandingPage() {
       </header>
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-pink-50/50 to-white">
+      <section className="relative overflow-hidden bg-linear-to-b from-pink-50/50 to-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
           <motion.div
             initial="initial"
@@ -370,7 +369,7 @@ export default function LandingPage() {
               className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-4"
             >
               All-in-One Pet Care &
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-rose-500">
+              <span className="text-transparent bg-clip-text bg-linear-to-r from-pink-500 to-rose-500">
                 {" "}
                 Adoption Platform
               </span>
@@ -387,10 +386,13 @@ export default function LandingPage() {
               variants={fadeInUp}
               className="relative w-full max-w-md mx-auto mb-8 rounded-3xl overflow-hidden shadow-2xl shadow-pink-500/20"
             >
-              <img
+              <Image
                 src="https://images.unsplash.com/photo-1450778869180-41d0601e046e?w=600&h=400&fit=crop"
                 alt="Happy pets"
-                className="w-full h-64 md:h-80 object-cover"
+                fill
+                sizes="(max-width: 768px) 100vw, 448px"
+                className="object-cover"
+                priority
               />
             </motion.div>
 
@@ -401,7 +403,7 @@ export default function LandingPage() {
             >
               <Link
                 href="#adoption"
-                className="bg-gradient-to-r from-pink-500 to-rose-500 text-white px-8 py-4 rounded-full font-semibold text-lg hover:shadow-xl hover:shadow-pink-500/30 transition-all"
+                className="bg-linear-to-r from-pink-500 to-rose-500 text-white px-8 py-4 rounded-full font-semibold text-lg hover:shadow-xl hover:shadow-pink-500/30 transition-all"
               >
                 Explore Adoptable Pets
               </Link>
@@ -429,7 +431,7 @@ export default function LandingPage() {
               The Challenge Pet Owners Face
             </h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
-              Managing pet care shouldn't be complicated, but often it is.
+              Managing pet care shouldn&apos;t be complicated, but often it is.
             </p>
           </motion.div>
 
@@ -463,7 +465,7 @@ export default function LandingPage() {
       </section>
 
       {/* Solution Section */}
-      <section className="py-16 md:py-24 bg-gradient-to-b from-pink-50/50 to-white">
+      <section className="py-16 md:py-24 bg-linear-to-b from-pink-50/50 to-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -475,7 +477,7 @@ export default function LandingPage() {
               Your Complete Pet Care Solution
             </h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
-              Everything you need for your pet's wellbeing, unified in one
+              Everything you need for your pet&apos;s wellbeing, unified in one
               platform
             </p>
           </motion.div>
@@ -531,10 +533,12 @@ export default function LandingPage() {
                 className="bg-white rounded-3xl overflow-hidden shadow-lg shadow-gray-100 hover:shadow-xl transition-shadow"
               >
                 <div className="relative h-48 md:h-56">
-                  <img
+                  <Image
                     src={pet.image}
                     alt={pet.name}
-                    className="w-full h-full object-cover"
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 33vw"
+                    className="object-cover"
                   />
                 </div>
                 <div className="p-4">
@@ -553,7 +557,7 @@ export default function LandingPage() {
                     <button className="flex-1 border-2 border-gray-200 text-gray-700 py-2.5 rounded-xl font-medium hover:border-pink-500 hover:text-pink-500 transition-all">
                       View Details
                     </button>
-                    <button className="flex-1 bg-gradient-to-r from-pink-500 to-rose-500 text-white py-2.5 rounded-xl font-medium hover:shadow-lg hover:shadow-pink-500/30 transition-all">
+                    <button className="flex-1 bg-linear-to-r from-pink-500 to-rose-500 text-white py-2.5 rounded-xl font-medium hover:shadow-lg hover:shadow-pink-500/30 transition-all">
                       Apply to Adopt
                     </button>
                   </div>
@@ -637,13 +641,16 @@ export default function LandingPage() {
               >
                 <div className="relative">
                   {item.premium && (
-                    <span className="absolute top-2 left-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs px-2 py-1 rounded-full font-medium">
+                    <span className="absolute top-2 left-2 bg-linear-to-r from-purple-500 to-pink-500 text-white text-xs px-2 py-1 rounded-full font-medium">
                       PREMIUM
                     </span>
                   )}
-                  <img
+                  <Image
                     src={item.image}
                     alt={item.name}
+                    width={240}
+                    height={160}
+                    sizes="(max-width: 768px) 50vw, 25vw"
                     className="w-full h-32 object-cover rounded-xl mb-3"
                   />
                 </div>
@@ -688,9 +695,12 @@ export default function LandingPage() {
                 transition={{ delay: index * 0.1 }}
                 className="bg-white rounded-2xl p-4 flex items-center gap-4 shadow-sm"
               >
-                <img
+                <Image
                   src={pet.image}
                   alt={pet.name}
+                  width={64}
+                  height={64}
+                  sizes="64px"
                   className="w-16 h-16 rounded-xl object-cover"
                 />
                 <div className="flex-1">
@@ -731,7 +741,7 @@ export default function LandingPage() {
             <p className="text-gray-500 mb-4">
               Post about lost or found pets in your community
             </p>
-            <button className="bg-gradient-to-r from-pink-500 to-rose-500 text-white px-6 py-3 rounded-full font-semibold hover:shadow-lg hover:shadow-pink-500/30 transition-all">
+            <button className="bg-linear-to-r from-pink-500 to-rose-500 text-white px-6 py-3 rounded-full font-semibold hover:shadow-lg hover:shadow-pink-500/30 transition-all">
               Post Lost/Found Pet
             </button>
           </motion.div>
@@ -739,7 +749,7 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 md:py-24 bg-gradient-to-br from-pink-500 to-rose-600">
+      <section className="py-16 md:py-24 bg-linear-to-br from-pink-500 to-rose-600">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -796,12 +806,14 @@ export default function LandingPage() {
           {/* Logo & Description */}
           <div className="text-center mb-10">
             <Link href="/" className="inline-flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-linear-to-br from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">
                 <PawPrint className="w-5 h-5 text-white" />
               </div>
               <span className="font-bold text-xl">PurrfectCare</span>
             </Link>
-            <p className="text-gray-400">Your pet's happiness, our priority</p>
+            <p className="text-gray-400">
+              Your pet&apos;s happiness, our priority
+            </p>
           </div>
 
           {/* Links */}
