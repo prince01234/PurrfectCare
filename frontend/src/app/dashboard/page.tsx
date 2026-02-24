@@ -1,281 +1,427 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { LogOut, User, PawPrint, ShieldCheck, ShieldAlert } from "lucide-react";
+import Link from "next/link";
 import toast from "react-hot-toast";
+import { AlertTriangle, Calendar, Pill, Syringe, Clock } from "lucide-react";
 
 import { useAuth } from "@/context/AuthContext";
-import Button from "@/components/ui/Button";
-import VerificationRequiredModal from "@/components/ui/VerificationRequiredModal";
-import { useVerification } from "@/lib/hooks/useVerification";
+import { petApi } from "@/lib/api";
+import type { Pet, Reminder, HealthOverview } from "@/lib/api";
+import MobileLayout from "@/components/layout/MobileLayout";
+import HeroSection from "@/components/home/HeroSection";
+import PetServices from "@/components/home/PetServices";
+import MarketplaceBanner from "@/components/home/MarketplaceBanner";
+import LostAndFound from "@/components/home/LostAndFound";
+
+interface DisplayPet {
+  id: string;
+  name: string;
+  image: string | null;
+  nextVetDate: string | null;
+}
+
+interface UpcomingReminder {
+  id: string;
+  petId: string;
+  petName: string;
+  petImage: string | null;
+  title: string;
+  type: string;
+  dueDate: string;
+  dueTime: string;
+  priority: string;
+  isOverdue: boolean;
+}
+
+// Mock lost/found data (can be replaced with API later)
+const mockLostFound = [
+  {
+    id: "1",
+    type: "lost" as const,
+    petName: "Rusty",
+    description:
+      "Wearing a blue collar. Friendly but scared. Last seen near the park entrance.",
+    location: "Central Park Area",
+    date: "Feb 1, 2026",
+    image:
+      "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=200&h=200&fit=crop",
+  },
+  {
+    id: "2",
+    type: "found" as const,
+    petName: "Unknown Cat",
+    description:
+      "Found near the lake. Very small. No collar. Needs a home urgently.",
+    location: "Riverside District",
+    date: "Yesterday",
+    image:
+      "https://images.unsplash.com/photo-1574158622682-e40e69881006?w=200&h=200&fit=crop",
+  },
+];
+
+function getReminderIcon(type: string) {
+  switch (type) {
+    case "vaccination_due":
+      return <Syringe className="w-4 h-4" />;
+    case "medication":
+      return <Pill className="w-4 h-4" />;
+    case "vet_checkup":
+      return <Calendar className="w-4 h-4" />;
+    default:
+      return <Clock className="w-4 h-4" />;
+  }
+}
+
+function formatDueDate(dateString: string): string {
+  const due = new Date(dateString);
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  if (due.toDateString() === today.toDateString()) {
+    return "Today";
+  }
+  if (due.toDateString() === tomorrow.toDateString()) {
+    return "Tomorrow";
+  }
+
+  const days = Math.ceil(
+    (due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+  );
+  if (days > 0) {
+    return `In ${days} day${days > 1 ? "s" : ""}`;
+  }
+  return `${Math.abs(days)} day${Math.abs(days) > 1 ? "s" : ""} ago`;
+}
 
 export default function DashboardPage() {
-  const { user, logout, isLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
-  const {
-    showVerificationModal,
-    closeVerificationModal,
-    resendVerificationEmail,
-    isResendingEmail,
-    requiresVerification,
-  } = useVerification();
+  const [pets, setPets] = useState<DisplayPet[]>([]);
+  const [upcomingReminders, setUpcomingReminders] = useState<
+    UpcomingReminder[]
+  >([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  React.useEffect(() => {
-    if (!isLoading && !user) {
+  // Redirect if not authenticated or onboarding not completed
+  useEffect(() => {
+    if (!authLoading && !user) {
       router.push("/login");
     }
-    // Redirect to onboarding if not completed
-    if (!isLoading && user && !user.hasCompletedOnboarding) {
+    if (!authLoading && user && !user.hasCompletedOnboarding) {
       router.push("/onboarding");
     }
-  }, [user, isLoading, router]);
+  }, [user, authLoading, router]);
 
-  if (isLoading) {
+  // Fetch pets and their reminders
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const petsRes = await petApi.getPets({ limit: 100 });
+
+        if (!petsRes.data?.pets) {
+          setIsLoading(false);
+          return;
+        }
+
+        const allPets = petsRes.data.pets;
+        const displayPets: DisplayPet[] = allPets.map((pet: Pet) => ({
+          id: pet._id,
+          name: pet.name,
+          image: pet.photos?.[0] || null,
+          nextVetDate: null,
+        }));
+        setPets(displayPets);
+
+        console.log(
+          `%c✓ Fetched ${allPets.length} pets`,
+          "color: green; font-weight: bold",
+        );
+
+        // Fetch reminders for each pet and collect all upcoming ones
+        const allReminders: UpcomingReminder[] = [];
+
+        for (const pet of allPets) {
+          try {
+            // Use dedicated reminders endpoint instead of health overview
+            const remindersRes = await petApi.getReminders(pet._id);
+            console.log(
+              `%c→ Fetching reminders for ${pet.name}`,
+              "color: blue",
+              remindersRes,
+            );
+
+            if (
+              remindersRes.data?.reminders &&
+              Array.isArray(remindersRes.data.reminders)
+            ) {
+              console.log(
+                `%c  Found ${remindersRes.data.reminders.length} total reminders`,
+                "color: blue",
+              );
+
+              const petReminders = remindersRes.data.reminders
+                .filter(
+                  (reminder: Reminder) =>
+                    reminder.status === "active" ||
+                    reminder.status === "snoozed",
+                )
+                .map((reminder: Reminder) => ({
+                  id: reminder._id,
+                  petId: pet._id,
+                  petName: pet.name,
+                  petImage: pet.photos?.[0] || null,
+                  title: reminder.title,
+                  type: reminder.reminderType,
+                  dueDate: reminder.dueDate,
+                  dueTime: reminder.dueTime,
+                  priority: reminder.priority,
+                  isOverdue:
+                    new Date(reminder.dueDate) < new Date() &&
+                    reminder.status === "active",
+                }));
+              console.log(
+                `%c  Added ${petReminders.length} active reminders from ${pet.name}`,
+                "color: green",
+              );
+              allReminders.push(...petReminders);
+            } else if (remindersRes.error) {
+              console.warn(
+                `%c✗ Error fetching reminders for ${pet.name}: ${remindersRes.error}`,
+                "color: orange",
+              );
+            }
+          } catch (error) {
+            console.error(
+              `Failed to fetch reminders for pet ${pet._id}:`,
+              error,
+            );
+          }
+        }
+
+        // Sort by due date and priority
+        allReminders.sort((a, b) => {
+          // Overdue items first
+          if (a.isOverdue && !b.isOverdue) return -1;
+          if (!a.isOverdue && b.isOverdue) return 1;
+
+          // Then by date
+          const dateA = new Date(a.dueDate).getTime();
+          const dateB = new Date(b.dueDate).getTime();
+          return dateA - dateB;
+        });
+
+        console.log(
+          `%c✓ FINAL: ${allReminders.length} reminders to display`,
+          "color: green; font-weight: bold",
+          allReminders,
+        );
+
+        // Keep top 5 most urgent reminders
+        setUpcomingReminders(allReminders.slice(0, 5));
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        toast.error("Failed to load dashboard data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [user]);
+
+  if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-violet-50 via-white to-cyan-50">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="w-12 h-12 border-4 border-violet-500 border-t-transparent rounded-full"
+          className="w-10 h-10 border-3 border-teal-500 border-t-transparent rounded-full"
         />
       </div>
     );
   }
 
-  if (!user) {
-    return null;
+  if (!user) return null;
+
+  // Get the pet with the most urgent reminder
+  const mostUrgentReminder = upcomingReminders[0];
+  const mostUrgentPet = mostUrgentReminder
+    ? pets.find((p) => p.id === mostUrgentReminder.petId)
+    : null;
+
+  // Update the most urgent pet with its reminder info
+  if (mostUrgentPet && mostUrgentReminder) {
+    mostUrgentPet.nextVetDate = formatDueDate(mostUrgentReminder.dueDate);
   }
 
-  const handleLogout = () => {
-    logout();
-    toast.success("Logged out successfully!");
-    router.push("/login");
-  };
-
-  // Handler for actions that require verification
-  const handleProtectedAction = (actionName: string, actionIcon: string) => {
-    if (requiresVerification()) {
-      return; // Modal will be shown by the hook
-    }
-    // If verified, proceed with action
-    toast(`${actionName} feature coming soon!`, { icon: actionIcon });
-  };
-
   return (
-    <div className="min-h-screen bg-linear-to-br from-violet-50 via-white to-cyan-50">
-      {/* Verification Modal */}
-      <VerificationRequiredModal
-        isOpen={showVerificationModal}
-        onClose={closeVerificationModal}
-        onResendEmail={resendVerificationEmail}
-        isResending={isResendingEmail}
-        userEmail={user.email}
-      />
+    <MobileLayout>
+      <HeroSection userName={user.name} />
 
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-2"
-          >
-            <PawPrint className="w-8 h-8 text-violet-600" />
-            <h1 className="text-xl md:text-2xl font-bold text-violet-600">
-              PurrfectCare
-            </h1>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-4"
-          >
-            <span className="text-gray-600 hidden sm:block">
-              Welcome, <span className="font-semibold">{user.name}</span>
-            </span>
-            <Button
-              variant="outline"
-              onClick={handleLogout}
-              className="w-auto! py-2! px-4!"
-            >
-              <LogOut className="w-4 h-4" />
-              <span className="hidden sm:inline">Logout</span>
-            </Button>
-          </motion.div>
-        </div>
-      </header>
-
-      {/* Verification Banner */}
-      {!user.isVerified && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-amber-50 border-b border-amber-200"
-        >
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <ShieldAlert className="w-5 h-5 text-amber-500 shrink-0" />
-              <p className="text-sm text-amber-800">
-                <span className="font-medium">Email not verified.</span>{" "}
-                <span className="hidden sm:inline">
-                  Verify your email to add pets, book services, and more.
-                </span>
-              </p>
-            </div>
-            <button
-              onClick={resendVerificationEmail}
-              disabled={isResendingEmail}
-              className="text-sm font-medium text-amber-600 hover:text-amber-700 whitespace-nowrap disabled:opacity-50"
-            >
-              {isResendingEmail ? "Sending..." : "Resend Email"}
-            </button>
-          </div>
-        </motion.div>
-      )}
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white rounded-3xl shadow-xl p-6 md:p-8"
-        >
-          {/* User Info */}
-          <div className="flex flex-col sm:flex-row items-center gap-4 mb-8">
+      {/* Most Urgent Pet Card */}
+      {mostUrgentPet && (
+        <div className="px-5 py-6">
+          <Link href={`/pets/${mostUrgentPet.id}`}>
             <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", delay: 0.2 }}
-              className="w-20 h-20 bg-linear-to-br from-violet-400 to-cyan-400 rounded-full flex items-center justify-center shadow-lg relative"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow flex items-center gap-4"
             >
-              <User className="w-10 h-10 text-white" />
-              {/* Verification Badge */}
-              <div
-                className={`absolute -bottom-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center ${
-                  user.isVerified ? "bg-green-500" : "bg-amber-500"
-                }`}
-              >
-                {user.isVerified ? (
-                  <ShieldCheck className="w-4 h-4 text-white" />
+              {/* Pet Image */}
+              <div className="w-20 h-20 rounded-full overflow-hidden flex-shrink-0 bg-gray-100">
+                {mostUrgentPet.image ? (
+                  <img
+                    src={mostUrgentPet.image}
+                    alt={mostUrgentPet.name}
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
-                  <ShieldAlert className="w-4 h-4 text-white" />
+                  <div className="w-full h-full flex items-center justify-center text-3xl">
+                    🐾
+                  </div>
                 )}
               </div>
+
+              {/* Pet Info */}
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-gray-900">
+                  {mostUrgentPet.name}
+                </h3>
+                <p className="text-sm text-teal-600 font-medium">
+                  Next: {mostUrgentReminder?.title}
+                </p>
+                <p
+                  className={`text-sm font-semibold mt-1 ${
+                    mostUrgentReminder?.isOverdue
+                      ? "text-red-600"
+                      : "text-teal-600"
+                  }`}
+                >
+                  {mostUrgentReminder?.isOverdue
+                    ? "⚠️ OVERDUE"
+                    : mostUrgentPet.nextVetDate}
+                </p>
+              </div>
+
+              {/* Arrow */}
+              <div className="text-gray-400">
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </div>
             </motion.div>
-            <div className="text-center sm:text-left">
-              <h2 className="text-2xl font-bold text-gray-900">{user.name}</h2>
-              <p className="text-gray-500">{user.email}</p>
-              <span
-                className={`inline-flex items-center gap-1 text-xs font-medium mt-1 px-2 py-0.5 rounded-full ${
-                  user.isVerified
-                    ? "bg-green-100 text-green-700"
-                    : "bg-amber-100 text-amber-700"
-                }`}
-              >
-                {user.isVerified ? (
-                  <>
-                    <ShieldCheck className="w-3 h-3" /> Verified
-                  </>
-                ) : (
-                  <>
-                    <ShieldAlert className="w-3 h-3" /> Unverified
-                  </>
-                )}
-              </span>
-            </div>
+          </Link>
+        </div>
+      )}
+
+      {/* Upcoming Reminders Section */}
+      {upcomingReminders.length > 0 && (
+        <div className="px-5 py-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-gray-900">
+              Upcoming Reminders
+            </h2>
+            <Link
+              href="/reminders"
+              className="text-teal-600 text-sm font-medium hover:text-teal-700"
+            >
+              View all
+            </Link>
           </div>
 
-          {/* Welcome Card */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="bg-linear-to-r from-violet-500 via-purple-500 to-cyan-500 rounded-2xl p-6 text-white mb-6"
-          >
-            <h3 className="text-xl md:text-2xl font-semibold mb-2">
-              🎉 Welcome to PurrfectCare!
-            </h3>
-            <p className="opacity-90">
-              Your account has been set up successfully. Start exploring
-              features to manage your pet&apos;s care routine.
-            </p>
-          </motion.div>
-
-          {/* Quick Actions */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-          >
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Quick Actions
-              {!user.isVerified && (
-                <span className="text-sm font-normal text-gray-500 ml-2">
-                  (Verification required for some actions)
-                </span>
-              )}
-            </h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                {
-                  icon: "🐱",
-                  label: "Add Pet",
-                  color: "from-pink-400 to-rose-400",
-                  requiresVerification: true,
-                },
-                {
-                  icon: "📅",
-                  label: "Schedule",
-                  color: "from-blue-400 to-cyan-400",
-                  requiresVerification: true,
-                },
-                {
-                  icon: "💊",
-                  label: "Medications",
-                  color: "from-green-400 to-emerald-400",
-                  requiresVerification: true,
-                },
-                {
-                  icon: "📊",
-                  label: "Health Log",
-                  color: "from-orange-400 to-amber-400",
-                  requiresVerification: false, // View-only action
-                },
-              ].map((action, index) => (
-                <motion.button
-                  key={action.label}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.5 + index * 0.1 }}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => {
-                    if (action.requiresVerification) {
-                      handleProtectedAction(action.label, action.icon);
-                    } else {
-                      toast(`${action.label} feature coming soon!`, {
-                        icon: action.icon,
-                      });
-                    }
-                  }}
-                  className={`bg-linear-to-br ${action.color} p-4 rounded-2xl text-white shadow-lg hover:shadow-xl transition-shadow relative`}
+          <div className="space-y-3">
+            {upcomingReminders.map((reminder) => (
+              <motion.div
+                key={reminder.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`p-4 rounded-xl border ${
+                  reminder.isOverdue
+                    ? "bg-red-50 border-red-200"
+                    : "bg-teal-50 border-teal-200"
+                } flex items-start gap-4`}
+              >
+                {/* Icon */}
+                <div
+                  className={`mt-0.5 p-2 rounded-lg ${
+                    reminder.isOverdue
+                      ? "bg-red-100 text-red-600"
+                      : "bg-teal-100 text-teal-600"
+                  }`}
                 >
-                  {action.requiresVerification && !user.isVerified && (
-                    <div className="absolute top-2 right-2">
-                      <ShieldAlert className="w-4 h-4 text-white/70" />
-                    </div>
+                  {reminder.isOverdue ? (
+                    <AlertTriangle className="w-4 h-4" />
+                  ) : (
+                    getReminderIcon(reminder.type)
                   )}
-                  <span className="text-3xl mb-2 block">{action.icon}</span>
-                  <span className="font-medium">{action.label}</span>
-                </motion.button>
-              ))}
-            </div>
-          </motion.div>
-        </motion.div>
-      </main>
-    </div>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900">
+                    {reminder.title}
+                  </p>
+                  <p className="text-xs text-gray-600 mt-0.5">
+                    {reminder.petName}
+                  </p>
+                  <p
+                    className={`text-xs font-medium mt-1 ${
+                      reminder.isOverdue ? "text-red-600" : "text-teal-600"
+                    }`}
+                  >
+                    {reminder.isOverdue
+                      ? "OVERDUE"
+                      : formatDueDate(reminder.dueDate)}{" "}
+                    {!reminder.isOverdue && reminder.dueTime && (
+                      <span className="text-gray-500">
+                        • {reminder.dueTime}
+                      </span>
+                    )}
+                  </p>
+                </div>
+
+                {/* Priority Badge */}
+                <div>
+                  <span
+                    className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                      reminder.priority === "critical" ||
+                      reminder.priority === "high"
+                        ? "bg-red-200 text-red-800"
+                        : reminder.priority === "medium"
+                          ? "bg-orange-200 text-orange-800"
+                          : "bg-gray-200 text-gray-800"
+                    }`}
+                  >
+                    {reminder.priority.charAt(0).toUpperCase() +
+                      reminder.priority.slice(1)}
+                  </span>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <PetServices />
+      <MarketplaceBanner />
+      <LostAndFound posts={mockLostFound} />
+    </MobileLayout>
   );
 }

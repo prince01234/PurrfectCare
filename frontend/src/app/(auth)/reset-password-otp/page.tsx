@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { Suspense, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
@@ -19,6 +19,20 @@ import {
 import { authApi } from "@/lib/api";
 
 export default function ResetPasswordOtpPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="w-10 h-10 border-3 border-teal-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <ResetPasswordOtpContent />
+    </Suspense>
+  );
+}
+
+function ResetPasswordOtpContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const router = useRouter();
