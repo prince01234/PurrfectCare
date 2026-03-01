@@ -16,6 +16,13 @@ function getAge(pet: Pet): string {
   const age = pet.calculatedAge ?? pet.age;
   if (age === null || age === undefined) return "";
   if (age === 0) return "< 1 yr";
+  // Handle fractional ages like 2.5
+  if (age % 1 !== 0) {
+    const years = Math.floor(age);
+    const months = Math.round((age % 1) * 12);
+    if (years === 0) return `${months} mo`;
+    return `${years} yr${years > 1 ? "s" : ""} ${months} mo`;
+  }
   if (age === 1) return "1 yr";
   return `${age} yrs`;
 }
