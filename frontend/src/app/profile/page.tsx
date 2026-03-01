@@ -17,11 +17,16 @@ import {
   ChevronRight,
   Plus,
   Loader,
+  ShieldCheck,
+  Briefcase,
+  Clock,
+  XCircle,
 } from "lucide-react";
 
 import { useAuth } from "@/context/AuthContext";
-import { petApi, orderApi, userApi } from "@/lib/api";
+import { petApi, orderApi, userApi, adminApi } from "@/lib/api";
 import type { Pet } from "@/lib/api";
+import type { AdminApplication } from "@/lib/api/admin";
 import MobileLayout from "@/components/layout/MobileLayout";
 
 export default function ProfilePage() {
@@ -31,6 +36,7 @@ export default function ProfilePage() {
   const [orderCount, setOrderCount] = useState(0);
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [isUploadingPicture, setIsUploadingPicture] = useState(false);
+  const [application, setApplication] = useState<AdminApplication | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -40,8 +46,10 @@ export default function ProfilePage() {
   }, [user, authLoading, router]);
 
   // Fetch pets, orders, and user profile
+  // Use user._id as dependency to avoid infinite re-render loop
+  // (updateUser creates a new object ref which would re-trigger [user])
   useEffect(() => {
-    if (!user) return;
+    if (!user?._id) return;
 
     const fetchData = async () => {
       try {
@@ -56,13 +64,44 @@ export default function ProfilePage() {
           setOrderCount(ordersRes.data.pagination.total);
         if (userRes.data?.profileImage)
           setProfilePicture(userRes.data.profileImage);
+
+        // Sync roles/serviceType from backend into context (only if changed)
+        const backendRoles = (userRes.data as Record<string, unknown>)
+          ?.roles as string | undefined;
+        const backendServiceType = (userRes.data as Record<string, unknown>)
+          ?.serviceType as string | undefined;
+        if (
+          backendRoles &&
+          (backendRoles !== user.roles ||
+            backendServiceType !== user.serviceType)
+        ) {
+          updateUser({
+            roles: backendRoles as
+              | "USER"
+              | "PET_OWNER"
+              | "ADMIN"
+              | "SUPER_ADMIN",
+            serviceType: backendServiceType,
+          });
+        }
+
+        // Fetch admin application status (non-admin users)
+        if (
+          !backendRoles ||
+          backendRoles === "USER" ||
+          backendRoles === "PET_OWNER"
+        ) {
+          const appRes = await adminApi.getMyApplication();
+          if (appRes.data) setApplication(appRes.data as AdminApplication);
+        }
       } catch (err) {
         console.error("Profile fetch error:", err);
       }
     };
 
     fetchData();
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?._id]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -284,6 +323,103 @@ export default function ProfilePage() {
               <p className="text-xs font-medium text-gray-700 mt-2">Add Pet</p>
             </Link>
           </div>
+        </motion.div>
+
+        {/* ── Service Provider Section ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="mx-4 mt-8"
+        >
+          {user.roles === "ADMIN" || user.roles === "SUPER_ADMIN" ? (
+            // Already an admin — show portal link
+            <Link href="/admin">
+              <div className="bg-linear-to-r from-teal-500 to-teal-600 rounded-2xl px-5 py-5 flex items-center justify-between shadow-md">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center">
+                    <ShieldCheck className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <span className="text-base font-semibold text-white block">
+                      {user.roles === "SUPER_ADMIN"
+                        ? "Super Admin Portal"
+                        : "Service Provider Portal"}
+                    </span>
+                    <span className="text-xs text-teal-100">
+                      {user.serviceType
+                        ? user.serviceType
+                            .replace("_", " ")
+                            .replace(/\b\w/g, (c) => c.toUpperCase())
+                        : "Manage your services"}
+                    </span>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-white/80" />
+              </div>
+            </Link>
+          ) : application?.status === "pending" ? (
+            // Application pending
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-5 flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-amber-100 flex items-center justify-center">
+                <Clock className="w-5 h-5 text-amber-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-base font-semibold text-amber-800">
+                  Application Pending
+                </p>
+                <p className="text-xs text-amber-600 mt-0.5">
+                  Your service provider application is under review
+                </p>
+              </div>
+            </div>
+          ) : application?.status === "rejected" ? (
+            // Application rejected
+            <div className="space-y-3">
+              <div className="bg-red-50 border border-red-200 rounded-2xl px-5 py-5 flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-xl bg-red-100 flex items-center justify-center">
+                  <XCircle className="w-5 h-5 text-red-500" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-base font-semibold text-red-800">
+                    Application Rejected
+                  </p>
+                  <p className="text-xs text-red-600 mt-0.5">
+                    {application.rejectionReason ||
+                      "Your application was not approved"}
+                  </p>
+                </div>
+              </div>
+              <Link href="/provider/apply">
+                <div className="bg-white rounded-2xl px-5 py-4 flex items-center justify-center gap-2 shadow-sm border border-gray-200 active:bg-gray-50">
+                  <Briefcase className="w-4 h-4 text-teal-600" />
+                  <span className="text-sm font-semibold text-teal-600">
+                    Apply Again
+                  </span>
+                </div>
+              </Link>
+            </div>
+          ) : (
+            // No application yet — show CTA
+            <Link href="/provider/apply">
+              <div className="bg-linear-to-r from-violet-500 to-purple-600 rounded-2xl px-5 py-6 shadow-md">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+                    <Briefcase className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-base font-bold text-white">
+                      Become a Service Provider
+                    </p>
+                    <p className="text-xs text-purple-100 mt-1">
+                      Offer adoption, grooming, vet, or training services
+                    </p>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-white/80" />
+                </div>
+              </div>
+            </Link>
+          )}
         </motion.div>
 
         {/* ── Menu List ── */}
