@@ -13,6 +13,8 @@ interface User {
   _id: string;
   name: string;
   email: string;
+  roles?: "USER" | "PET_OWNER" | "ADMIN" | "SUPER_ADMIN";
+  serviceType?: string;
   isVerified?: boolean;
   hasCompletedOnboarding?: boolean;
   userIntent?: "pet_owner" | "looking_to_adopt" | "exploring" | null;
@@ -36,7 +38,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Try cookie first, then localStorage fallback
-    const storedToken = Cookies.get("authToken") || localStorage.getItem("authToken");
+    const storedToken =
+      Cookies.get("authToken") || localStorage.getItem("authToken");
     const storedUser = localStorage.getItem("user");
 
     if (storedToken && storedUser) {

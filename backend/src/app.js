@@ -15,6 +15,10 @@ import productRoutes from "./routes/productRoute.js";
 import cartRoutes from "./routes/cartRoute.js";
 import orderRoutes from "./routes/orderRoute.js";
 import adminApplicationRoutes from "./routes/adminApplicationRoute.js";
+import {
+  listingRouter as adoptionListingRoutes,
+  applicationRouter as adoptionApplicationRoutes,
+} from "./routes/adoptionRoute.js";
 
 import logger from "./middlewares/logger.js";
 import connectCloudinary from "./config/cloudinary.js";
@@ -69,7 +73,12 @@ app.use("/api/reminders", userReminderRouter);
 app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
+
 app.use("/api/admin", adminApplicationRoutes);
+
+// Adoption Routes
+app.use("/api/adoption/listings", adoptionListingRoutes);
+app.use("/api/adoption/applications", adoptionApplicationRoutes);
 
 // Start reminder scheduler
 reminderScheduler.startScheduler();

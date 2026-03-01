@@ -37,7 +37,10 @@ const applyAsAdmin = async (userId, data) => {
 
 // Get user's own application
 const getMyApplication = async (userId) => {
-  const application = await AdminApplication.findOne({ userId });
+  // Return the most recent application (important for users who reapply after rejection)
+  const application = await AdminApplication.findOne({ userId }).sort({
+    createdAt: -1,
+  });
 
   if (!application) {
     throw { statusCode: 404, message: "No application found" };

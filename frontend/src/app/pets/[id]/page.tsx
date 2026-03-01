@@ -64,6 +64,13 @@ function getAge(pet: Pet): string {
   const age = pet.calculatedAge ?? pet.age;
   if (age === null || age === undefined) return "";
   if (age === 0) return "< 1 yr";
+  // Handle fractional ages like 2.5
+  if (age % 1 !== 0) {
+    const years = Math.floor(age);
+    const months = Math.round((age % 1) * 12);
+    if (years === 0) return `${months} mo`;
+    return `${years} yr${years > 1 ? "s" : ""} ${months} mo`;
+  }
   if (age === 1) return "1 yr";
   return `${age} yrs`;
 }
@@ -408,88 +415,100 @@ export default function PetProfilePage({
 
   return (
     <MobileLayout showBottomNav={false}>
-      {/* Header */}
-      <div className="bg-teal-600 pb-16 pt-6 px-5 relative">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => router.back()}
-            className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center"
-            aria-label="Go back"
-          >
-            <ArrowLeft className="w-5 h-5 text-white" />
-          </button>
-          <h1 className="text-white font-bold text-base">Pet Profile</h1>
-          <button
-            onClick={() => setEditMode((prev) => !prev)}
-            className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center"
-            aria-label="Edit pet"
-          >
-            <Pencil className="w-4 h-4 text-white" />
-          </button>
+      {/* Photo gallery — full cover like adoption detail page */}
+      <div className="relative h-[45vh] min-h-72 bg-gray-200">
+        {pet.photos[0] ? (
+          <Image
+            src={pet.photos[safePhotoIndex]}
+            alt={pet.name}
+            fill
+            className="object-cover"
+            sizes="100vw"
+            priority
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-teal-50 to-teal-100">
+            <PawPrint className="w-20 h-20 text-teal-300" />
+          </div>
+        )}
+
+        {/* Top gradient overlay */}
+        <div className="absolute inset-x-0 top-0 h-24 bg-linear-to-b from-black/30 to-transparent pointer-events-none" />
+        {/* Bottom gradient overlay for name readability */}
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-linear-to-t from-black/60 to-transparent pointer-events-none" />
+
+        {/* Header controls on top of photo */}
+        <div className="absolute top-0 inset-x-0 pt-6 px-5 z-10">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => router.back()}
+              className="w-9 h-9 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-sm"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="w-5 h-5 text-gray-700" />
+            </button>
+            <h1 className="text-white font-bold text-base drop-shadow-sm">
+              Pet Profile
+            </h1>
+            <button
+              onClick={() => setEditMode((prev) => !prev)}
+              className="w-9 h-9 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-sm"
+              aria-label="Edit pet"
+            >
+              <Pencil className="w-4 h-4 text-gray-700" />
+            </button>
+          </div>
         </div>
 
-        {/* Photo carousel */}
-        <div className="flex flex-col items-center mt-5">
-          <div className="relative w-24 h-24 rounded-full overflow-hidden border-4 border-white/30 bg-teal-500">
-            {pet.photos[0] ? (
-              <Image
-                src={pet.photos[safePhotoIndex]}
-                alt={pet.name}
-                width={96}
-                height={96}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-white text-4xl">
-                <PawPrint className="w-10 h-10" />
-              </div>
-            )}
-            {pet.photos.length > 1 && (
-              <>
-                <button
-                  onClick={() =>
-                    setPhotoIndex((i) =>
-                      i === 0 ? pet.photos.length - 1 : i - 1,
-                    )
-                  }
-                  className="absolute left-0 top-1/2 -translate-y-1/2 w-7 h-7 bg-black/30 rounded-full flex items-center justify-center"
-                  aria-label="Previous photo"
-                >
-                  <ChevronLeft className="w-4 h-4 text-white" />
-                </button>
-                <button
-                  onClick={() =>
-                    setPhotoIndex((i) =>
-                      i === pet.photos.length - 1 ? 0 : i + 1,
-                    )
-                  }
-                  className="absolute right-0 top-1/2 -translate-y-1/2 w-7 h-7 bg-black/30 rounded-full flex items-center justify-center"
-                  aria-label="Next photo"
-                >
-                  <ChevronRight className="w-4 h-4 text-white" />
-                </button>
-              </>
-            )}
-          </div>
-          <h2 className="text-white text-xl font-bold mt-3">{pet.name}</h2>
-          <p className="text-teal-100 text-sm">
+        {/* Photo nav arrows */}
+        {pet.photos.length > 1 && (
+          <>
+            <button
+              onClick={() =>
+                setPhotoIndex((i) => (i === 0 ? pet.photos.length - 1 : i - 1))
+              }
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm"
+              aria-label="Previous photo"
+            >
+              <ChevronLeft className="w-5 h-5 text-gray-700" />
+            </button>
+            <button
+              onClick={() =>
+                setPhotoIndex((i) => (i === pet.photos.length - 1 ? 0 : i + 1))
+              }
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm"
+              aria-label="Next photo"
+            >
+              <ChevronRight className="w-5 h-5 text-gray-700" />
+            </button>
+          </>
+        )}
+
+        {/* Pet name + breed on photo */}
+        <div className="absolute bottom-4 left-5 right-5 z-10">
+          <h2 className="text-white text-2xl font-bold drop-shadow-sm">
+            {pet.name}
+          </h2>
+          <p className="text-white/80 text-sm mt-0.5">
             {pet.breed ||
               pet.species.charAt(0).toUpperCase() + pet.species.slice(1)}
-            {getAge(pet) ? ` - ${getAge(pet)}` : ""}
+            {getAge(pet) ? ` · ${getAge(pet)}` : ""}
           </p>
-          {pet.photos.length > 1 && (
-            <div className="flex gap-1.5 mt-3">
-              {pet.photos.map((_, i) => (
-                <div
-                  key={i}
-                  className={`h-1.5 rounded-full transition-all ${
-                    i === safePhotoIndex ? "w-6 bg-white" : "w-1.5 bg-white/50"
-                  }`}
-                />
-              ))}
-            </div>
-          )}
         </div>
+
+        {/* Dot indicators */}
+        {pet.photos.length > 1 && (
+          <div className="absolute bottom-4 right-5 flex gap-1.5 z-10">
+            {pet.photos.map((_, i) => (
+              <div
+                key={i}
+                className={`h-1.5 rounded-full transition-all ${
+                  i === safePhotoIndex ? "w-6 bg-white" : "w-1.5 bg-white/50"
+                }`}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Tabs */}
