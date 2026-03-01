@@ -28,3 +28,16 @@ export type {
   Reminder,
   HealthOverview,
 } from "./pet";
+export { adminApi } from "./admin";
+export type {
+  AdminApplication,
+  AdminApplicationsResponse,
+  ApplyData,
+} from "./admin";
+export { adoptionListingApi, adoptionApplicationApi } from "./adoption";
+export type {
+  AdoptionListing,
+  AdoptionListingsResponse,
+  AdoptionApplication,
+  AdoptionApplicationsResponse,
+} from "./adoption";
