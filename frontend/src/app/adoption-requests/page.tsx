@@ -25,6 +25,7 @@ import MobileLayout from "@/components/layout/MobileLayout";
 import { useAuth } from "@/context/AuthContext";
 import { adoptionApplicationApi } from "@/lib/api/adoption";
 import type { AdoptionApplication, AdoptionListing } from "@/lib/api/adoption";
+import StartChatButton from "@/components/chat/StartChatButton";
 
 const STATUS_CONFIG = {
   pending: {
@@ -535,15 +536,27 @@ export default function AdoptionRequestsPage() {
                           </div>
                         </div>
 
-                        {/* View listing button */}
+                        {/* Chat & View listing buttons */}
                         {listing && (
-                          <button
-                            onClick={() => router.push(`/adopt/${listing._id}`)}
-                            className="w-full py-3 px-4 rounded-xl bg-teal-500 text-white text-sm font-semibold hover:bg-teal-600 transition-colors flex items-center justify-center gap-2"
-                          >
-                            <Heart className="w-4 h-4" />
-                            View Listing
-                          </button>
+                          <div className="space-y-2">
+                            <StartChatButton
+                              recipientId={listing.postedBy._id}
+                              context="adoption"
+                              contextRef={listing._id}
+                              label="Message Shelter"
+                              variant="secondary"
+                              className="w-full justify-center"
+                            />
+                            <button
+                              onClick={() =>
+                                router.push(`/adopt/${listing._id}`)
+                              }
+                              className="w-full py-3 px-4 rounded-xl bg-teal-500 text-white text-sm font-semibold hover:bg-teal-600 transition-colors flex items-center justify-center gap-2"
+                            >
+                              <Heart className="w-4 h-4" />
+                              View Listing
+                            </button>
+                          </div>
                         )}
 
                         <div className="h-4" />

@@ -16,9 +16,10 @@ import {
 import toast from "react-hot-toast";
 
 import MobileLayout from "@/components/layout/MobileLayout";
-import { orderApi } from "@/lib/api";
-import type { Order } from "@/lib/api";
+import { orderApi, productApi } from "@/lib/api";
+import type { Order, Product } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import StartChatButton from "@/components/chat/StartChatButton";
 
 const statusConfig = {
   pending: {
@@ -50,6 +51,7 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [sellerId, setSellerId] = useState<string | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -62,6 +64,15 @@ export default function OrderDetailPage() {
       const res = await orderApi.getOrderById(orderId);
       if (res.data) {
         setOrder(res.data);
+        // Look up the seller from the first product
+        if (res.data.items.length > 0) {
+          const productRes = await productApi.getProductById(
+            res.data.items[0].productId,
+          );
+          if (productRes.data) {
+            setSellerId(productRes.data.createdBy);
+          }
+        }
       } else {
         toast.error("Order not found");
         router.push("/marketplace");
@@ -264,6 +275,17 @@ export default function OrderDetailPage() {
               {order.notes}
             </p>
           </div>
+        )}
+
+        {/* Message Seller */}
+        {sellerId && (
+          <StartChatButton
+            recipientId={sellerId}
+            context="marketplace"
+            label="Message Seller"
+            variant="secondary"
+            className="w-full justify-center"
+          />
         )}
       </div>
 

@@ -25,6 +25,7 @@ import { useAuth } from "@/context/AuthContext";
 import { adoptionApplicationApi } from "@/lib/api/adoption";
 import type { AdoptionApplication, AdoptionListing } from "@/lib/api/adoption";
 import AdminLayout from "@/components/layout/AdminLayout";
+import StartChatButton from "@/components/chat/StartChatButton";
 
 const STATUS_TABS = [
   { value: "", label: "All" },
@@ -474,11 +475,22 @@ export default function AdminAdoptionRequestsPage() {
                       </Link>
                     )}
 
-                    {/* Applicant info */}
+                    {/* Applicant info + Chat */}
                     <div>
-                      <h3 className="text-sm font-semibold text-gray-800 mb-2">
-                        Applicant
-                      </h3>
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-sm font-semibold text-gray-800">
+                          Applicant
+                        </h3>
+                        {typeof app.applicantId === "object" && (
+                          <StartChatButton
+                            recipientId={app.applicantId._id}
+                            context="adoption"
+                            contextRef={listing ? listing._id : undefined}
+                            label="Message"
+                            variant="secondary"
+                          />
+                        )}
+                      </div>
                       <div className="bg-gray-50 rounded-xl p-3 space-y-2">
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center">

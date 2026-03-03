@@ -4,12 +4,13 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import toast from "react-hot-toast";
 import { AlertTriangle, Calendar, Pill, Syringe, Clock } from "lucide-react";
 
 import { useAuth } from "@/context/AuthContext";
 import { petApi } from "@/lib/api";
-import type { Pet, Reminder, HealthOverview } from "@/lib/api";
+import type { Pet, Reminder } from "@/lib/api";
 import MobileLayout from "@/components/layout/MobileLayout";
 import HeroSection from "@/components/home/HeroSection";
 import PetServices from "@/components/home/PetServices";
@@ -157,16 +158,13 @@ export default function DashboardPage() {
               remindersRes,
             );
 
-            if (
-              remindersRes.data?.reminders &&
-              Array.isArray(remindersRes.data.reminders)
-            ) {
+            if (remindersRes.data && Array.isArray(remindersRes.data)) {
               console.log(
-                `%c  Found ${remindersRes.data.reminders.length} total reminders`,
+                `%c  Found ${remindersRes.data.length} total reminders`,
                 "color: blue",
               );
 
-              const petReminders = remindersRes.data.reminders
+              const petReminders = remindersRes.data
                 .filter(
                   (reminder: Reminder) =>
                     reminder.status === "active" ||
@@ -275,12 +273,14 @@ export default function DashboardPage() {
               className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow flex items-center gap-4"
             >
               {/* Pet Image */}
-              <div className="w-20 h-20 rounded-full overflow-hidden flex-shrink-0 bg-gray-100">
+              <div className="relative w-20 h-20 rounded-full overflow-hidden shrink-0 bg-gray-100">
                 {mostUrgentPet.image ? (
-                  <img
+                  <Image
                     src={mostUrgentPet.image}
                     alt={mostUrgentPet.name}
-                    className="w-full h-full object-cover"
+                    fill
+                    className="object-cover"
+                    sizes="80px"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-3xl">
