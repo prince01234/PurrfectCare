@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useAuth } from "@/context/AuthContext";
 import { Conversation, ConversationContext } from "@/lib/api/messaging";
 import {
@@ -57,13 +58,15 @@ export default function ConversationItem({
       className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 active:bg-gray-100 transition-colors text-left"
     >
       {/* Avatar */}
-      <div className="relative flex-shrink-0">
+      <div className="relative shrink-0">
         <div className="w-12 h-12 rounded-full bg-teal-100 flex items-center justify-center text-base font-semibold text-teal-700 overflow-hidden">
           {otherParticipant?.profileImage ? (
-            <img
+            <Image
               src={otherParticipant.profileImage}
               alt={otherParticipant.name}
-              className="w-12 h-12 rounded-full object-cover"
+              width={48}
+              height={48}
+              className="rounded-full object-cover"
             />
           ) : (
             otherParticipant?.name?.charAt(0).toUpperCase() || "?"
@@ -84,7 +87,7 @@ export default function ConversationItem({
             {otherParticipant?.name || "Unknown User"}
           </h3>
           <span
-            className={`text-xs flex-shrink-0 ${isUnread ? "text-teal-600 font-semibold" : "text-gray-400"}`}
+            className={`text-xs shrink-0 ${isUnread ? "text-teal-600 font-semibold" : "text-gray-400"}`}
           >
             {lastMessageTime}
           </span>
@@ -96,7 +99,7 @@ export default function ConversationItem({
             {lastMessageText || "No messages yet"}
           </p>
           {isUnread && (
-            <div className="w-2.5 h-2.5 rounded-full bg-teal-500 flex-shrink-0" />
+            <div className="w-2.5 h-2.5 rounded-full bg-teal-500 shrink-0" />
           )}
         </div>
         <span className="text-[10px] text-gray-400">
