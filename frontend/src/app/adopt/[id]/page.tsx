@@ -31,6 +31,7 @@ import { useAuth } from "@/context/AuthContext";
 import { adoptionListingApi, adoptionApplicationApi } from "@/lib/api/adoption";
 import { userApi } from "@/lib/api/user";
 import type { AdoptionListing } from "@/lib/api/adoption";
+import StartChatButton from "@/components/chat/StartChatButton";
 
 const LIVING_OPTIONS = [
   { value: "house_with_yard", label: "House with yard" },
@@ -698,23 +699,47 @@ export default function AdoptDetailPage() {
               </p>
             </div>
           ) : hasApplied ? (
-            <div className="w-full py-3.5 px-6 rounded-2xl font-semibold text-sm bg-teal-50 text-teal-600 text-center border-2 border-teal-200">
-              ✓ Application Submitted
+            <div className="space-y-2">
+              <div className="w-full py-3.5 px-6 rounded-2xl font-semibold text-sm bg-teal-50 text-teal-600 text-center border-2 border-teal-200">
+                ✓ Application Submitted
+              </div>
+              {listing.postedBy?._id && (
+                <StartChatButton
+                  recipientId={listing.postedBy._id}
+                  context="adoption"
+                  contextRef={listing._id}
+                  label="Contact Shelter"
+                  variant="secondary"
+                  className="w-full justify-center py-3"
+                />
+              )}
             </div>
           ) : (
-            <button
-              onClick={() => {
-                if (!user) {
-                  toast.error("Please login to apply");
-                  router.push("/login");
-                  return;
-                }
-                setShowApplyForm(true);
-              }}
-              className="w-full py-4 px-6 rounded-2xl font-bold text-base bg-gray-900 text-white shadow-lg shadow-gray-900/25 hover:bg-gray-800 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-            >
-              Apply to Adopt
-            </button>
+            <div className="flex items-center gap-2">
+              {listing.postedBy?._id && (
+                <StartChatButton
+                  recipientId={listing.postedBy._id}
+                  context="adoption"
+                  contextRef={listing._id}
+                  label=""
+                  variant="icon"
+                  className="w-12 h-12 bg-gray-100 text-gray-700 hover:bg-gray-200"
+                />
+              )}
+              <button
+                onClick={() => {
+                  if (!user) {
+                    toast.error("Please login to apply");
+                    router.push("/login");
+                    return;
+                  }
+                  setShowApplyForm(true);
+                }}
+                className="flex-1 py-4 px-6 rounded-2xl font-bold text-base bg-gray-900 text-white shadow-lg shadow-gray-900/25 hover:bg-gray-800 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+              >
+                Apply to Adopt
+              </button>
+            </div>
           )}
         </div>
       </div>
