@@ -11,6 +11,7 @@ import {
   ArrowLeft,
   ShieldCheck,
   FileText,
+  MessageCircle,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -65,6 +66,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     ...(user?.serviceType === "marketplace" || isSuperAdmin
       ? [{ label: "Products", icon: Package, href: "/admin/products" }]
       : []),
+    { label: "Messages", icon: MessageCircle, href: "/admin/messages" },
   ];
 
   return (
