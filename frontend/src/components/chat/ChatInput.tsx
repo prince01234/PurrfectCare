@@ -95,7 +95,7 @@ export default function ChatInput({
         <button
           onClick={handleSend}
           disabled={!text.trim() || disabled || isSending}
-          className="flex-shrink-0 w-10 h-10 rounded-full bg-teal-600 text-white flex items-center justify-center disabled:opacity-40 disabled:bg-gray-300 hover:bg-teal-700 active:scale-95 transition-all"
+          className="shrink-0 w-10 h-10 rounded-full bg-teal-600 text-white flex items-center justify-center disabled:opacity-40 disabled:bg-gray-300 hover:bg-teal-700 active:scale-95 transition-all"
         >
           {isSending ? (
             <Loader2 className="w-4 h-4 animate-spin" />
