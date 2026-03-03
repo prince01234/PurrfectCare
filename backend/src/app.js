@@ -1,10 +1,12 @@
 import express from "express";
+import { createServer } from "http";
 import bodyParser from "body-parser";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 
 import config from "./config/config.js";
 import connectDB from "./config/dbConnection.js";
+import initializeSocket from "./config/socket.js";
 
 import userRoutes from "./routes/userRoute.js";
 import authRoutes from "./routes/authRoute.js";
@@ -19,12 +21,14 @@ import {
   listingRouter as adoptionListingRoutes,
   applicationRouter as adoptionApplicationRoutes,
 } from "./routes/adoptionRoute.js";
+import messagingRoutes from "./routes/messagingRoute.js";
 
 import logger from "./middlewares/logger.js";
 import connectCloudinary from "./config/cloudinary.js";
 import reminderScheduler from "./jobs/reminderScheduler.js";
 
 const app = express();
+const httpServer = createServer(app);
 
 // const allowedOrigins = ["http://localhost:3000", process.env.FRONTEND_URL].filter(Boolean);
 // app.use(cors({
@@ -80,9 +84,16 @@ app.use("/api/admin", adminApplicationRoutes);
 app.use("/api/adoption/listings", adoptionListingRoutes);
 app.use("/api/adoption/applications", adoptionApplicationRoutes);
 
+// Messaging Routes
+app.use("/api/conversations", messagingRoutes);
+
+// Initialize Socket.IO
+const io = initializeSocket(httpServer);
+app.set("io", io);
+
 // Start reminder scheduler
 reminderScheduler.startScheduler();
 
-app.listen(config.port, () => {
+httpServer.listen(config.port, () => {
   console.log(`Server is running at port http://localhost:${config.port}...`);
 });
