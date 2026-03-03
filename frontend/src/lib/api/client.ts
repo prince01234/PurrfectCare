@@ -1,9 +1,25 @@
 import Cookies from "js-cookie";
 
-// For phone testing, set NEXT_PUBLIC_API_URL in .env.local to your machine's IP
-// Example: NEXT_PUBLIC_API_URL=http://192.168.1.100:5000
-export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+// Dynamically determine API URL based on current hostname
+// This allows the app to work on localhost AND any network IP automatically
+function getApiUrl(): string {
+  // Server-side: use env variable or default
+  if (typeof window === "undefined") {
+    return process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+  }
+
+  // Client-side: use env variable if set, otherwise auto-detect from window.location
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+
+  // Auto-detect: use same host as frontend but with backend port 5000
+  const protocol = window.location.protocol; // http: or https:
+  const hostname = window.location.hostname; // localhost or 192.168.x.x
+  return `${protocol}//${hostname}:5000`;
+}
+
+export const API_URL = getApiUrl();
 
 export interface ApiResponse<T = unknown> {
   data?: T;
@@ -56,7 +72,7 @@ export async function apiRequest<T>(
     }
 
     return { data };
-  } catch (error) {
+  } catch {
     return { error: "Network error. Please try again." };
   }
 }
