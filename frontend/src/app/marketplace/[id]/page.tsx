@@ -19,6 +19,7 @@ import { productApi } from "@/lib/api";
 import type { Product } from "@/lib/api";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
+import StartChatButton from "@/components/chat/StartChatButton";
 
 export default function ProductDetailPage() {
   const router = useRouter();
@@ -213,6 +214,18 @@ export default function ProductDetailPage() {
               <Plus className="w-4 h-4 text-gray-600" />
             </button>
           </div>
+
+          {/* Message Seller */}
+          {product.createdBy && (
+            <StartChatButton
+              recipientId={product.createdBy}
+              context="marketplace"
+              contextRef={product._id}
+              label=""
+              variant="icon"
+              className="w-12 h-12 bg-gray-100 text-gray-600 hover:bg-gray-200"
+            />
+          )}
 
           {/* Add to cart */}
           <button
