@@ -41,3 +41,14 @@ export type {
   AdoptionApplication,
   AdoptionApplicationsResponse,
 } from "./adoption";
+export { messagingApi } from "./messaging";
+export type {
+  Conversation,
+  ConversationParticipant,
+  ConversationContext,
+  Message,
+  ConversationsResponse,
+  MessagesResponse,
+  GetOrCreateConversationResponse,
+  SendMessageResponse,
+} from "./messaging";
