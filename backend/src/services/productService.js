@@ -179,7 +179,15 @@ const deleteProduct = async (productId, adminId) => {
 const getAdminProducts = async (adminId, queryParams = {}) => {
   const { page = 1, limit = 12, search, category, isActive } = queryParams;
 
+  // Only show products created by this admin (super admin sees all)
+  const user = await User.findById(adminId);
+  const isSuperAdmin = user && user.roles === SUPER_ADMIN;
+
   const filter = {};
+
+  if (!isSuperAdmin) {
+    filter.createdBy = adminId;
+  }
 
   // Filter by active status if specified
   if (isActive !== undefined) {
