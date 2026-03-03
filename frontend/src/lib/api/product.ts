@@ -1,4 +1,4 @@
-import { apiRequest } from "./client";
+import { apiRequest, API_URL, getAuthToken } from "./client";
 
 // Types
 export interface Product {
@@ -37,9 +37,49 @@ export interface ProductQueryParams {
   maxPrice?: number;
   sort?: string;
   order?: "asc" | "desc";
+  includeInactive?: boolean;
+}
+
+export interface CreateProductData {
+  name: string;
+  description?: string;
+  price: number;
+  category: string;
+  petType: string;
+  brand?: string;
+  stockQty?: number;
+  isActive?: boolean;
+}
+
+async function uploadFormData<T>(
+  endpoint: string,
+  formData: FormData,
+  method: "POST" | "PUT" = "POST",
+) {
+  try {
+    const token = getAuthToken();
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      method,
+      headers,
+      body: formData,
+      credentials: "include",
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      return { error: data.error || data.message || "Something went wrong" };
+    }
+    return { data };
+  } catch {
+    return { error: "Network error. Please try again." };
+  }
 }
 
 export const productApi = {
+  // Public endpoints
   getProducts: (params?: ProductQueryParams) => {
     const query = new URLSearchParams();
     if (params) {
@@ -50,11 +90,63 @@ export const productApi = {
       });
     }
     const qs = query.toString();
+    return apiRequest<ProductsResponse>(`/api/products${qs ? `?${qs}` : ""}`);
+  },
+
+  getProductById: (id: string) => apiRequest<Product>(`/api/products/${id}`),
+
+  // Admin endpoints
+  getAdminProducts: (params?: ProductQueryParams) => {
+    const query = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+          query.append(key, String(value));
+        }
+      });
+    }
+    const qs = query.toString();
     return apiRequest<ProductsResponse>(
-      `/api/products${qs ? `?${qs}` : ""}`,
+      `/api/products/admin/list${qs ? `?${qs}` : ""}`,
+      {},
+      true,
     );
   },
 
-  getProductById: (id: string) =>
-    apiRequest<Product>(`/api/products/${id}`),
+  createProduct: (data: CreateProductData, images?: File[]) => {
+    const fd = new FormData();
+    Object.entries(data).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== "") {
+        fd.append(k, String(v));
+      }
+    });
+    if (images && images.length > 0) {
+      images.forEach((file) => fd.append("images", file));
+    }
+    return uploadFormData<Product>("/api/products/admin", fd, "POST");
+  },
+
+  updateProduct: (
+    id: string,
+    data: Partial<CreateProductData>,
+    images?: File[],
+  ) => {
+    const fd = new FormData();
+    Object.entries(data).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== "") {
+        fd.append(k, String(v));
+      }
+    });
+    if (images && images.length > 0) {
+      images.forEach((file) => fd.append("images", file));
+    }
+    return uploadFormData<Product>(`/api/products/admin/${id}`, fd, "PUT");
+  },
+
+  deleteProduct: (id: string) =>
+    apiRequest<{ message: string }>(
+      `/api/products/admin/${id}`,
+      { method: "DELETE" },
+      true,
+    ),
 };
