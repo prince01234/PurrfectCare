@@ -16,27 +16,10 @@ import {
 import MobileLayout from "@/components/layout/MobileLayout";
 import { adoptionListingApi } from "@/lib/api/adoption";
 import type { AdoptionListing } from "@/lib/api/adoption";
+import { useGeolocation, getDistanceKm } from "@/lib/hooks/useGeolocation";
 
 const SPECIES_FILTERS = ["All", "Dog", "Cat", "Rabbit", "Bird", "Fish"];
 const GENDER_FILTERS = ["All", "Male", "Female"];
-
-// Haversine distance in km
-function getDistanceKm(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number,
-): number {
-  const R = 6371; // Earth radius in km
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
 
 export default function AdoptPage() {
   const router = useRouter();
@@ -48,10 +31,7 @@ export default function AdoptPage() {
   const [speciesFilter, setSpeciesFilter] = useState("All");
   const [genderFilter, setGenderFilter] = useState("All");
   const [showFilters, setShowFilters] = useState(false);
-  const [userCoords, setUserCoords] = useState<{
-    lat: number;
-    lng: number;
-  } | null>(null);
+  const userCoords = useGeolocation();
   const [pagination, setPagination] = useState({
     total: 0,
     page: 1,
@@ -62,33 +42,6 @@ export default function AdoptPage() {
     speciesFilter !== "All" ||
     genderFilter !== "All" ||
     Boolean(searchQuery.trim());
-
-  // Get user's geolocation for distance calculation
-  useEffect(() => {
-    if (!("geolocation" in navigator)) return;
-
-    navigator.permissions
-      ?.query({ name: "geolocation" })
-      .then((result) => {
-        if (result.state === "denied") return;
-        requestLocation();
-      })
-      .catch(() => {
-        requestLocation();
-      });
-
-    function requestLocation() {
-      navigator.geolocation.getCurrentPosition(
-        (pos) =>
-          setUserCoords({
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-          }),
-        (err) => console.warn("Geolocation error:", err.message),
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 },
-      );
-    }
-  }, []);
 
   const fetchListings = useCallback(async () => {
     setIsLoading(true);

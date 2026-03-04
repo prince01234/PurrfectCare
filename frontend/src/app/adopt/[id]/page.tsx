@@ -33,6 +33,7 @@ import { userApi } from "@/lib/api/user";
 import type { AdoptionListing } from "@/lib/api/adoption";
 import StartChatButton from "@/components/chat/StartChatButton";
 import DynamicMapModal from "@/components/ui/DynamicMapModal";
+import { useGeolocation, getDistanceKm } from "@/lib/hooks/useGeolocation";
 
 const LIVING_OPTIONS = [
   { value: "house_with_yard", label: "House with yard" },
@@ -41,24 +42,6 @@ const LIVING_OPTIONS = [
   { value: "farm", label: "Farm" },
   { value: "other", label: "Other" },
 ];
-
-// Haversine distance in km
-function getDistanceKm(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number,
-): number {
-  const R = 6371; // Earth radius in km
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
 
 export default function AdoptDetailPage() {
   const router = useRouter();
@@ -73,39 +56,7 @@ export default function AdoptDetailPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasApplied, setHasApplied] = useState(false);
   const [showMap, setShowMap] = useState(false);
-  const [userCoords, setUserCoords] = useState<{
-    lat: number;
-    lng: number;
-  } | null>(null);
-
-  // Get user's geolocation for distance calculation
-  useEffect(() => {
-    if (!("geolocation" in navigator)) return;
-
-    // Check permission state first (Permissions API)
-    navigator.permissions
-      ?.query({ name: "geolocation" })
-      .then((result) => {
-        if (result.state === "denied") return; // Don't prompt if explicitly denied
-        requestLocation();
-      })
-      .catch(() => {
-        // Permissions API not supported — just try directly
-        requestLocation();
-      });
-
-    function requestLocation() {
-      navigator.geolocation.getCurrentPosition(
-        (pos) =>
-          setUserCoords({
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-          }),
-        (err) => console.warn("Geolocation error:", err.message),
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 },
-      );
-    }
-  }, []);
+  const userCoords = useGeolocation();
 
   const [formData, setFormData] = useState({
     message: "",
