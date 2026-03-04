@@ -15,8 +15,12 @@ const payViaKhalti = async (data) => {
   // Use dedicated return URL (frontend) or fall back to appUrl
   const frontendUrl = config.khalti.returnUrl || config.appUrl;
 
+  // Determine return path - default to orders if not specified
+  const returnPath =
+    data.returnPath || `/orders/${data.purchaseOrderId}/payment/khalti`;
+
   const body = {
-    return_url: `${frontendUrl}/orders/${data.purchaseOrderId}/payment/khalti`,
+    return_url: `${frontendUrl}${returnPath}`,
     amount: data.amount,
     website_url: frontendUrl,
     purchase_order_id: data.purchaseOrderId,
@@ -47,7 +51,11 @@ const payViaKhalti = async (data) => {
       error.response?.data?.message ||
       (typeof error.response?.data === "string" ? error.response.data : null) ||
       error.message;
-    console.error("Khalti API error:", error.response?.status, error.response?.data);
+    console.error(
+      "Khalti API error:",
+      error.response?.status,
+      error.response?.data,
+    );
     throw {
       statusCode: error.response?.status || 500,
       message: `Khalti payment error: ${khaltiError}`,
