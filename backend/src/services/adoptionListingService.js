@@ -118,7 +118,10 @@ const getListings = async (queryParams = {}) => {
   sortObj[sort] = order === "asc" ? 1 : -1;
 
   const listings = await AdoptionListing.find(filter)
-    .populate("postedBy", "name profileImage")
+    .populate(
+      "postedBy",
+      "name profileImage organizationName latitude longitude",
+    )
     .sort(sortObj)
     .skip(skip)
     .limit(limitNum)
@@ -145,7 +148,7 @@ const getListingById = async (listingId) => {
 
   const listing = await AdoptionListing.findById(listingId).populate(
     "postedBy",
-    "name profileImage phoneNumber",
+    "name profileImage phoneNumber organizationName latitude longitude",
   );
 
   if (!listing || listing.isDeleted) {
