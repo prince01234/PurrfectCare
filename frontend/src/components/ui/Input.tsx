@@ -34,7 +34,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           >
             {Icon && (
               <Icon
-                className={`w-5 h-5 transition-colors flex-shrink-0 ${
+                className={`w-5 h-5 transition-colors shrink-0 ${
                   error
                     ? "text-red-400"
                     : isFocused
@@ -55,7 +55,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+                className="text-gray-400 hover:text-gray-600 transition-colors shrink-0"
               >
                 {showPassword ? (
                   <EyeOff className="w-5 h-5" />
