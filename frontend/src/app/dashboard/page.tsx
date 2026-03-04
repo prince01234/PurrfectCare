@@ -32,7 +32,7 @@ interface UpcomingReminder {
   title: string;
   type: string;
   dueDate: string;
-  dueTime: string;
+  dueTime: string | null;
   priority: string;
   isOverdue: boolean;
 }
@@ -110,23 +110,37 @@ export default function DashboardPage() {
   // Redirect if not authenticated or onboarding not completed
   useEffect(() => {
     if (!authLoading && !user) {
-      router.push("/login");
+      router.replace("/login");
     }
     if (!authLoading && user && !user.hasCompletedOnboarding) {
-      router.push("/onboarding");
+      router.replace("/onboarding");
     }
   }, [user, authLoading, router]);
 
   // Fetch pets and their reminders
   useEffect(() => {
-    if (!user) return;
+    if (!user || authLoading) return;
+
+    let isCancelled = false;
 
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        const petsRes = await petApi.getPets({ limit: 100 });
+
+        const [petsRes, remindersRes] = await Promise.all([
+          petApi.getPets({ limit: 100 }),
+          petApi.getAllReminders(),
+        ]);
+
+        if (petsRes.error) {
+          throw new Error(petsRes.error);
+        }
 
         if (!petsRes.data?.pets) {
+          if (!isCancelled) {
+            setPets([]);
+            setUpcomingReminders([]);
+          }
           setIsLoading(false);
           return;
         }
@@ -138,70 +152,41 @@ export default function DashboardPage() {
           image: pet.photos?.[0] || null,
           nextVetDate: null,
         }));
-        setPets(displayPets);
 
-        console.log(
-          `%c✓ Fetched ${allPets.length} pets`,
-          "color: green; font-weight: bold",
+        const petById = new Map(
+          allPets.map((pet: Pet) => [
+            pet._id,
+            { name: pet.name, image: pet.photos?.[0] || null },
+          ]),
         );
 
-        // Fetch reminders for each pet and collect all upcoming ones
-        const allReminders: UpcomingReminder[] = [];
+        const reminders = Array.isArray(remindersRes.data)
+          ? remindersRes.data
+          : [];
 
-        for (const pet of allPets) {
-          try {
-            // Use dedicated reminders endpoint instead of health overview
-            const remindersRes = await petApi.getReminders(pet._id);
-            console.log(
-              `%c→ Fetching reminders for ${pet.name}`,
-              "color: blue",
-              remindersRes,
-            );
-
-            if (remindersRes.data && Array.isArray(remindersRes.data)) {
-              console.log(
-                `%c  Found ${remindersRes.data.length} total reminders`,
-                "color: blue",
-              );
-
-              const petReminders = remindersRes.data
-                .filter(
-                  (reminder: Reminder) =>
-                    reminder.status === "active" ||
-                    reminder.status === "snoozed",
-                )
-                .map((reminder: Reminder) => ({
-                  id: reminder._id,
-                  petId: pet._id,
-                  petName: pet.name,
-                  petImage: pet.photos?.[0] || null,
-                  title: reminder.title,
-                  type: reminder.reminderType,
-                  dueDate: reminder.dueDate,
-                  dueTime: reminder.dueTime,
-                  priority: reminder.priority,
-                  isOverdue:
-                    new Date(reminder.dueDate) < new Date() &&
-                    reminder.status === "active",
-                }));
-              console.log(
-                `%c  Added ${petReminders.length} active reminders from ${pet.name}`,
-                "color: green",
-              );
-              allReminders.push(...petReminders);
-            } else if (remindersRes.error) {
-              console.warn(
-                `%c✗ Error fetching reminders for ${pet.name}: ${remindersRes.error}`,
-                "color: orange",
-              );
-            }
-          } catch (error) {
-            console.error(
-              `Failed to fetch reminders for pet ${pet._id}:`,
-              error,
-            );
-          }
-        }
+        const allReminders: UpcomingReminder[] = reminders
+          .filter(
+            (reminder: Reminder) =>
+              (reminder.status === "active" || reminder.status === "snoozed") &&
+              Boolean(petById.get(reminder.petId)),
+          )
+          .map((reminder: Reminder) => {
+            const petMeta = petById.get(reminder.petId)!;
+            return {
+              id: reminder._id,
+              petId: reminder.petId,
+              petName: petMeta.name,
+              petImage: petMeta.image,
+              title: reminder.title,
+              type: reminder.reminderType,
+              dueDate: reminder.dueDate,
+              dueTime: reminder.dueTime || null,
+              priority: reminder.priority,
+              isOverdue:
+                new Date(reminder.dueDate).getTime() < Date.now() &&
+                reminder.status === "active",
+            };
+          });
 
         // Sort by due date and priority
         allReminders.sort((a, b) => {
@@ -215,24 +200,28 @@ export default function DashboardPage() {
           return dateA - dateB;
         });
 
-        console.log(
-          `%c✓ FINAL: ${allReminders.length} reminders to display`,
-          "color: green; font-weight: bold",
-          allReminders,
-        );
-
-        // Keep top 5 most urgent reminders
-        setUpcomingReminders(allReminders.slice(0, 5));
+        if (!isCancelled) {
+          setPets(displayPets);
+          setUpcomingReminders(allReminders.slice(0, 5));
+        }
       } catch (error) {
         console.error("Error fetching data:", error);
-        toast.error("Failed to load dashboard data");
+        if (!isCancelled) {
+          toast.error("Failed to load dashboard data");
+        }
       } finally {
-        setIsLoading(false);
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
       }
     };
 
     fetchData();
-  }, [user]);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [user, authLoading]);
 
   if (authLoading || isLoading) {
     return (
@@ -253,11 +242,9 @@ export default function DashboardPage() {
   const mostUrgentPet = mostUrgentReminder
     ? pets.find((p) => p.id === mostUrgentReminder.petId)
     : null;
-
-  // Update the most urgent pet with its reminder info
-  if (mostUrgentPet && mostUrgentReminder) {
-    mostUrgentPet.nextVetDate = formatDueDate(mostUrgentReminder.dueDate);
-  }
+  const mostUrgentDueText = mostUrgentReminder
+    ? formatDueDate(mostUrgentReminder.dueDate)
+    : null;
 
   return (
     <MobileLayout>
@@ -306,7 +293,7 @@ export default function DashboardPage() {
                 >
                   {mostUrgentReminder?.isOverdue
                     ? "⚠️ OVERDUE"
-                    : mostUrgentPet.nextVetDate}
+                    : mostUrgentDueText}
                 </p>
               </div>
 
