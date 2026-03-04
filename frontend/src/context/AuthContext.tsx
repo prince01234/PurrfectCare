@@ -18,6 +18,8 @@ interface User {
   isVerified?: boolean;
   hasCompletedOnboarding?: boolean;
   userIntent?: "pet_owner" | "looking_to_adopt" | "exploring" | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 interface AuthContextType {
