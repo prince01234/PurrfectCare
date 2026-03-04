@@ -1,0 +1,12 @@
+import express from "express";
+import mapController from "../controllers/mapController.js";
+
+const router = express.Router();
+
+// Public: GET /api/map/providers - Get provider locations for map
+router.get("/providers", mapController.getProviderLocations);
+
+// Public: GET /api/map/adoptions - Get adoption listing locations for map
+router.get("/adoptions", mapController.getAdoptionLocations);
+
+export default router;
