@@ -111,11 +111,22 @@ const approveApplication = async (
     };
   }
 
-  // Update user: set role to ADMIN and serviceType
-  await User.findByIdAndUpdate(application.userId, {
+  // Update user: set role to ADMIN, serviceType, and provider info
+  const updateData = {
     roles: ADMIN,
     serviceType: application.serviceType,
-  });
+    organizationName: application.organizationName,
+    contactPhone: application.contactPhone,
+    contactAddress: application.contactAddress,
+  };
+
+  // Copy location coordinates if available
+  if (application.latitude != null && application.longitude != null) {
+    updateData.latitude = application.latitude;
+    updateData.longitude = application.longitude;
+  }
+
+  await User.findByIdAndUpdate(application.userId, updateData);
 
   // Update application
   application.status = "approved";
