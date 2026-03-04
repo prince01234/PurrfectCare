@@ -21,6 +21,7 @@ import {
   Briefcase,
   Clock,
   XCircle,
+  Calendar,
 } from "lucide-react";
 
 import { useAuth } from "@/context/AuthContext";
@@ -165,6 +166,12 @@ export default function ProfilePage() {
   }
 
   const menuItems = [
+    {
+      label: "My Bookings",
+      icon: Calendar,
+      href: "/bookings",
+      badge: null,
+    },
     {
       label: "My Orders",
       icon: Package,
