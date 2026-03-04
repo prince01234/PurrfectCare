@@ -17,6 +17,10 @@ const conversationSchema = new mongoose.Schema(
         required: true,
       },
     ],
+    participantKey: {
+      type: String,
+      default: null,
+    },
     context: {
       type: String,
       required: [true, "Conversation context is required"],
@@ -48,10 +52,28 @@ const conversationSchema = new mongoose.Schema(
   },
 );
 
-// Compound index: enforce unique conversation per participants + context + contextRef
+conversationSchema.pre("validate", function (next) {
+  if (Array.isArray(this.participants) && this.participants.length > 0) {
+    const normalizedParticipants = this.participants
+      .map((id) => id?.toString?.())
+      .filter(Boolean)
+      .sort();
+
+    this.participantKey = normalizedParticipants.join(":");
+  }
+
+  next();
+});
+
+// Compound unique index using deterministic participantKey + context + contextRef
 conversationSchema.index(
-  { participants: 1, context: 1, contextRef: 1 },
-  { unique: true },
+  { participantKey: 1, context: 1, contextRef: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      participantKey: { $type: "string" },
+    },
+  },
 );
 
 // Index for fast lookup of user's conversations

@@ -3,6 +3,16 @@ import Message from "../models/Message.js";
 import User from "../models/User.js";
 import { CONTEXT_TYPES } from "../models/Conversation.js";
 
+const getParticipantMeta = (userId, recipientId) => {
+  const normalizedParticipantIds = [userId, recipientId]
+    .map((id) => id.toString())
+    .sort();
+
+  return {
+    participants: normalizedParticipantIds,
+    participantKey: normalizedParticipantIds.join(":"),
+  };
+};
 
 const getOrCreateConversation = async (
   userId,
@@ -38,27 +48,68 @@ const getOrCreateConversation = async (
     throw error;
   }
 
-  // Sort participant IDs to ensure consistent ordering for uniqueness
-  const participants = [userId, recipientId].sort();
+  const { participants, participantKey } = getParticipantMeta(
+    userId,
+    recipientId,
+  );
 
-  // Try to find existing conversation
+  // Try to find existing conversation (new + legacy shape)
   let conversation = await Conversation.findOne({
-    participants: { $all: participants, $size: 2 },
-    context,
-    contextRef: contextRef || null,
+    $or: [
+      {
+        participantKey,
+        context,
+        contextRef: contextRef || null,
+      },
+      {
+        participants: { $all: participants, $size: 2 },
+        context,
+        contextRef: contextRef || null,
+      },
+    ],
   }).populate("participants", "name email profileImage roles serviceType");
 
   if (conversation) {
+    if (!conversation.participantKey) {
+      conversation.participantKey = participantKey;
+      await conversation.save();
+    }
     return { conversation, isNew: false };
   }
 
-  // Create new conversation
-  conversation = await Conversation.create({
-    participants,
-    context,
-    contextRef: contextRef || null,
-    readBy: [userId],
-  });
+  // Create new conversation (race-safe)
+  try {
+    conversation = await Conversation.findOneAndUpdate(
+      {
+        participantKey,
+        context,
+        contextRef: contextRef || null,
+      },
+      {
+        $setOnInsert: {
+          participants,
+          participantKey,
+          context,
+          contextRef: contextRef || null,
+          readBy: [userId],
+        },
+      },
+      {
+        upsert: true,
+        new: true,
+      },
+    );
+  } catch (error) {
+    if (error?.code === 11000) {
+      conversation = await Conversation.findOne({
+        participantKey,
+        context,
+        contextRef: contextRef || null,
+      });
+    } else {
+      throw error;
+    }
+  }
 
   conversation = await Conversation.findById(conversation._id).populate(
     "participants",
@@ -67,7 +118,6 @@ const getOrCreateConversation = async (
 
   return { conversation, isNew: true };
 };
-
 
 const getConversations = async (userId, query = {}) => {
   const { context, page = 1, limit = 20 } = query;
@@ -100,7 +150,6 @@ const getConversations = async (userId, query = {}) => {
   };
 };
 
-
 const getConversationById = async (conversationId, userId) => {
   const conversation = await Conversation.findById(conversationId).populate(
     "participants",
@@ -125,7 +174,6 @@ const getConversationById = async (conversationId, userId) => {
 
   return conversation;
 };
-
 
 const sendMessage = async (conversationId, userId, text) => {
   if (!text || !text.trim()) {
@@ -181,7 +229,6 @@ const sendMessage = async (conversationId, userId, text) => {
   };
 };
 
-
 const getMessages = async (conversationId, userId, query = {}) => {
   const { before, limit = 50 } = query;
 
@@ -224,7 +271,6 @@ const getMessages = async (conversationId, userId, query = {}) => {
   };
 };
 
-
 const markConversationAsRead = async (conversationId, userId) => {
   const conversation = await Conversation.findById(conversationId);
   if (!conversation) {
@@ -259,7 +305,6 @@ const markConversationAsRead = async (conversationId, userId) => {
 
   return { message: "Conversation marked as read" };
 };
-
 
 const getUnreadCount = async (userId) => {
   const count = await Conversation.countDocuments({
