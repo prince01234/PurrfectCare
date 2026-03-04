@@ -41,7 +41,6 @@ export default function EditAdoptionListingPage() {
     healthInfo: "",
     temperament: "",
     specialNeeds: "",
-    location: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -61,7 +60,6 @@ export default function EditAdoptionListingPage() {
             healthInfo: l.healthInfo || "",
             temperament: l.temperament || "",
             specialNeeds: l.specialNeeds || "",
-            location: l.location || "",
           });
           setExistingPhotos(l.photos || []);
         } else {
@@ -86,7 +84,6 @@ export default function EditAdoptionListingPage() {
     if (!formData.age || parseInt(formData.age) < 0)
       e.age = "Valid age is required";
     if (!formData.description.trim()) e.description = "Description is required";
-    if (!formData.location.trim()) e.location = "Location is required";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -367,27 +364,6 @@ export default function EditAdoptionListingPage() {
                 <p className="text-red-500 text-xs mt-1">{errors.age}</p>
               )}
             </div>
-          </div>
-
-          {/* Location */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Location *
-            </label>
-            <input
-              type="text"
-              name="location"
-              value={formData.location}
-              onChange={handleChange}
-              className={`w-full px-4 py-3 rounded-xl border-2 bg-white text-gray-800 outline-none transition-all ${
-                errors.location
-                  ? "border-red-300"
-                  : "border-gray-200 focus:border-teal-400"
-              }`}
-            />
-            {errors.location && (
-              <p className="text-red-500 text-xs mt-1">{errors.location}</p>
-            )}
           </div>
 
           {/* Description */}
