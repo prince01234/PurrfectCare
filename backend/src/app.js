@@ -23,6 +23,10 @@ import {
 } from "./routes/adoptionRoute.js";
 import messagingRoutes from "./routes/messagingRoute.js";
 import mapRoutes from "./routes/mapRoute.js";
+import {
+  providerRouter as serviceProviderRoutes,
+  bookingRouter as bookingRoutes,
+} from "./routes/serviceRoute.js";
 
 import logger from "./middlewares/logger.js";
 import connectCloudinary from "./config/cloudinary.js";
@@ -90,6 +94,10 @@ app.use("/api/conversations", messagingRoutes);
 
 // Map Routes
 app.use("/api/map", mapRoutes);
+
+// Service Booking Routes
+app.use("/api/service-providers", serviceProviderRoutes);
+app.use("/api/bookings", bookingRoutes);
 
 // Initialize Socket.IO
 const io = initializeSocket(httpServer);
