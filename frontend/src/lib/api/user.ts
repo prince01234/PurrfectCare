@@ -28,6 +28,8 @@ export const userApi = {
       hasCompletedOnboarding: boolean;
       userIntent: string | null;
       profileImage?: string;
+      latitude?: number | null;
+      longitude?: number | null;
     }>(
       `/api/users/${userId}`,
       {
@@ -42,6 +44,8 @@ export const userApi = {
       name?: string;
       email?: string;
       profilePicture?: File;
+      latitude?: number;
+      longitude?: number;
     },
   ) => {
     const formData = new FormData();
@@ -49,6 +53,10 @@ export const userApi = {
     if (data.email) formData.append("email", data.email);
     if (data.profilePicture)
       formData.append("profileImage", data.profilePicture);
+    if (data.latitude !== undefined)
+      formData.append("latitude", String(data.latitude));
+    if (data.longitude !== undefined)
+      formData.append("longitude", String(data.longitude));
 
     try {
       const token = getAuthToken();
