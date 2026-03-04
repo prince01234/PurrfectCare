@@ -22,6 +22,7 @@ import {
   applicationRouter as adoptionApplicationRoutes,
 } from "./routes/adoptionRoute.js";
 import messagingRoutes from "./routes/messagingRoute.js";
+import mapRoutes from "./routes/mapRoute.js";
 
 import logger from "./middlewares/logger.js";
 import connectCloudinary from "./config/cloudinary.js";
@@ -86,6 +87,9 @@ app.use("/api/adoption/applications", adoptionApplicationRoutes);
 
 // Messaging Routes
 app.use("/api/conversations", messagingRoutes);
+
+// Map Routes
+app.use("/api/map", mapRoutes);
 
 // Initialize Socket.IO
 const io = initializeSocket(httpServer);
