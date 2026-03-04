@@ -92,6 +92,16 @@ const adoptionListingSchema = new mongoose.Schema(
       trim: true,
     },
 
+    // Location coordinates for map
+    latitude: {
+      type: Number,
+      default: null,
+    },
+    longitude: {
+      type: Number,
+      default: null,
+    },
+
     // Listing status
     status: {
       type: String,
