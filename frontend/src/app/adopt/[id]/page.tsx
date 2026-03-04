@@ -32,6 +32,7 @@ import { adoptionListingApi, adoptionApplicationApi } from "@/lib/api/adoption";
 import { userApi } from "@/lib/api/user";
 import type { AdoptionListing } from "@/lib/api/adoption";
 import StartChatButton from "@/components/chat/StartChatButton";
+import DynamicMapModal from "@/components/ui/DynamicMapModal";
 
 const LIVING_OPTIONS = [
   { value: "house_with_yard", label: "House with yard" },
@@ -40,6 +41,24 @@ const LIVING_OPTIONS = [
   { value: "farm", label: "Farm" },
   { value: "other", label: "Other" },
 ];
+
+// Haversine distance in km
+function getDistanceKm(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number {
+  const R = 6371; // Earth radius in km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 export default function AdoptDetailPage() {
   const router = useRouter();
@@ -53,6 +72,40 @@ export default function AdoptDetailPage() {
   const [showApplyForm, setShowApplyForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasApplied, setHasApplied] = useState(false);
+  const [showMap, setShowMap] = useState(false);
+  const [userCoords, setUserCoords] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
+
+  // Get user's geolocation for distance calculation
+  useEffect(() => {
+    if (!("geolocation" in navigator)) return;
+
+    // Check permission state first (Permissions API)
+    navigator.permissions
+      ?.query({ name: "geolocation" })
+      .then((result) => {
+        if (result.state === "denied") return; // Don't prompt if explicitly denied
+        requestLocation();
+      })
+      .catch(() => {
+        // Permissions API not supported — just try directly
+        requestLocation();
+      });
+
+    function requestLocation() {
+      navigator.geolocation.getCurrentPosition(
+        (pos) =>
+          setUserCoords({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+          }),
+        (err) => console.warn("Geolocation error:", err.message),
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 },
+      );
+    }
+  }, []);
 
   const [formData, setFormData] = useState({
     message: "",
@@ -316,15 +369,43 @@ export default function AdoptDetailPage() {
                 </div>
               )}
             </div>
-            <p className="text-xs text-gray-400 mb-4 flex items-center gap-1">
-              {listing.location && (
-                <>
-                  <MapPin className="w-3 h-3" />
-                  {listing.location} &bull;{" "}
-                </>
-              )}
-              {listing.breed.charAt(0).toUpperCase() + listing.breed.slice(1)}
-            </p>
+            {/* Location — clickable to open map */}
+            {listing.postedBy?.organizationName && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (
+                    listing.postedBy?.latitude != null &&
+                    listing.postedBy?.longitude != null
+                  )
+                    setShowMap(true);
+                }}
+                className={`flex items-center gap-1 text-xs mb-4 ${
+                  listing.postedBy?.latitude != null &&
+                  listing.postedBy?.longitude != null
+                    ? "text-teal-600 hover:text-teal-700 cursor-pointer"
+                    : "text-gray-400 cursor-default"
+                }`}
+              >
+                <MapPin className="w-3.5 h-3.5 shrink-0" />
+                <span>
+                  {userCoords &&
+                    listing.postedBy?.latitude != null &&
+                    listing.postedBy?.longitude != null && (
+                      <>
+                        {getDistanceKm(
+                          userCoords.lat,
+                          userCoords.lng,
+                          listing.postedBy.latitude,
+                          listing.postedBy.longitude,
+                        ).toFixed(1)}{" "}
+                        km &bull;{" "}
+                      </>
+                    )}
+                  {listing.postedBy.organizationName}
+                </span>
+              </button>
+            )}
 
             {/* Info boxes */}
             <div className="grid grid-cols-3 gap-2 mb-4">
@@ -743,6 +824,33 @@ export default function AdoptDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Map Modal */}
+      {listing.postedBy?.latitude != null &&
+        listing.postedBy?.longitude != null && (
+          <DynamicMapModal
+            isOpen={showMap}
+            onClose={() => setShowMap(false)}
+            title={`${listing.postedBy.organizationName || listing.postedBy.name}`}
+            center={[listing.postedBy.latitude, listing.postedBy.longitude]}
+            zoom={15}
+            focusMarkerId={listing._id}
+            userLocation={userCoords}
+            markers={[
+              {
+                id: listing._id,
+                latitude: listing.postedBy.latitude,
+                longitude: listing.postedBy.longitude,
+                title: listing.name,
+                subtitle:
+                  listing.postedBy.organizationName || listing.postedBy.name,
+                description: listing.location || undefined,
+                type: "adoption_listing",
+                photo: listing.photos?.[0],
+              },
+            ]}
+          />
+        )}
     </MobileLayout>
   );
 }

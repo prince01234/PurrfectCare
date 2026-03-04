@@ -41,6 +41,16 @@ const adminApplicationSchema = new mongoose.Schema(
       trim: true,
     },
 
+    // Location coordinates for map
+    latitude: {
+      type: Number,
+      default: null,
+    },
+    longitude: {
+      type: Number,
+      default: null,
+    },
+
     // Status
     status: {
       type: String,

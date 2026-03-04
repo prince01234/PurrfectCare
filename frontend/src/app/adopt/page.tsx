@@ -20,6 +20,24 @@ import type { AdoptionListing } from "@/lib/api/adoption";
 const SPECIES_FILTERS = ["All", "Dog", "Cat", "Rabbit", "Bird", "Fish"];
 const GENDER_FILTERS = ["All", "Male", "Female"];
 
+// Haversine distance in km
+function getDistanceKm(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number {
+  const R = 6371; // Earth radius in km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 export default function AdoptPage() {
   const router = useRouter();
 
@@ -30,6 +48,10 @@ export default function AdoptPage() {
   const [speciesFilter, setSpeciesFilter] = useState("All");
   const [genderFilter, setGenderFilter] = useState("All");
   const [showFilters, setShowFilters] = useState(false);
+  const [userCoords, setUserCoords] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [pagination, setPagination] = useState({
     total: 0,
     page: 1,
@@ -40,6 +62,33 @@ export default function AdoptPage() {
     speciesFilter !== "All" ||
     genderFilter !== "All" ||
     Boolean(searchQuery.trim());
+
+  // Get user's geolocation for distance calculation
+  useEffect(() => {
+    if (!("geolocation" in navigator)) return;
+
+    navigator.permissions
+      ?.query({ name: "geolocation" })
+      .then((result) => {
+        if (result.state === "denied") return;
+        requestLocation();
+      })
+      .catch(() => {
+        requestLocation();
+      });
+
+    function requestLocation() {
+      navigator.geolocation.getCurrentPosition(
+        (pos) =>
+          setUserCoords({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+          }),
+        (err) => console.warn("Geolocation error:", err.message),
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 },
+      );
+    }
+  }, []);
 
   const fetchListings = useCallback(async () => {
     setIsLoading(true);
@@ -316,10 +365,25 @@ export default function AdoptPage() {
                         &bull; {formatAge(listing.age)}
                       </p>
 
-                      {listing.location && (
+                      {listing.postedBy?.organizationName && (
                         <div className="flex items-center gap-1 mt-2 text-xs text-teal-600">
-                          <MapPin className="w-3.5 h-3.5" />
-                          <span>{listing.location}</span>
+                          <MapPin className="w-3.5 h-3.5 shrink-0" />
+                          <span>
+                            {userCoords &&
+                              listing.postedBy?.latitude != null &&
+                              listing.postedBy?.longitude != null && (
+                                <>
+                                  {getDistanceKm(
+                                    userCoords.lat,
+                                    userCoords.lng,
+                                    listing.postedBy.latitude,
+                                    listing.postedBy.longitude,
+                                  ).toFixed(1)}{" "}
+                                  km &bull;{" "}
+                                </>
+                              )}
+                            {listing.postedBy.organizationName}
+                          </span>
                         </div>
                       )}
                     </div>

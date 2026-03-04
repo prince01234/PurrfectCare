@@ -9,6 +9,7 @@ import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
 import { adminApi } from "@/lib/api/admin";
 import MobileLayout from "@/components/layout/MobileLayout";
+import DynamicLocationPicker from "@/components/ui/DynamicLocationPicker";
 
 const SERVICE_TYPES = [
   { value: "pet_adoption", label: "Pet Adoption", emoji: "🐾" },
@@ -30,6 +31,8 @@ export default function ProviderApplyPage() {
     serviceDescription: "",
     contactPhone: "",
     contactAddress: "",
+    latitude: null as number | null,
+    longitude: null as number | null,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -54,6 +57,14 @@ export default function ProviderApplyPage() {
       newErrors.contactPhone = "Phone number is required";
     if (!formData.contactAddress.trim())
       newErrors.contactAddress = "Address is required";
+    // Location is required for non-marketplace service types
+    if (
+      formData.serviceType &&
+      formData.serviceType !== "marketplace" &&
+      (formData.latitude === null || formData.longitude === null)
+    ) {
+      newErrors.location = "Please pin your location on the map";
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -64,7 +75,16 @@ export default function ProviderApplyPage() {
 
     try {
       setIsSubmitting(true);
-      const result = await adminApi.apply(formData);
+      const result = await adminApi.apply({
+        organizationName: formData.organizationName,
+        serviceType: formData.serviceType,
+        serviceDescription: formData.serviceDescription,
+        contactPhone: formData.contactPhone,
+        contactAddress: formData.contactAddress,
+        ...(formData.latitude != null && formData.longitude != null
+          ? { latitude: formData.latitude, longitude: formData.longitude }
+          : {}),
+      });
 
       if (result.error) {
         toast.error(result.error);
@@ -293,6 +313,24 @@ export default function ProviderApplyPage() {
               </p>
             )}
           </div>
+
+          {/* Location Picker (not shown for marketplace) */}
+          {formData.serviceType !== "marketplace" && (
+            <DynamicLocationPicker
+              latitude={formData.latitude}
+              longitude={formData.longitude}
+              onLocationChange={(lat, lng) => {
+                setFormData((prev) => ({
+                  ...prev,
+                  latitude: lat,
+                  longitude: lng,
+                }));
+                if (errors.location)
+                  setErrors((prev) => ({ ...prev, location: "" }));
+              }}
+              error={errors.location}
+            />
+          )}
 
           {/* Submit */}
           <button

@@ -15,6 +15,8 @@ export interface AdminApplication {
   serviceDescription: string;
   contactPhone: string;
   contactAddress: string;
+  latitude?: number;
+  longitude?: number;
   status: "pending" | "approved" | "rejected";
   reviewedBy?: {
     _id: string;
@@ -42,6 +44,8 @@ export interface ApplyData {
   serviceDescription: string;
   contactPhone: string;
   contactAddress: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 // ── API ──

@@ -52,3 +52,10 @@ export type {
   GetOrCreateConversationResponse,
   SendMessageResponse,
 } from "./messaging";
+export { mapApi } from "./map";
+export type {
+  ProviderLocation,
+  AdoptionLocation,
+  ProviderLocationsResponse,
+  AdoptionLocationsResponse,
+} from "./map";

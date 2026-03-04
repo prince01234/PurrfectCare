@@ -66,6 +66,32 @@ const userSchema = new mongoose.Schema(
       country: { type: String, default: "Nepal" },
     },
 
+    // Location coordinates for map (set when provider application is approved)
+    latitude: {
+      type: Number,
+      default: null,
+    },
+    longitude: {
+      type: Number,
+      default: null,
+    },
+
+    // Organization name for service providers
+    organizationName: {
+      type: String,
+      default: null,
+      trim: true,
+    },
+    contactPhone: {
+      type: String,
+      default: null,
+    },
+    contactAddress: {
+      type: String,
+      default: null,
+      trim: true,
+    },
+
     //for system metadata
     lastLogin: Date,
 
