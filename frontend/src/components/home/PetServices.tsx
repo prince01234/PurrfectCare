@@ -10,28 +10,28 @@ const services = [
     icon: Stethoscope,
     color: "bg-indigo-50",
     iconColor: "text-indigo-500",
-    href: "/services/veterinary",
+    href: "/services?type=veterinary",
   },
   {
     name: "Grooming",
     icon: Scissors,
     color: "bg-pink-50",
     iconColor: "text-pink-500",
-    href: "/services/grooming",
+    href: "/services?type=grooming",
   },
   {
     name: "Training",
     icon: GraduationCap,
     color: "bg-purple-50",
     iconColor: "text-purple-500",
-    href: "/services/training",
+    href: "/services?type=training",
   },
   {
     name: "Pet Sitting",
     icon: Home,
     color: "bg-amber-50",
     iconColor: "text-amber-600",
-    href: "/services/pet-sitting",
+    href: "/services?type=pet_sitting",
   },
 ];
 
