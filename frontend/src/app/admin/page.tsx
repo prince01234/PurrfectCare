@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import {
@@ -13,16 +13,21 @@ import {
   CheckCircle2,
   Clock,
   FileText,
+  MapPin,
+  Loader2,
 } from "lucide-react";
+import toast from "react-hot-toast";
 
 import { useAuth } from "@/context/AuthContext";
 import { adminApi } from "@/lib/api/admin";
 import { adoptionApplicationApi } from "@/lib/api/adoption";
+import { userApi } from "@/lib/api/user";
 import type { AdoptionStatsResponse } from "@/lib/api/adoption";
 import AdminLayout from "@/components/layout/AdminLayout";
+import DynamicLocationPicker from "@/components/ui/DynamicLocationPicker";
 
 export default function AdminDashboardPage() {
-  const { user } = useAuth();
+  const { user, updateUser: updateAuthUser } = useAuth();
   const isSuperAdmin = user?.roles === "SUPER_ADMIN";
   const isAdoptionAdmin = user?.serviceType === "pet_adoption" || isSuperAdmin;
 
@@ -30,6 +35,48 @@ export default function AdminDashboardPage() {
   const [adoptionStats, setAdoptionStats] =
     useState<AdoptionStatsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Location state
+  const [locationLat, setLocationLat] = useState<number | null>(null);
+  const [locationLng, setLocationLng] = useState<number | null>(null);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [isSavingLocation, setIsSavingLocation] = useState(false);
+
+  // Fetch user's current location on mount
+  const fetchUserLocation = useCallback(async () => {
+    if (!user?._id) return;
+    const res = await userApi.getUserById(user._id);
+    if (res.data) {
+      setLocationLat(res.data.latitude ?? null);
+      setLocationLng(res.data.longitude ?? null);
+    }
+  }, [user?._id]);
+
+  useEffect(() => {
+    fetchUserLocation();
+  }, [fetchUserLocation]);
+
+  const handleLocationChange = (lat: number, lng: number) => {
+    setLocationLat(lat);
+    setLocationLng(lng);
+  };
+
+  const handleSaveLocation = async () => {
+    if (!user?._id || locationLat === null || locationLng === null) return;
+    setIsSavingLocation(true);
+    const res = await userApi.updateUser(user._id, {
+      latitude: locationLat,
+      longitude: locationLng,
+    });
+    if (res.error) {
+      toast.error(res.error);
+    } else {
+      toast.success("Location updated successfully");
+      updateAuthUser({ latitude: locationLat, longitude: locationLng });
+      setShowLocationPicker(false);
+    }
+    setIsSavingLocation(false);
+  };
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -345,6 +392,101 @@ export default function AdminDashboardPage() {
             </div>
           )}
         </motion.div>
+
+        {/* Location Management */}
+        {!isSuperAdmin && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <h3 className="text-base font-bold text-gray-900 mb-3">
+              Your Location
+            </h3>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+              {locationLat && locationLng ? (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-9 h-9 rounded-xl bg-teal-50 flex items-center justify-center">
+                      <MapPin className="w-4.5 h-4.5 text-teal-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        Location Set
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {locationLat.toFixed(4)}, {locationLng.toFixed(4)}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowLocationPicker(!showLocationPicker)}
+                    className="px-3 py-1.5 text-xs font-semibold text-teal-600 bg-teal-50 rounded-lg hover:bg-teal-100 transition-colors"
+                  >
+                    {showLocationPicker ? "Hide" : "Update"}
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center">
+                      <MapPin className="w-4.5 h-4.5 text-amber-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        No location set
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        Set your location so users can find you on the map
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowLocationPicker(!showLocationPicker)}
+                    className="px-3 py-1.5 text-xs font-semibold text-teal-600 bg-teal-50 rounded-lg hover:bg-teal-100 transition-colors"
+                  >
+                    {showLocationPicker ? "Hide" : "Set"}
+                  </button>
+                </div>
+              )}
+
+              {showLocationPicker && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  className="mt-4 space-y-3"
+                >
+                  <DynamicLocationPicker
+                    latitude={locationLat}
+                    longitude={locationLng}
+                    onLocationChange={handleLocationChange}
+                  />
+                  <button
+                    onClick={handleSaveLocation}
+                    disabled={
+                      isSavingLocation ||
+                      locationLat === null ||
+                      locationLng === null
+                    }
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-teal-500 text-white text-sm font-semibold rounded-xl hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {isSavingLocation ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <MapPin className="w-4 h-4" />
+                        Save Location
+                      </>
+                    )}
+                  </button>
+                </motion.div>
+              )}
+            </div>
+          </motion.div>
+        )}
       </div>
     </AdminLayout>
   );
