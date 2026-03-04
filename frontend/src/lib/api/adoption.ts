@@ -10,6 +10,8 @@ export interface AdoptionListing {
     profileImage?: string;
     phoneNumber?: string;
     organizationName?: string;
+    latitude?: number;
+    longitude?: number;
   };
   name: string;
   species: string;
@@ -22,7 +24,9 @@ export interface AdoptionListing {
   specialNeeds?: string;
   adoptionFee?: number;
   photos: string[];
-  location: string;
+  location?: string;
+  latitude?: number;
+  longitude?: number;
   status: "available" | "adopted";
   adoptedBy?: string;
   adoptedAt?: string;
