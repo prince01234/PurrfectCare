@@ -12,6 +12,10 @@ import {
   ShieldCheck,
   FileText,
   MessageCircle,
+  CalendarCheck,
+  Settings,
+  BarChart3,
+  ShoppingBag,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -41,6 +45,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     );
   }
 
+  const isBookableService = [
+    "veterinary",
+    "grooming",
+    "training",
+    "pet_sitting",
+    "other",
+  ].includes(user?.serviceType || "");
+
   // Build nav items based on role
   const navItems = [
     { label: "Dashboard", icon: LayoutDashboard, href: "/admin" },
@@ -66,11 +78,49 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     ...(user?.serviceType === "marketplace" || isSuperAdmin
       ? [{ label: "Products", icon: Package, href: "/admin/products" }]
       : []),
+    ...(user?.serviceType === "marketplace"
+      ? [
+          {
+            label: "Orders",
+            icon: ShoppingBag,
+            href: "/admin/orders",
+          },
+          {
+            label: "Analytics",
+            icon: BarChart3,
+            href: "/admin/marketplace-analytics",
+          },
+        ]
+      : []),
+    ...(isBookableService
+      ? [
+          { label: "Services", icon: Settings, href: "/admin/services" },
+          {
+            label: "Bookings",
+            icon: CalendarCheck,
+            href: "/admin/bookings",
+          },
+          {
+            label: "Analytics",
+            icon: BarChart3,
+            href: "/provider/analytics",
+          },
+        ]
+      : []),
+    ...(isSuperAdmin
+      ? [
+          {
+            label: "Analytics",
+            icon: BarChart3,
+            href: "/admin/analytics",
+          },
+        ]
+      : []),
     { label: "Messages", icon: MessageCircle, href: "/admin/messages" },
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 max-w-2xl mx-auto">
+    <div className="min-h-screen bg-gray-50 max-w-2xl mx-auto pb-20">
       {/* Top bar */}
       <div className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
         <div className="px-4 py-3 flex items-center justify-between">
@@ -100,34 +150,54 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             </span>
           </div>
         </div>
-
-        {/* Navigation tabs */}
-        <div className="px-4 flex gap-1 overflow-x-auto pb-2">
-          {navItems.map((item) => {
-            const isActive =
-              pathname === item.href ||
-              (item.href !== "/admin" && pathname.startsWith(item.href));
-
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
-                  isActive
-                    ? "bg-teal-500 text-white shadow-sm"
-                    : "text-gray-600 hover:bg-gray-100"
-                }`}
-              >
-                <item.icon className="w-4 h-4" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </div>
       </div>
 
       {/* Content */}
       <div className="p-4">{children}</div>
+
+      {/* Bottom Navigation */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-[0_-2px_10px_rgba(0,0,0,0.06)]">
+        <div className="max-w-2xl mx-auto">
+          <div className="flex items-stretch justify-around px-1 py-1.5">
+            {navItems.map((item) => {
+              const isActive =
+                pathname === item.href ||
+                (item.href !== "/admin" && pathname.startsWith(item.href));
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex flex-col items-center justify-center gap-0.5 min-w-0 px-1.5 py-1.5 rounded-xl transition-all ${
+                    isActive
+                      ? "text-teal-600"
+                      : "text-gray-400 hover:text-gray-600"
+                  }`}
+                >
+                  <div
+                    className={`flex items-center justify-center w-8 h-8 rounded-xl transition-all ${
+                      isActive ? "bg-teal-50" : ""
+                    }`}
+                  >
+                    <item.icon
+                      className={`w-5 h-5 ${isActive ? "text-teal-600" : ""}`}
+                    />
+                  </div>
+                  <span
+                    className={`text-[10px] leading-tight truncate max-w-full ${
+                      isActive ? "font-semibold text-teal-600" : "font-medium"
+                    }`}
+                  >
+                    {item.label}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+          {/* Safe area for devices with home indicator */}
+          <div className="h-[env(safe-area-inset-bottom)]" />
+        </div>
+      </div>
     </div>
   );
 }
