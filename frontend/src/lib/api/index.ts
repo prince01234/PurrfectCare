@@ -33,6 +33,7 @@ export type {
   AdminApplication,
   AdminApplicationsResponse,
   ApplyData,
+  PlatformAnalytics,
 } from "./admin";
 export { adoptionListingApi, adoptionApplicationApi } from "./adoption";
 export type {
@@ -59,3 +60,20 @@ export type {
   ProviderLocationsResponse,
   AdoptionLocationsResponse,
 } from "./map";
+export { serviceProviderApi, bookingApi } from "./service";
+export type {
+  ServiceProvider,
+  ServiceProvidersResponse,
+  ServiceOption,
+  AvailabilitySlot,
+  Booking,
+  BookingsResponse,
+  BookedSlotsResponse,
+  CreateBookingData,
+  CreateProviderData,
+  ServiceProviderAnalytics,
+  MarketplaceAnalytics,
+  MerchantOrder,
+  MerchantOrderItem,
+  MerchantOrdersResponse,
+} from "./service";
