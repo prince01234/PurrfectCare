@@ -23,7 +23,7 @@ export interface Order {
   userId: string;
   items: OrderItem[];
   totalAmount: number;
-  status: "pending" | "confirmed" | "cancelled";
+  status: "pending" | "confirmed" | "processing" | "delivered" | "cancelled";
   deliveryAddress: string | null;
   notes: string | null;
   paymentMethod: "khalti" | "cod";

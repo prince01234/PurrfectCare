@@ -254,10 +254,10 @@ export default function ChatPage({
   }
 
   return (
-    <div className="min-h-screen bg-white max-w-lg mx-auto flex flex-col h-screen">
+    <div className="h-dvh bg-white max-w-lg mx-auto flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="sticky top-0 bg-white z-10 border-b border-gray-100">
-        <div className="flex items-center gap-3 px-3 pt-12 pb-3">
+      <div className="bg-white z-10 border-b border-gray-100 shrink-0">
+        <div className="flex items-center gap-3 px-3 pt-3 pb-3">
           <button
             onClick={() => router.push("/messages")}
             className="p-1 text-gray-600 hover:text-gray-900"
@@ -303,7 +303,7 @@ export default function ChatPage({
       <div
         ref={messagesContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-3 py-4"
+        className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
       >
         {/* Load more */}
         {isLoadingMore && (
@@ -353,15 +353,18 @@ export default function ChatPage({
       </div>
 
       {/* Input */}
-      <ChatInput
-        onSend={handleSend}
-        onTypingStart={() =>
-          otherParticipant && startTyping(conversationId, otherParticipant._id)
-        }
-        onTypingStop={() =>
-          otherParticipant && stopTyping(conversationId, otherParticipant._id)
-        }
-      />
+      <div className="shrink-0">
+        <ChatInput
+          onSend={handleSend}
+          onTypingStart={() =>
+            otherParticipant &&
+            startTyping(conversationId, otherParticipant._id)
+          }
+          onTypingStop={() =>
+            otherParticipant && stopTyping(conversationId, otherParticipant._id)
+          }
+        />
+      </div>
     </div>
   );
 }

@@ -113,4 +113,53 @@ export const adminApi = {
       },
       true,
     ),
+
+  // Super Admin: Get platform analytics
+  getPlatformAnalytics: (): Promise<ApiResponse<PlatformAnalytics>> =>
+    apiRequest("/api/admin/analytics", {}, true),
 };
+
+// ── Analytics Types ──
+export interface PlatformAnalytics {
+  overview: {
+    totalRevenue: number;
+    totalBookingRevenue: number;
+    totalOrderRevenue: number;
+    totalBookings: number;
+    totalOrders: number;
+    totalUsers: number;
+    totalProviders: number;
+    activeProviders: number;
+    totalPets: number;
+    totalProducts: number;
+    thisMonthRevenue: number;
+    pendingBookings: number;
+    pendingOrders: number;
+  };
+  revenue: {
+    byPaymentMethod: {
+      khalti: number;
+      cod: number;
+    };
+    byBookingType: Record<string, number>;
+    monthly: Array<{
+      year: number;
+      month: number;
+      bookingRevenue: number;
+      bookings: number;
+      orderRevenue: number;
+      orders: number;
+      totalRevenue: number;
+      totalTransactions: number;
+    }>;
+  };
+  topProviders: Array<{
+    _id: string;
+    name: string;
+    serviceType: string;
+    totalRevenue: number;
+    totalBookings: number;
+  }>;
+  bookingsByStatus: Record<string, number>;
+  ordersByStatus: Record<string, number>;
+}

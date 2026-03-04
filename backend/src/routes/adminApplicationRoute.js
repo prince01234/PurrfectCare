@@ -1,5 +1,6 @@
 import express from "express";
 import adminApplicationController from "../controllers/adminApplicationController.js";
+import adminAnalyticsController from "../controllers/adminAnalyticsController.js";
 import { auth, requireVerified, requireRole } from "../middlewares/auth.js";
 import { SUPER_ADMIN } from "../constants/roles.js";
 
@@ -15,6 +16,14 @@ router.post(
 
 // URL: /api/admin - Get user's own application
 router.get("/", auth, adminApplicationController.getMyApplication);
+
+// URL: /api/admin/analytics - Get platform analytics (SUPER_ADMIN only)
+router.get(
+  "/analytics",
+  auth,
+  requireRole(SUPER_ADMIN),
+  adminAnalyticsController.getPlatformAnalytics,
+);
 
 // URL: /api/admin/applications - Get all service provider applications (SUPER_ADMIN only)
 router.get(
