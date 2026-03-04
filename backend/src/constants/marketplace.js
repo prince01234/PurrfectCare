@@ -14,7 +14,13 @@ export const PRODUCT_CATEGORIES = [
 export const PRODUCT_PET_TYPES = ["dog", "cat", "bird", "rabbit", "all"];
 
 // Order statuses
-export const ORDER_STATUSES = ["pending", "confirmed", "cancelled"];
+export const ORDER_STATUSES = [
+  "pending",
+  "confirmed",
+  "processing",
+  "delivered",
+  "cancelled",
+];
 
 // Payment methods
 export const PAYMENT_METHODS = ["khalti", "cod"];
