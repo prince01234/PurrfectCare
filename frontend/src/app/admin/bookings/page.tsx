@@ -285,11 +285,12 @@ export default function AdminBookingsPage() {
                   </div>
 
                   {/* Pet info */}
-                  {booking.petId && typeof booking.petId === "object" && (
-                    <p className="text-xs text-gray-400 mt-1.5">
-                      🐾 {(booking.petId as { name: string }).name}
-                    </p>
-                  )}
+                  {Array.isArray(booking.petIds) &&
+                    booking.petIds.length > 0 && (
+                      <p className="text-xs text-gray-400 mt-1.5">
+                        🐾 {booking.petIds.map((pet) => pet.name).join(", ")}
+                      </p>
+                    )}
 
                   {/* Customer notes */}
                   {booking.notes && (
