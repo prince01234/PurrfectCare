@@ -15,6 +15,9 @@ import {
   FileText,
   MapPin,
   Loader2,
+  Settings,
+  CalendarCheck,
+  BarChart3,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -30,6 +33,13 @@ export default function AdminDashboardPage() {
   const { user, updateUser: updateAuthUser } = useAuth();
   const isSuperAdmin = user?.roles === "SUPER_ADMIN";
   const isAdoptionAdmin = user?.serviceType === "pet_adoption" || isSuperAdmin;
+  const isBookableService = [
+    "veterinary",
+    "grooming",
+    "training",
+    "pet_sitting",
+    "other",
+  ].includes(user?.serviceType || "");
 
   const [providerPending, setProviderPending] = useState(0);
   const [adoptionStats, setAdoptionStats] =
@@ -171,6 +181,13 @@ export default function AdminDashboardPage() {
     ...(isSuperAdmin
       ? [
           {
+            label: "Platform Analytics",
+            description: "View revenue & performance",
+            icon: BarChart3,
+            href: "/admin/analytics",
+            color: "from-purple-500 to-indigo-500",
+          },
+          {
             label: "Review Provider Applications",
             description: `${providerPending} pending`,
             icon: ClipboardList,
@@ -212,6 +229,31 @@ export default function AdminDashboardPage() {
             icon: Package,
             href: "/admin/products",
             color: "from-blue-500 to-indigo-500",
+          },
+        ]
+      : []),
+    ...(isBookableService
+      ? [
+          {
+            label: "View Analytics",
+            description: "Revenue & booking insights",
+            icon: BarChart3,
+            href: "/provider/analytics",
+            color: "from-blue-500 to-cyan-500",
+          },
+          {
+            label: "Manage Services",
+            description: "Set up availability & service options",
+            icon: Settings,
+            href: "/admin/services",
+            color: "from-teal-500 to-cyan-500",
+          },
+          {
+            label: "Manage Bookings",
+            description: "View & respond to bookings",
+            icon: CalendarCheck,
+            href: "/admin/bookings",
+            color: "from-violet-500 to-purple-500",
           },
         ]
       : []),
