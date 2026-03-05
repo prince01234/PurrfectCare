@@ -77,3 +77,11 @@ export type {
   MerchantOrderItem,
   MerchantOrdersResponse,
 } from "./service";
+export { lostFoundApi } from "./lostFound";
+export type {
+  LostFoundPost,
+  LostFoundPostsResponse,
+  PostType,
+  PostStatus,
+  LostFoundQueryParams,
+} from "./lostFound";
