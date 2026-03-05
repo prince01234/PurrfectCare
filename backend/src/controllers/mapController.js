@@ -26,7 +26,21 @@ const getAdoptionLocations = async (req, res) => {
   }
 };
 
+// Get lost/found post locations for map
+const getLostFoundLocations = async (req, res) => {
+  try {
+    const posts = await mapService.getLostFoundLocations(req.query);
+    res.status(200).send({ posts });
+  } catch (error) {
+    console.error("Error fetching lost/found locations:", error);
+    const statusCode = error.statusCode || 500;
+    const message = error.message || "Failed to fetch lost/found locations";
+    res.status(statusCode).send({ error: message });
+  }
+};
+
 export default {
   getProviderLocations,
   getAdoptionLocations,
+  getLostFoundLocations,
 };
