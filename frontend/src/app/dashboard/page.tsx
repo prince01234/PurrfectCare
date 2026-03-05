@@ -37,31 +37,7 @@ interface UpcomingReminder {
   isOverdue: boolean;
 }
 
-// Mock lost/found data (can be replaced with API later)
-const mockLostFound = [
-  {
-    id: "1",
-    type: "lost" as const,
-    petName: "Rusty",
-    description:
-      "Wearing a blue collar. Friendly but scared. Last seen near the park entrance.",
-    location: "Central Park Area",
-    date: "Feb 1, 2026",
-    image:
-      "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=200&h=200&fit=crop",
-  },
-  {
-    id: "2",
-    type: "found" as const,
-    petName: "Unknown Cat",
-    description:
-      "Found near the lake. Very small. No collar. Needs a home urgently.",
-    location: "Riverside District",
-    date: "Yesterday",
-    image:
-      "https://images.unsplash.com/photo-1574158622682-e40e69881006?w=200&h=200&fit=crop",
-  },
-];
+// Mock data replaced with real API in LostAndFound component
 
 function getReminderIcon(type: string) {
   switch (type) {
@@ -408,7 +384,7 @@ export default function DashboardPage() {
 
       <PetServices />
       <MarketplaceBanner />
-      <LostAndFound posts={mockLostFound} />
+      <LostAndFound />
     </MobileLayout>
   );
 }
