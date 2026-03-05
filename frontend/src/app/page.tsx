@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
@@ -26,7 +26,17 @@ import {
   Home,
   Stethoscope,
   Plus,
+  Star,
+  Loader2,
 } from "lucide-react";
+import { adoptionListingApi } from "@/lib/api/adoption";
+import type { AdoptionListing } from "@/lib/api/adoption";
+import { productApi } from "@/lib/api/product";
+import type { Product } from "@/lib/api/product";
+import { lostFoundApi } from "@/lib/api/lostFound";
+import type { LostFoundPost } from "@/lib/api/lostFound";
+import { serviceProviderApi } from "@/lib/api/service";
+import type { ServiceProvider } from "@/lib/api/service";
 
 // Animation variants
 const fadeInUp = {
@@ -43,133 +53,146 @@ const staggerContainer = {
   },
 };
 
+// Service type config for icons
+const SERVICE_TYPE_CONFIG: Record<
+  string,
+  {
+    icon: React.ComponentType<{ className?: string }>;
+    label: string;
+    color: string;
+    iconColor: string;
+  }
+> = {
+  veterinary: {
+    icon: Stethoscope,
+    label: "Veterinary Care",
+    color: "bg-pink-100",
+    iconColor: "text-pink-500",
+  },
+  grooming: {
+    icon: Scissors,
+    label: "Pet Grooming",
+    color: "bg-orange-100",
+    iconColor: "text-orange-500",
+  },
+  training: {
+    icon: GraduationCap,
+    label: "Training",
+    color: "bg-purple-100",
+    iconColor: "text-purple-500",
+  },
+  pet_sitting: {
+    icon: Home,
+    label: "Pet Sitting",
+    color: "bg-green-100",
+    iconColor: "text-green-500",
+  },
+  pet_adoption: {
+    icon: Heart,
+    label: "Pet Adoption",
+    color: "bg-red-100",
+    iconColor: "text-red-500",
+  },
+  marketplace: {
+    icon: ShoppingBag,
+    label: "Marketplace",
+    color: "bg-blue-100",
+    iconColor: "text-blue-500",
+  },
+  other: {
+    icon: PawPrint,
+    label: "Other Services",
+    color: "bg-gray-100",
+    iconColor: "text-gray-500",
+  },
+};
+
+function formatAge(months: number) {
+  if (months < 1) return "< 1 mo";
+  if (months < 12) return `${months} mo`;
+  const years = Math.floor(months / 12);
+  const rem = months % 12;
+  if (rem === 0) return `${years} yr${years > 1 ? "s" : ""}`;
+  return `${years}yr ${rem}mo`;
+}
+
+function timeAgo(dateString: string) {
+  const now = new Date();
+  const date = new Date(dateString);
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins} min ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString();
+}
+
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Sample data for adoptable pets
-  const adoptablePets = [
-    {
-      id: 1,
-      name: "Whiskers",
-      age: "8 months",
-      location: "San Francisco, CA",
-      image:
-        "https://images.unsplash.com/photo-1574158622682-e40e69881006?w=400&h=300&fit=crop",
-      type: "cat",
-    },
-    {
-      id: 2,
-      name: "Max",
-      age: "3 years",
-      location: "Los Angeles, CA",
-      image:
-        "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=400&h=300&fit=crop",
-      type: "dog",
-    },
-    {
-      id: 3,
-      name: "Cotton",
-      age: "1 year",
-      location: "Seattle, WA",
-      image:
-        "https://images.unsplash.com/photo-1585110396000-c9ffd4e4b308?w=400&h=300&fit=crop",
-      type: "rabbit",
-    },
-  ];
+  // Real data state
+  const [adoptionListings, setAdoptionListings] = useState<AdoptionListing[]>(
+    [],
+  );
+  const [products, setProducts] = useState<Product[]>([]);
+  const [lostFoundPosts, setLostFoundPosts] = useState<LostFoundPost[]>([]);
+  const [providers, setProviders] = useState<ServiceProvider[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState({
+    adoptions: 0,
+    providers: 0,
+    products: 0,
+    lostFound: 0,
+  });
 
-  // Sample data for services
-  const services = [
-    {
-      icon: Stethoscope,
-      title: "Veterinary Care",
-      description: "Professional health checkups and treatments",
-      color: "bg-pink-100",
-      iconColor: "text-pink-500",
-    },
-    {
-      icon: Scissors,
-      title: "Pet Grooming",
-      description: "Keep your pet looking and feeling great",
-      color: "bg-orange-100",
-      iconColor: "text-orange-500",
-    },
-    {
-      icon: GraduationCap,
-      title: "Training Classes",
-      description: "Professional obedience and behavior training",
-      color: "bg-purple-100",
-      iconColor: "text-purple-500",
-    },
-    {
-      icon: Home,
-      title: "Pet Sitting",
-      description: "Trusted care when you're away from home",
-      color: "bg-green-100",
-      iconColor: "text-green-500",
-    },
-  ];
+  // Fetch real data from APIs
+  useEffect(() => {
+    async function fetchLandingData() {
+      setIsLoading(true);
+      const [adoptionRes, productRes, lostFoundRes, providerRes] =
+        await Promise.all([
+          adoptionListingApi.getListings({ limit: 3 }),
+          productApi.getProducts({ limit: 4 }),
+          lostFoundApi.getPosts({ limit: 2 }),
+          serviceProviderApi.getProviders({ limit: 4 }),
+        ]);
 
-  // Sample data for marketplace
-  const marketplaceItems = [
-    {
-      id: 1,
-      name: "Premium Dog Food",
-      description: "5kg bag",
-      price: 29.99,
-      image:
-        "https://images.unsplash.com/photo-1568640347023-a616a30bc3bd?w=200&h=200&fit=crop",
-      premium: true,
-    },
-    {
-      id: 2,
-      name: "Cat Toy Bundle",
-      description: "6 piece set",
-      price: 19.99,
-      image:
-        "https://images.unsplash.com/photo-1545249390-6bdfa286032f?w=200&h=200&fit=crop",
-      premium: false,
-    },
-    {
-      id: 3,
-      name: "Cozy Pet Bed",
-      description: "Medium",
-      price: 39.99,
-      image:
-        "https://images.unsplash.com/photo-1591946614720-90a587da4a36?w=200&h=200&fit=crop",
-      premium: false,
-    },
-    {
-      id: 4,
-      name: "Collar & Leash Set",
-      description: "Adjustable",
-      price: 24.99,
-      image:
-        "https://images.unsplash.com/photo-1567612529009-afe25813a308?w=200&h=200&fit=crop",
-      premium: false,
-    },
-  ];
+      if (adoptionRes.data) {
+        setAdoptionListings(adoptionRes.data.listings);
+        setStats((s) => ({
+          ...s,
+          adoptions: adoptionRes.data!.pagination.total,
+        }));
+      }
+      if (productRes.data) {
+        setProducts(productRes.data.products);
+        setStats((s) => ({
+          ...s,
+          products: productRes.data!.pagination.total,
+        }));
+      }
+      if (lostFoundRes.data) {
+        setLostFoundPosts(lostFoundRes.data.posts);
+        setStats((s) => ({
+          ...s,
+          lostFound: lostFoundRes.data!.pagination.total,
+        }));
+      }
+      if (providerRes.data) {
+        setProviders(providerRes.data.providers);
+        setStats((s) => ({
+          ...s,
+          providers: providerRes.data!.pagination.total,
+        }));
+      }
 
-  // Sample data for lost & found
-  const lostFoundPets = [
-    {
-      id: 1,
-      type: "LOST",
-      name: "Brown Labrador",
-      time: "2 hours ago",
-      location: "Near Central Park, NYC",
-      image:
-        "https://images.unsplash.com/photo-1579213838058-8f4dd0e38e47?w=100&h=100&fit=crop",
-    },
-    {
-      id: 2,
-      type: "FOUND",
-      name: "Gray Tabby Cat",
-      time: "5 hours ago",
-      location: "Downtown Portland, OR",
-      image:
-        "https://images.unsplash.com/photo-1573865526739-10659fec78a5?w=100&h=100&fit=crop",
-    },
-  ];
+      setIsLoading(false);
+    }
+    fetchLandingData();
+  }, []);
 
   // Features/challenges data
   const challenges = [
@@ -271,19 +294,19 @@ export default function LandingPage() {
                 Features
               </Link>
               <Link
-                href="#adoption"
+                href="/adopt"
                 className="text-gray-600 hover:text-pink-500 transition-colors"
               >
                 Adoption
               </Link>
               <Link
-                href="#services"
+                href="/services"
                 className="text-gray-600 hover:text-pink-500 transition-colors"
               >
                 Services
               </Link>
               <Link
-                href="#marketplace"
+                href="/marketplace"
                 className="text-gray-600 hover:text-pink-500 transition-colors"
               >
                 Marketplace
@@ -331,13 +354,13 @@ export default function LandingPage() {
               <Link href="#features" className="text-gray-600 py-2">
                 Features
               </Link>
-              <Link href="#adoption" className="text-gray-600 py-2">
+              <Link href="/adopt" className="text-gray-600 py-2">
                 Adoption
               </Link>
-              <Link href="#services" className="text-gray-600 py-2">
+              <Link href="/services" className="text-gray-600 py-2">
                 Services
               </Link>
-              <Link href="#marketplace" className="text-gray-600 py-2">
+              <Link href="/marketplace" className="text-gray-600 py-2">
                 Marketplace
               </Link>
               <hr className="border-gray-100" />
@@ -402,13 +425,13 @@ export default function LandingPage() {
               className="flex flex-col sm:flex-row gap-4 justify-center"
             >
               <Link
-                href="#adoption"
+                href="/adopt"
                 className="bg-linear-to-r from-pink-500 to-rose-500 text-white px-8 py-4 rounded-full font-semibold text-lg hover:shadow-xl hover:shadow-pink-500/30 transition-all"
               >
                 Explore Adoptable Pets
               </Link>
               <Link
-                href="#marketplace"
+                href="/marketplace"
                 className="border-2 border-pink-500 text-pink-500 px-8 py-4 rounded-full font-semibold text-lg hover:bg-pink-50 transition-all"
               >
                 Browse Marketplace
@@ -515,56 +538,93 @@ export default function LandingPage() {
               Adoptable Pets
             </h2>
             <Link
-              href="/adoption"
+              href="/adopt"
               className="text-pink-500 font-medium flex items-center gap-1 hover:gap-2 transition-all"
             >
               View All <ChevronRight className="w-4 h-4" />
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {adoptablePets.map((pet, index) => (
-              <motion.div
-                key={pet.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                className="bg-white rounded-3xl overflow-hidden shadow-lg shadow-gray-100 hover:shadow-xl transition-shadow"
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 text-pink-500 animate-spin" />
+            </div>
+          ) : adoptionListings.length === 0 ? (
+            <div className="text-center py-12">
+              <Heart className="w-12 h-12 text-pink-300 mx-auto mb-3" />
+              <p className="text-gray-500">
+                No pets available for adoption yet.
+              </p>
+              <Link
+                href="/adopt"
+                className="text-pink-500 font-medium mt-2 inline-block"
               >
-                <div className="relative h-48 md:h-56">
-                  <Image
-                    src={pet.image}
-                    alt={pet.name}
-                    fill
-                    sizes="(max-width: 1024px) 100vw, 33vw"
-                    className="object-cover"
-                  />
-                </div>
-                <div className="p-4">
-                  <h3 className="font-bold text-lg text-gray-900">
-                    {pet.name}
-                  </h3>
-                  <div className="flex items-center gap-3 text-gray-500 text-sm mt-1">
-                    <span className="flex items-center gap-1">
-                      <Calendar className="w-4 h-4" /> {pet.age}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <MapPin className="w-4 h-4" /> {pet.location}
-                    </span>
-                  </div>
-                  <div className="flex gap-3 mt-4">
-                    <button className="flex-1 border-2 border-gray-200 text-gray-700 py-2.5 rounded-xl font-medium hover:border-pink-500 hover:text-pink-500 transition-all">
-                      View Details
-                    </button>
-                    <button className="flex-1 bg-linear-to-r from-pink-500 to-rose-500 text-white py-2.5 rounded-xl font-medium hover:shadow-lg hover:shadow-pink-500/30 transition-all">
-                      Apply to Adopt
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+                Check back soon →
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {adoptionListings.map((listing, index) => (
+                <motion.div
+                  key={listing._id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <Link
+                    href={`/adopt/${listing._id}`}
+                    className="block bg-white rounded-3xl overflow-hidden shadow-lg shadow-gray-100 hover:shadow-xl transition-shadow"
+                  >
+                    <div className="relative h-48 md:h-56">
+                      {listing.photos?.[0] ? (
+                        <Image
+                          src={listing.photos[0]}
+                          alt={listing.name}
+                          fill
+                          sizes="(max-width: 1024px) 100vw, 33vw"
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-pink-50 flex items-center justify-center">
+                          <PawPrint className="w-12 h-12 text-pink-200" />
+                        </div>
+                      )}
+                      <span className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm text-xs font-semibold px-2.5 py-1 rounded-full capitalize text-gray-700">
+                        {listing.species}
+                      </span>
+                    </div>
+                    <div className="p-4">
+                      <h3 className="font-bold text-lg text-gray-900">
+                        {listing.name}
+                      </h3>
+                      <div className="flex items-center gap-3 text-gray-500 text-sm mt-1">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-4 h-4" />{" "}
+                          {formatAge(listing.age)}
+                        </span>
+                        {listing.breed && (
+                          <span className="text-gray-400">{listing.breed}</span>
+                        )}
+                      </div>
+                      {listing.location && (
+                        <p className="flex items-center gap-1 text-gray-400 text-sm mt-1">
+                          <MapPin className="w-3.5 h-3.5" /> {listing.location}
+                        </p>
+                      )}
+                      {listing.adoptionFee != null && (
+                        <p className="text-pink-500 font-semibold text-sm mt-2">
+                          {listing.adoptionFee === 0
+                            ? "Free Adoption"
+                            : `NPR ${listing.adoptionFee}`}
+                        </p>
+                      )}
+                    </div>
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -583,34 +643,78 @@ export default function LandingPage() {
             </Link>
           </div>
 
-          <div className="space-y-4">
-            {services.map((service, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, x: -20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                className="bg-white rounded-2xl p-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow"
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 text-pink-500 animate-spin" />
+            </div>
+          ) : providers.length === 0 ? (
+            <div className="text-center py-12">
+              <Stethoscope className="w-12 h-12 text-pink-300 mx-auto mb-3" />
+              <p className="text-gray-500">No service providers yet.</p>
+              <Link
+                href="/services"
+                className="text-pink-500 font-medium mt-2 inline-block"
               >
-                <div className={`${service.color} p-3 rounded-xl`}>
-                  <service.icon className={`w-6 h-6 ${service.iconColor}`} />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900">
-                    {service.title}
-                  </h3>
-                  <p className="text-gray-500 text-sm">{service.description}</p>
-                </div>
-                <Link
-                  href="/services"
-                  className="text-pink-500 font-medium text-sm"
-                >
-                  Book Now →
-                </Link>
-              </motion.div>
-            ))}
-          </div>
+                Check back soon →
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {providers.map((provider, index) => {
+                const config =
+                  SERVICE_TYPE_CONFIG[provider.serviceType] ||
+                  SERVICE_TYPE_CONFIG.other;
+                const Icon = config.icon;
+                return (
+                  <motion.div
+                    key={provider._id}
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <Link
+                      href={`/services/${provider._id}`}
+                      className="bg-white rounded-2xl p-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow"
+                    >
+                      {provider.image ? (
+                        <Image
+                          src={provider.image}
+                          alt={provider.name}
+                          width={48}
+                          height={48}
+                          className="w-12 h-12 rounded-xl object-cover"
+                        />
+                      ) : (
+                        <div className={`${config.color} p-3 rounded-xl`}>
+                          <Icon className={`w-6 h-6 ${config.iconColor}`} />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-gray-900 truncate">
+                          {provider.name}
+                        </h3>
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-500 text-sm capitalize">
+                            {config.label}
+                          </span>
+                          {provider.rating > 0 && (
+                            <span className="flex items-center gap-0.5 text-amber-500 text-sm">
+                              <Star className="w-3.5 h-3.5 fill-current" />
+                              {provider.rating.toFixed(1)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <span className="text-pink-500 font-medium text-sm shrink-0">
+                        Book Now →
+                      </span>
+                    </Link>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 
@@ -629,44 +733,67 @@ export default function LandingPage() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {marketplaceItems.map((item, index) => (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                className="bg-white rounded-2xl p-3 shadow-sm hover:shadow-lg transition-shadow border border-gray-100"
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 text-pink-500 animate-spin" />
+            </div>
+          ) : products.length === 0 ? (
+            <div className="text-center py-12">
+              <ShoppingBag className="w-12 h-12 text-pink-300 mx-auto mb-3" />
+              <p className="text-gray-500">No products listed yet.</p>
+              <Link
+                href="/marketplace"
+                className="text-pink-500 font-medium mt-2 inline-block"
               >
-                <div className="relative">
-                  {item.premium && (
-                    <span className="absolute top-2 left-2 bg-linear-to-r from-purple-500 to-pink-500 text-white text-xs px-2 py-1 rounded-full font-medium">
-                      PREMIUM
-                    </span>
-                  )}
-                  <Image
-                    src={item.image}
-                    alt={item.name}
-                    width={240}
-                    height={160}
-                    sizes="(max-width: 768px) 50vw, 25vw"
-                    className="w-full h-32 object-cover rounded-xl mb-3"
-                  />
-                </div>
-                <h3 className="font-semibold text-gray-900 text-sm">
-                  {item.name}
-                </h3>
-                <p className="text-gray-500 text-xs">{item.description}</p>
-                <div className="flex items-center justify-between mt-2">
-                  <span className="text-pink-500 font-bold">${item.price}</span>
-                  <button className="w-8 h-8 bg-pink-500 text-white rounded-full flex items-center justify-center hover:bg-pink-600 transition-colors">
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+                Check back soon →
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {products.map((product, index) => (
+                <motion.div
+                  key={product._id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <Link
+                    href={`/marketplace/${product._id}`}
+                    className="block bg-white rounded-2xl p-3 shadow-sm hover:shadow-lg transition-shadow border border-gray-100"
+                  >
+                    <div className="relative">
+                      {product.images?.[0] ? (
+                        <Image
+                          src={product.images[0]}
+                          alt={product.name}
+                          width={240}
+                          height={160}
+                          sizes="(max-width: 768px) 50vw, 25vw"
+                          className="w-full h-32 object-cover rounded-xl mb-3"
+                        />
+                      ) : (
+                        <div className="w-full h-32 bg-pink-50 rounded-xl mb-3 flex items-center justify-center">
+                          <ShoppingBag className="w-8 h-8 text-pink-200" />
+                        </div>
+                      )}
+                    </div>
+                    <h3 className="font-semibold text-gray-900 text-sm truncate">
+                      {product.name}
+                    </h3>
+                    <p className="text-gray-500 text-xs capitalize">
+                      {product.category}
+                    </p>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-pink-500 font-bold">
+                        NPR {product.price.toFixed(2)}
+                      </span>
+                    </div>
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -678,55 +805,79 @@ export default function LandingPage() {
               Lost & Found
             </h2>
             <Link
-              href="/lost-found"
+              href="/lost-and-found"
               className="text-pink-500 font-medium flex items-center gap-1 hover:gap-2 transition-all"
             >
               View All <ChevronRight className="w-4 h-4" />
             </Link>
           </div>
 
-          <div className="space-y-4 mb-8">
-            {lostFoundPets.map((pet, index) => (
-              <motion.div
-                key={pet.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                className="bg-white rounded-2xl p-4 flex items-center gap-4 shadow-sm"
-              >
-                <Image
-                  src={pet.image}
-                  alt={pet.name}
-                  width={64}
-                  height={64}
-                  sizes="64px"
-                  className="w-16 h-16 rounded-xl object-cover"
-                />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span
-                      className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                        pet.type === "LOST"
-                          ? "bg-red-100 text-red-600"
-                          : "bg-green-100 text-green-600"
-                      }`}
-                    >
-                      {pet.type}
-                    </span>
-                    <span className="text-gray-400 text-xs">{pet.time}</span>
-                  </div>
-                  <h3 className="font-semibold text-gray-900">{pet.name}</h3>
-                  <p className="text-gray-500 text-sm flex items-center gap-1">
-                    <MapPin className="w-3 h-3" /> {pet.location}
-                  </p>
-                </div>
-                <button className="border border-gray-200 text-gray-600 px-4 py-2 rounded-xl text-sm font-medium hover:border-pink-500 hover:text-pink-500 transition-all">
-                  View Details
-                </button>
-              </motion.div>
-            ))}
-          </div>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 text-pink-500 animate-spin" />
+            </div>
+          ) : lostFoundPosts.length === 0 ? (
+            <div className="text-center py-12">
+              <Search className="w-12 h-12 text-pink-300 mx-auto mb-3" />
+              <p className="text-gray-500">No lost or found posts yet.</p>
+            </div>
+          ) : (
+            <div className="space-y-4 mb-8">
+              {lostFoundPosts.map((post, index) => (
+                <motion.div
+                  key={post._id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <Link
+                    href={`/lost-and-found/${post._id}`}
+                    className="bg-white rounded-2xl p-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow"
+                  >
+                    {post.photos?.[0] ? (
+                      <Image
+                        src={post.photos[0]}
+                        alt={post.title}
+                        width={64}
+                        height={64}
+                        sizes="64px"
+                        className="w-16 h-16 rounded-xl object-cover"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 rounded-xl bg-pink-50 flex items-center justify-center shrink-0">
+                        <PawPrint className="w-6 h-6 text-pink-200" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span
+                          className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                            post.postType === "lost"
+                              ? "bg-red-100 text-red-600"
+                              : "bg-green-100 text-green-600"
+                          }`}
+                        >
+                          {post.postType.toUpperCase()}
+                        </span>
+                        <span className="text-gray-400 text-xs">
+                          {timeAgo(post.createdAt)}
+                        </span>
+                      </div>
+                      <h3 className="font-semibold text-gray-900 truncate">
+                        {post.title}
+                      </h3>
+                      <p className="text-gray-500 text-sm flex items-center gap-1">
+                        <MapPin className="w-3 h-3 shrink-0" />{" "}
+                        <span className="truncate">{post.locationAddress}</span>
+                      </p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400 shrink-0" />
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          )}
 
           {/* Help Reunite Section */}
           <motion.div
@@ -741,9 +892,12 @@ export default function LandingPage() {
             <p className="text-gray-500 mb-4">
               Post about lost or found pets in your community
             </p>
-            <button className="bg-linear-to-r from-pink-500 to-rose-500 text-white px-6 py-3 rounded-full font-semibold hover:shadow-lg hover:shadow-pink-500/30 transition-all">
+            <Link
+              href="/lost-and-found/create"
+              className="inline-block bg-linear-to-r from-pink-500 to-rose-500 text-white px-6 py-3 rounded-full font-semibold hover:shadow-lg hover:shadow-pink-500/30 transition-all"
+            >
               Post Lost/Found Pet
-            </button>
+            </Link>
           </motion.div>
         </div>
       </section>
@@ -781,18 +935,20 @@ export default function LandingPage() {
             <div className="grid grid-cols-3 gap-4 mt-12 max-w-xl mx-auto">
               <div>
                 <p className="text-3xl md:text-4xl font-bold text-white">
-                  500+
+                  {stats.adoptions}+
                 </p>
-                <p className="text-pink-100 text-sm">Pets Adopted</p>
+                <p className="text-pink-100 text-sm">Adoptable Pets</p>
               </div>
               <div>
                 <p className="text-3xl md:text-4xl font-bold text-white">
-                  1,200+
+                  {stats.products}+
                 </p>
-                <p className="text-pink-100 text-sm">Active Users</p>
+                <p className="text-pink-100 text-sm">Products Listed</p>
               </div>
               <div>
-                <p className="text-3xl md:text-4xl font-bold text-white">50+</p>
+                <p className="text-3xl md:text-4xl font-bold text-white">
+                  {stats.providers}+
+                </p>
                 <p className="text-pink-100 text-sm">Service Partners</p>
               </div>
             </div>
@@ -819,88 +975,72 @@ export default function LandingPage() {
           {/* Links */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
             <div>
-              <h4 className="font-semibold mb-4">About</h4>
+              <h4 className="font-semibold mb-4">Services</h4>
               <ul className="space-y-2 text-gray-400">
                 <li>
                   <Link
-                    href="/about"
+                    href="/adopt"
                     className="hover:text-pink-400 transition-colors"
                   >
-                    Our Story
+                    Adoption
                   </Link>
                 </li>
                 <li>
                   <Link
-                    href="/how-it-works"
+                    href="/services"
                     className="hover:text-pink-400 transition-colors"
                   >
-                    How It Works
+                    Pet Services
                   </Link>
                 </li>
                 <li>
                   <Link
-                    href="/careers"
+                    href="/marketplace"
                     className="hover:text-pink-400 transition-colors"
                   >
-                    Careers
+                    Marketplace
                   </Link>
                 </li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Support</h4>
+              <h4 className="font-semibold mb-4">Community</h4>
               <ul className="space-y-2 text-gray-400">
                 <li>
                   <Link
-                    href="/help"
+                    href="/lost-and-found"
                     className="hover:text-pink-400 transition-colors"
                   >
-                    Help Center
+                    Lost & Found
                   </Link>
                 </li>
                 <li>
                   <Link
-                    href="/contact"
+                    href="/help-support"
                     className="hover:text-pink-400 transition-colors"
                   >
-                    Contact Us
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/faq"
-                    className="hover:text-pink-400 transition-colors"
-                  >
-                    FAQ
+                    Help & Support
                   </Link>
                 </li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Legal</h4>
+              <h4 className="font-semibold mb-4">Account</h4>
               <ul className="space-y-2 text-gray-400">
                 <li>
                   <Link
-                    href="/privacy"
+                    href="/login"
                     className="hover:text-pink-400 transition-colors"
                   >
-                    Privacy Policy
+                    Sign In
                   </Link>
                 </li>
                 <li>
                   <Link
-                    href="/terms"
+                    href="/register"
                     className="hover:text-pink-400 transition-colors"
                   >
-                    Terms of Service
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/cookies"
-                    className="hover:text-pink-400 transition-colors"
-                  >
-                    Cookie Policy
+                    Create Account
                   </Link>
                 </li>
               </ul>
@@ -938,7 +1078,7 @@ export default function LandingPage() {
 
           {/* Copyright */}
           <div className="border-t border-gray-800 pt-8 text-center text-gray-400 text-sm">
-            © 2024 PurrfectCare. All rights reserved.
+            © {new Date().getFullYear()} PurrfectCare. All rights reserved.
           </div>
         </div>
       </footer>
