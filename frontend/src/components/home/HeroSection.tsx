@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, PawPrint, Heart, MessageCircle } from "lucide-react";
+import { Bell, PawPrint, Heart, MessageCircle, Search } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface HeroSectionProps {
@@ -35,7 +35,7 @@ export default function HeroSection({ userName }: HeroSectionProps) {
       </div>
 
       {/* Action cards */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <Link href="/pets">
           <motion.div
             whileTap={{ scale: 0.97 }}
@@ -62,6 +62,21 @@ export default function HeroSection({ userName }: HeroSectionProps) {
             <div>
               <p className="text-white font-semibold text-base">Adopt</p>
               <p className="text-teal-100 text-xs">Find a friend</p>
+            </div>
+          </motion.div>
+        </Link>
+
+        <Link href="/lost-and-found">
+          <motion.div
+            whileTap={{ scale: 0.97 }}
+            className="bg-white/15 backdrop-blur-sm border border-white/20 rounded-2xl p-4 min-h-30 flex flex-col justify-between"
+          >
+            <div className="w-10 h-10 bg-white/25 rounded-xl flex items-center justify-center">
+              <Search className="w-5 h-5 text-amber-200" />
+            </div>
+            <div>
+              <p className="text-white font-semibold text-base">Lost & Found</p>
+              <p className="text-teal-100 text-xs">Help find pets</p>
             </div>
           </motion.div>
         </Link>
