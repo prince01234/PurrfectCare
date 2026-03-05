@@ -27,6 +27,7 @@ import {
   providerRouter as serviceProviderRoutes,
   bookingRouter as bookingRoutes,
 } from "./routes/serviceRoute.js";
+import lostFoundRoutes from "./routes/lostFoundRoute.js";
 
 import logger from "./middlewares/logger.js";
 import connectCloudinary from "./config/cloudinary.js";
@@ -98,6 +99,9 @@ app.use("/api/map", mapRoutes);
 // Service Booking Routes
 app.use("/api/service-providers", serviceProviderRoutes);
 app.use("/api/bookings", bookingRoutes);
+
+// Lost & Found Routes
+app.use("/api/lost-found", lostFoundRoutes);
 
 // Initialize Socket.IO
 const io = initializeSocket(httpServer);
