@@ -1,6 +1,8 @@
 import User from "../models/User.js";
 import AdoptionListing from "../models/AdoptionListing.js";
+import LostFoundPost from "../models/LostFoundPost.js";
 import { ADMIN } from "../constants/roles.js";
+import { POST_STATUS } from "../constants/lostFound.js";
 
 /**
  * Get all approved service providers that have valid coordinates.
@@ -50,7 +52,32 @@ const getAdoptionLocations = async () => {
   return listings;
 };
 
+/**
+ * Get all active lost/found posts that have valid coordinates.
+ */
+const getLostFoundLocations = async (queryParams = {}) => {
+  const { postType, species } = queryParams;
+
+  const filter = {
+    status: POST_STATUS.ACTIVE,
+    latitude: { $ne: null },
+    longitude: { $ne: null },
+  };
+
+  if (postType) filter.postType = postType.toLowerCase();
+  if (species) filter.species = species.toLowerCase();
+
+  const posts = await LostFoundPost.find(filter)
+    .select(
+      "postType title species breed petName latitude longitude locationAddress photos status eventDate createdBy",
+    )
+    .populate("createdBy", "name profileImage");
+
+  return posts;
+};
+
 export default {
   getProviderLocations,
   getAdoptionLocations,
+  getLostFoundLocations,
 };
