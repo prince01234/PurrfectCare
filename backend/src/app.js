@@ -28,10 +28,12 @@ import {
   bookingRouter as bookingRoutes,
 } from "./routes/serviceRoute.js";
 import lostFoundRoutes from "./routes/lostFoundRoute.js";
+import notificationRoutes from "./routes/notificationRoute.js";
 
 import logger from "./middlewares/logger.js";
 import connectCloudinary from "./config/cloudinary.js";
 import reminderScheduler from "./jobs/reminderScheduler.js";
+import { setIO } from "./config/realtime.js";
 
 const app = express();
 const httpServer = createServer(app);
@@ -106,6 +108,10 @@ app.use("/api/lost-found", lostFoundRoutes);
 // Initialize Socket.IO
 const io = initializeSocket(httpServer);
 app.set("io", io);
+setIO(io);
+
+// Notification Routes
+app.use("/api/notifications", notificationRoutes);
 
 // Start reminder scheduler
 reminderScheduler.startScheduler();
