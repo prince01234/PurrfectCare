@@ -33,6 +33,12 @@ export default function RootLayout({
         <Providers>
           <Toaster
             position="top-center"
+            gutter={10}
+            containerStyle={{
+              top: 14,
+              left: 12,
+              right: 12,
+            }}
             toastOptions={{
               duration: 4000,
               style: {
@@ -40,6 +46,8 @@ export default function RootLayout({
                 color: "#363636",
                 padding: "16px",
                 borderRadius: "16px",
+                width: "100%",
+                maxWidth: "420px",
                 boxShadow: "0 10px 40px rgba(0,0,0,0.1)",
               },
               success: {
