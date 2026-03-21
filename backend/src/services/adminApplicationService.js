@@ -2,6 +2,7 @@ import AdminApplication from "../models/AdminApplication.js";
 import User from "../models/User.js";
 import { ADMIN } from "../constants/roles.js";
 import mongoose from "mongoose";
+import inAppNotificationService from "./inAppNotificationService.js";
 
 const isValidObjectId = mongoose.Types.ObjectId.isValid;
 
@@ -30,6 +31,20 @@ const applyAsAdmin = async (userId, data) => {
   const application = await AdminApplication.create({
     userId,
     ...data,
+  });
+
+  await inAppNotificationService.createNotification({
+    userId,
+    type: "application",
+    title: "Application submitted",
+    body: "Your service provider application has been submitted for review.",
+    entityId: application._id.toString(),
+    entityType: "admin_application",
+    data: {
+      applicationId: application._id.toString(),
+      serviceType: application.serviceType,
+      status: application.status,
+    },
   });
 
   return application;
@@ -134,6 +149,20 @@ const approveApplication = async (
   application.reviewNotes = reviewNotes;
   await application.save();
 
+  await inAppNotificationService.createNotification({
+    userId: application.userId.toString(),
+    type: "application",
+    title: "Application approved",
+    body: "Your service provider application was approved.",
+    entityId: application._id.toString(),
+    entityType: "admin_application",
+    data: {
+      applicationId: application._id.toString(),
+      serviceType: application.serviceType,
+      status: application.status,
+    },
+  });
+
   return application;
 };
 
@@ -169,6 +198,20 @@ const rejectApplication = async (
   application.reviewedBy = superAdminId;
   application.rejectionReason = rejectionReason;
   await application.save();
+
+  await inAppNotificationService.createNotification({
+    userId: application.userId.toString(),
+    type: "application",
+    title: "Application rejected",
+    body: rejectionReason,
+    entityId: application._id.toString(),
+    entityType: "admin_application",
+    data: {
+      applicationId: application._id.toString(),
+      serviceType: application.serviceType,
+      status: application.status,
+    },
+  });
 
   return application;
 };

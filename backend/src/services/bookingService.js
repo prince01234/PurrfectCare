@@ -11,6 +11,7 @@ import {
   DATE_RANGE_SERVICES,
 } from "../constants/booking.js";
 import mongoose from "mongoose";
+import inAppNotificationService from "./inAppNotificationService.js";
 
 const { isValidObjectId } = mongoose;
 
@@ -28,6 +29,15 @@ const hasSameServiceOption = (
   }
 
   return existingName === incomingName;
+};
+
+const getBookingLabel = (booking, provider = null) => {
+  const optionName = booking.serviceOption?.name?.trim();
+  if (optionName) {
+    return optionName;
+  }
+
+  return provider?.name || "your booking";
 };
 
 // Create a new booking
@@ -190,11 +200,29 @@ const createBooking = async (userId, data) => {
 
   const booking = await Booking.create(bookingData);
 
-  return booking.populate([
+  const populatedBooking = await booking.populate([
     { path: "providerId", select: "name serviceType image" },
     { path: "petIds", select: "name species photos" },
     { path: "userId", select: "name email profileImage" },
   ]);
+
+  await inAppNotificationService.createNotification({
+    userId: provider.userId,
+    type: "booking",
+    title: "New booking request",
+    body: `${populatedBooking.userId?.name || "A customer"} requested ${getBookingLabel(populatedBooking, provider)}.`,
+    entityId: populatedBooking._id.toString(),
+    entityType: "booking",
+    data: {
+      bookingId: populatedBooking._id.toString(),
+      providerId: provider._id.toString(),
+      providerName: provider.name,
+      customerId: populatedBooking.userId?._id?.toString() || userId,
+      customerName: populatedBooking.userId?.name || "Customer",
+    },
+  });
+
+  return populatedBooking;
 };
 
 // Get bookings for a user
@@ -326,10 +354,26 @@ const confirmBooking = async (bookingId, userId, providerNotes) => {
   if (providerNotes) booking.providerNotes = providerNotes;
   await booking.save();
 
-  return booking.populate([
+  const populatedBooking = await booking.populate([
     { path: "userId", select: "name email profileImage" },
     { path: "petIds", select: "name species photos" },
   ]);
+
+  await inAppNotificationService.createNotification({
+    userId: populatedBooking.userId?._id?.toString() || booking.userId.toString(),
+    type: "booking",
+    title: "Booking confirmed",
+    body: `${booking.providerId.name || "Your provider"} confirmed ${getBookingLabel(booking, booking.providerId)}.`,
+    entityId: booking._id.toString(),
+    entityType: "booking",
+    data: {
+      bookingId: booking._id.toString(),
+      providerId: booking.providerId._id.toString(),
+      providerName: booking.providerId.name,
+    },
+  });
+
+  return populatedBooking;
 };
 
 // Reject a booking (provider only)
@@ -358,15 +402,36 @@ const rejectBooking = async (bookingId, userId, providerNotes) => {
   if (providerNotes) booking.providerNotes = providerNotes;
   await booking.save();
 
-  return booking.populate([
+  const populatedBooking = await booking.populate([
     { path: "userId", select: "name email profileImage" },
     { path: "petIds", select: "name species photos" },
   ]);
+
+  await inAppNotificationService.createNotification({
+    userId: populatedBooking.userId?._id?.toString() || booking.userId.toString(),
+    type: "booking",
+    title: "Booking rejected",
+    body:
+      providerNotes?.trim() ||
+      `${booking.providerId.name || "Your provider"} rejected ${getBookingLabel(booking, booking.providerId)}.`,
+    entityId: booking._id.toString(),
+    entityType: "booking",
+    data: {
+      bookingId: booking._id.toString(),
+      providerId: booking.providerId._id.toString(),
+      providerName: booking.providerId.name,
+    },
+  });
+
+  return populatedBooking;
 };
 
 // Cancel a booking (user only, before confirmation)
 const cancelBooking = async (bookingId, userId) => {
-  const booking = await Booking.findById(bookingId);
+  const booking = await Booking.findById(bookingId).populate(
+    "providerId",
+    "name userId",
+  );
 
   if (!booking) {
     throw { statusCode: 404, message: "Booking not found" };
@@ -391,6 +456,21 @@ const cancelBooking = async (bookingId, userId) => {
 
   booking.status = BOOKING_STATUS.CANCELLED;
   await booking.save();
+
+  await inAppNotificationService.createNotification({
+    userId: booking.providerId.userId.toString(),
+    type: "booking",
+    title: "Booking cancelled",
+    body: "A customer cancelled one of your bookings.",
+    entityId: booking._id.toString(),
+    entityType: "booking",
+    data: {
+      bookingId: booking._id.toString(),
+      providerId: booking.providerId._id.toString(),
+      providerName: booking.providerId.name,
+      customerId: booking.userId.toString(),
+    },
+  });
 
   return booking;
 };
@@ -420,10 +500,26 @@ const completeBooking = async (bookingId, userId) => {
   booking.status = BOOKING_STATUS.COMPLETED;
   await booking.save();
 
-  return booking.populate([
+  const populatedBooking = await booking.populate([
     { path: "userId", select: "name email profileImage" },
     { path: "petIds", select: "name species photos" },
   ]);
+
+  await inAppNotificationService.createNotification({
+    userId: populatedBooking.userId?._id?.toString() || booking.userId.toString(),
+    type: "booking",
+    title: "Booking completed",
+    body: `${booking.providerId.name || "Your provider"} marked ${getBookingLabel(booking, booking.providerId)} as completed.`,
+    entityId: booking._id.toString(),
+    entityType: "booking",
+    data: {
+      bookingId: booking._id.toString(),
+      providerId: booking.providerId._id.toString(),
+      providerName: booking.providerId.name,
+    },
+  });
+
+  return populatedBooking;
 };
 
 // Get booked slots for a provider on a specific date (public — for availability checking)
@@ -472,7 +568,9 @@ const bookingPaymentViaKhalti = async (id, user) => {
     throw { statusCode: 400, message: "Invalid booking ID" };
   }
 
-  const booking = await Booking.findById(id).populate("payment");
+  const booking = await Booking.findById(id)
+    .populate("payment")
+    .populate("providerId", "name userId serviceType");
 
   if (!booking) {
     throw { statusCode: 404, message: "Booking not found" };
@@ -556,13 +654,16 @@ const confirmBookingPayment = async (id, status, user) => {
     status: "completed",
   });
 
-  const provider = await ServiceProvider.findById(booking.providerId).select(
-    "serviceType",
-  );
+  const provider =
+    booking.providerId?.serviceType && booking.providerId?.userId
+      ? booking.providerId
+      : await ServiceProvider.findById(booking.providerId).select(
+          "serviceType name userId",
+        );
 
   const shouldAutoConfirm = provider && provider.serviceType !== "pet_adoption";
 
-  return await Booking.findByIdAndUpdate(
+  const updatedBooking = await Booking.findByIdAndUpdate(
     id,
     {
       paymentStatus: "completed",
@@ -570,6 +671,42 @@ const confirmBookingPayment = async (id, status, user) => {
     },
     { new: true },
   );
+
+  await inAppNotificationService.createNotification({
+    userId: user._id.toString(),
+    type: "booking",
+    title: "Booking payment confirmed",
+    body: shouldAutoConfirm
+      ? "Your booking payment was confirmed and the booking is now confirmed."
+      : "Your booking payment was confirmed successfully.",
+    entityId: updatedBooking._id.toString(),
+    entityType: "booking",
+    data: {
+      bookingId: updatedBooking._id.toString(),
+      paymentStatus: "completed",
+    },
+  });
+
+  if (provider?.userId) {
+    await inAppNotificationService.createNotification({
+      userId: provider.userId.toString(),
+      type: "booking",
+      title: "Booking payment received",
+      body: shouldAutoConfirm
+        ? "A customer paid for a booking and it has been auto-confirmed."
+        : "A customer paid for a booking that is awaiting your review.",
+      entityId: updatedBooking._id.toString(),
+      entityType: "booking",
+      data: {
+        bookingId: updatedBooking._id.toString(),
+        providerId: provider._id?.toString?.() || booking.providerId._id?.toString?.(),
+        providerName: provider.name || null,
+        paymentStatus: "completed",
+      },
+    });
+  }
+
+  return updatedBooking;
 };
 
 export default {
