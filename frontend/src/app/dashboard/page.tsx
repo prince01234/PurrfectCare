@@ -9,6 +9,7 @@ import toast from "react-hot-toast";
 import { AlertTriangle, Calendar, Pill, Syringe, Clock } from "lucide-react";
 
 import { useAuth } from "@/context/AuthContext";
+import { useNotifications } from "@/context/NotificationCenterContext";
 import { petApi } from "@/lib/api";
 import type { Pet, Reminder } from "@/lib/api";
 import MobileLayout from "@/components/layout/MobileLayout";
@@ -76,6 +77,7 @@ function formatDueDate(dateString: string): string {
 
 export default function DashboardPage() {
   const { user, isLoading: authLoading } = useAuth();
+  const { unreadCount, openSheet } = useNotifications();
   const router = useRouter();
   const [pets, setPets] = useState<DisplayPet[]>([]);
   const [upcomingReminders, setUpcomingReminders] = useState<
@@ -224,7 +226,11 @@ export default function DashboardPage() {
 
   return (
     <MobileLayout>
-      <HeroSection userName={user.name} />
+      <HeroSection
+        userName={user.name}
+        notificationCount={unreadCount}
+        onNotificationClick={openSheet}
+      />
 
       {/* Most Urgent Pet Card */}
       {mostUrgentPet && (
