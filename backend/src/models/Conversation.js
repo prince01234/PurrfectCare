@@ -52,7 +52,7 @@ const conversationSchema = new mongoose.Schema(
   },
 );
 
-conversationSchema.pre("validate", function (next) {
+conversationSchema.pre("validate", function () {
   if (Array.isArray(this.participants) && this.participants.length > 0) {
     const normalizedParticipants = this.participants
       .map((id) => id?.toString?.())
@@ -61,8 +61,6 @@ conversationSchema.pre("validate", function (next) {
 
     this.participantKey = normalizedParticipants.join(":");
   }
-
-  next();
 });
 
 // Compound unique index using deterministic participantKey + context + contextRef
