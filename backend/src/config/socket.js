@@ -1,7 +1,12 @@
 import { Server } from "socket.io";
 import { verifyJWT } from "../utils/jwt.js";
 import messagingService from "../services/messagingService.js";
+import inAppNotificationService from "../services/inAppNotificationService.js";
 
+const getMessagePreview = (text) => {
+  if (!text) return "You have a new message";
+  return text.length > 90 ? `${text.slice(0, 87)}...` : text;
+};
 
 const initializeSocket = (httpServer) => {
   const io = new Server(httpServer, {
@@ -62,6 +67,23 @@ const initializeSocket = (httpServer) => {
             message: result.message,
             conversationId,
           });
+
+          await inAppNotificationService.createNotification(
+            {
+              userId: recipientId,
+              type: "message",
+              title: `New message from ${result.message.sender?.name || "someone"}`,
+              body: getMessagePreview(result.message.text),
+              entityId: conversationId,
+              entityType: "conversation",
+              data: {
+                conversationId,
+                senderId: result.message.sender?._id || userId,
+                senderName: result.message.sender?.name || "Unknown user",
+              },
+            },
+            io,
+          );
         }
 
         // Acknowledge to sender
@@ -98,6 +120,11 @@ const initializeSocket = (httpServer) => {
       try {
         const { conversationId } = data;
         await messagingService.markConversationAsRead(conversationId, userId);
+        await inAppNotificationService.markEntityNotificationsAsRead(
+          userId,
+          "conversation",
+          conversationId,
+        );
 
         // Notify the other participant
         const conversation = await messagingService.getConversationById(
