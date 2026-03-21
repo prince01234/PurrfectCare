@@ -53,6 +53,12 @@ export type {
   GetOrCreateConversationResponse,
   SendMessageResponse,
 } from "./messaging";
+export { notificationApi } from "./notification";
+export type {
+  AppNotification,
+  NotificationType,
+  NotificationListResponse,
+} from "./notification";
 export { mapApi } from "./map";
 export type {
   ProviderLocation,

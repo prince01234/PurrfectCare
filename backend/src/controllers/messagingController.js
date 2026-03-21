@@ -1,4 +1,10 @@
 import messagingService from "../services/messagingService.js";
+import inAppNotificationService from "../services/inAppNotificationService.js";
+
+const getMessagePreview = (text) => {
+  if (!text) return "You have a new message";
+  return text.length > 90 ? `${text.slice(0, 87)}...` : text;
+};
 
 // Get or create a conversation
 const getOrCreateConversation = async (req, res) => {
@@ -69,6 +75,23 @@ const sendMessage = async (req, res) => {
           message: data.message,
           conversationId: req.params.id,
         });
+
+        await inAppNotificationService.createNotification(
+          {
+            userId: recipientId,
+            type: "message",
+            title: `New message from ${data.message.sender?.name || "someone"}`,
+            body: getMessagePreview(data.message.text),
+            entityId: req.params.id,
+            entityType: "conversation",
+            data: {
+              conversationId: req.params.id,
+              senderId: data.message.sender?._id || req.user._id,
+              senderName: data.message.sender?.name || "Unknown user",
+            },
+          },
+          io,
+        );
       }
     }
 
@@ -101,6 +124,11 @@ const markAsRead = async (req, res) => {
     const data = await messagingService.markConversationAsRead(
       req.params.id,
       req.user._id,
+    );
+    await inAppNotificationService.markEntityNotificationsAsRead(
+      req.user._id,
+      "conversation",
+      req.params.id,
     );
 
     // Notify the other participant that messages were read

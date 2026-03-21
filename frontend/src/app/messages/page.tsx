@@ -65,6 +65,20 @@ export default function MessagesPage() {
     return unsub;
   }, [onNewMessage, fetchConversations]);
 
+  useEffect(() => {
+    if (!user) {
+      return () => undefined;
+    }
+
+    const interval = window.setInterval(() => {
+      void fetchConversations();
+    }, 5000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [fetchConversations, user]);
+
   // Filter by search query
   const filteredConversations = conversations.filter((conv) => {
     if (!searchQuery.trim()) return true;

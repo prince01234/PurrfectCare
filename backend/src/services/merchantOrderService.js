@@ -1,5 +1,9 @@
 import Order, { isValidObjectId } from "../models/Order.js";
 import Product from "../models/Product.js";
+import inAppNotificationService from "./inAppNotificationService.js";
+
+const formatOrderStatus = (status) =>
+  status ? status.charAt(0).toUpperCase() + status.slice(1) : "Updated";
 
 const merchantOrderService = {
   /**
@@ -156,6 +160,21 @@ const merchantOrderService = {
     const updatedOrder = await Order.findById(orderId)
       .populate("userId", "name email profileImage phone")
       .populate("payment");
+
+    if (updatedOrder?.userId?._id) {
+      await inAppNotificationService.createNotification({
+        userId: updatedOrder.userId._id.toString(),
+        type: "order",
+        title: `Order ${formatOrderStatus(newStatus)}`,
+        body: `Order #${updatedOrder._id.toString().slice(-6)} is now ${newStatus}.`,
+        entityId: updatedOrder._id.toString(),
+        entityType: "order",
+        data: {
+          orderId: updatedOrder._id.toString(),
+          status: newStatus,
+        },
+      });
+    }
 
     return updatedOrder;
   },

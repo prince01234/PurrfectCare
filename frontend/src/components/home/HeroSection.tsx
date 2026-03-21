@@ -1,51 +1,86 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, PawPrint, Heart, MessageCircle, Search } from "lucide-react";
+import {
+  ArrowUpRight,
+  Bell,
+  PawPrint,
+  Heart,
+  MessageCircle,
+} from "lucide-react";
 import { motion } from "framer-motion";
 
 interface HeroSectionProps {
   userName?: string;
+  notificationCount?: number;
+  onNotificationClick?: () => void;
 }
 
-export default function HeroSection({ userName }: HeroSectionProps) {
+export default function HeroSection({
+  userName,
+  notificationCount = 0,
+  onNotificationClick,
+}: HeroSectionProps) {
   return (
-    <div className="bg-linear-to-br from-teal-500 to-teal-600 rounded-b-4xl px-5 pt-12 pb-8">
+    <div className="relative overflow-hidden rounded-b-4xl bg-linear-to-br from-teal-500 via-teal-600 to-cyan-700 px-5 pb-5 pt-8 shadow-[0_14px_36px_rgba(13,148,136,0.26)]">
+      <div className="pointer-events-none absolute -right-14 -top-10 h-36 w-36 rounded-full bg-white/12 blur-2xl" />
+      <div className="pointer-events-none absolute -bottom-12 -left-8 h-28 w-28 rounded-full bg-cyan-300/20 blur-2xl" />
+
       {/* Top bar */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-white text-2xl font-bold tracking-tight">
+      <div className="relative mb-4 flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold tracking-tight text-white">
             PurrfectCare
           </h1>
-          <p className="text-teal-100 text-sm">All-in-One Pet Care</p>
+          <p className="mt-1 text-[13px] text-teal-100">
+            {userName
+              ? `Hi ${userName}, stay on top of your pets`
+              : "All-in-One Pet Care"}
+          </p>
+          <span className="mt-2 inline-flex rounded-full border border-white/25 bg-white/10 px-2 py-0.5 text-[10px] font-semibold tracking-[0.08em] text-white/90">
+            QUICK ACTIONS
+          </span>
         </div>
+
         <div className="flex items-center gap-2">
           <Link
             href="/messages"
-            className="relative w-10 h-10 flex items-center justify-center rounded-full bg-white/15 backdrop-blur-sm"
+            className="relative flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/15 backdrop-blur-sm transition hover:bg-white/25"
           >
-            <MessageCircle className="w-5 h-5 text-white" />
+            <MessageCircle className="h-4.5 w-4.5 text-white" />
           </Link>
-          <button className="relative w-10 h-10 flex items-center justify-center rounded-full bg-white/15 backdrop-blur-sm">
-            <Bell className="w-5 h-5 text-white" />
-            {/* Notification dot */}
-            <span className="absolute top-1.5 right-2 w-2 h-2 bg-red-500 rounded-full" />
+
+          <button
+            type="button"
+            onClick={onNotificationClick}
+            className="relative flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/15 backdrop-blur-sm transition hover:bg-white/25"
+          >
+            <Bell className="h-4.5 w-4.5 text-white" />
+            {notificationCount > 0 ? (
+              <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-sm">
+                {notificationCount > 9 ? "9+" : notificationCount}
+              </span>
+            ) : null}
           </button>
         </div>
       </div>
 
       {/* Action cards */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="relative grid grid-cols-2 gap-3">
         <Link href="/pets">
           <motion.div
             whileTap={{ scale: 0.97 }}
-            className="bg-white/15 backdrop-blur-sm border border-white/20 rounded-2xl p-4 min-h-30 flex flex-col justify-between"
+            className="group flex min-h-24 flex-col justify-between rounded-2xl border border-white/25 bg-white/14 p-3.5 backdrop-blur-sm transition hover:bg-white/20"
           >
-            <div className="w-10 h-10 bg-white/25 rounded-xl flex items-center justify-center">
-              <PawPrint className="w-5 h-5 text-white" />
+            <div className="flex items-start justify-between">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/25">
+                <PawPrint className="h-4.5 w-4.5 text-white" />
+              </div>
+              <ArrowUpRight className="h-4 w-4 text-white/70 transition group-hover:text-white" />
             </div>
-            <div>
-              <p className="text-white font-semibold text-base">My Pets</p>
+
+            <div className="mt-3.5">
+              <p className="text-sm font-semibold text-white">My Pets</p>
               <p className="text-teal-100 text-xs">Health & records</p>
             </div>
           </motion.div>
@@ -54,29 +89,21 @@ export default function HeroSection({ userName }: HeroSectionProps) {
         <Link href="/adopt">
           <motion.div
             whileTap={{ scale: 0.97 }}
-            className="bg-white/15 backdrop-blur-sm border border-white/20 rounded-2xl p-4 min-h-30 flex flex-col justify-between"
+            className="group flex min-h-24 flex-col justify-between rounded-2xl border border-white/25 bg-white/14 p-3.5 backdrop-blur-sm transition hover:bg-white/20"
           >
-            <div className="w-10 h-10 bg-white/25 rounded-xl flex items-center justify-center">
-              <Heart className="w-5 h-5 text-pink-200" fill="currentColor" />
+            <div className="flex items-start justify-between">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/25">
+                <Heart
+                  className="h-4.5 w-4.5 text-pink-200"
+                  fill="currentColor"
+                />
+              </div>
+              <ArrowUpRight className="h-4 w-4 text-white/70 transition group-hover:text-white" />
             </div>
-            <div>
-              <p className="text-white font-semibold text-base">Adopt</p>
-              <p className="text-teal-100 text-xs">Find a friend</p>
-            </div>
-          </motion.div>
-        </Link>
 
-        <Link href="/lost-and-found">
-          <motion.div
-            whileTap={{ scale: 0.97 }}
-            className="bg-white/15 backdrop-blur-sm border border-white/20 rounded-2xl p-4 min-h-30 flex flex-col justify-between"
-          >
-            <div className="w-10 h-10 bg-white/25 rounded-xl flex items-center justify-center">
-              <Search className="w-5 h-5 text-amber-200" />
-            </div>
-            <div>
-              <p className="text-white font-semibold text-base">Lost & Found</p>
-              <p className="text-teal-100 text-xs">Help find pets</p>
+            <div className="mt-3.5">
+              <p className="text-sm font-semibold text-white">Adopt</p>
+              <p className="text-teal-100 text-xs">Find a friend</p>
             </div>
           </motion.div>
         </Link>

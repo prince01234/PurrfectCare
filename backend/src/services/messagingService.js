@@ -53,44 +53,61 @@ const getOrCreateConversation = async (
     recipientId,
   );
 
-  // Try to find existing conversation (new + legacy shape)
-  let conversation = await Conversation.findOne({
+  // Canonical identity: one room per participant pair regardless of service context.
+  // Also supports legacy conversations that might not have participantKey.
+  const existingConversations = await Conversation.find({
     $or: [
       {
         participantKey,
-        context,
-        contextRef: contextRef || null,
       },
       {
         participants: { $all: participants, $size: 2 },
-        context,
-        contextRef: contextRef || null,
       },
     ],
-  }).populate("participants", "name email profileImage roles serviceType");
+  })
+    .sort({ updatedAt: -1 })
+    .populate("participants", "name email profileImage roles serviceType");
+
+  let conversation = existingConversations[0] || null;
 
   if (conversation) {
+    let shouldSave = false;
+
     if (!conversation.participantKey) {
       conversation.participantKey = participantKey;
+      shouldSave = true;
+    }
+
+    // Normalize to a context-agnostic canonical room.
+    if (conversation.context !== "direct") {
+      conversation.context = "direct";
+      shouldSave = true;
+    }
+
+    if (conversation.contextRef !== null) {
+      conversation.contextRef = null;
+      shouldSave = true;
+    }
+
+    if (shouldSave) {
       await conversation.save();
     }
+
     return { conversation, isNew: false };
   }
 
-  // Create new conversation (race-safe)
+  // Create canonical conversation.
   try {
     conversation = await Conversation.findOneAndUpdate(
       {
         participantKey,
-        context,
-        contextRef: contextRef || null,
       },
       {
         $setOnInsert: {
           participants,
           participantKey,
-          context,
-          contextRef: contextRef || null,
+          context: "direct",
+          contextRef: null,
           readBy: [userId],
         },
       },
@@ -103,8 +120,6 @@ const getOrCreateConversation = async (
     if (error?.code === 11000) {
       conversation = await Conversation.findOne({
         participantKey,
-        context,
-        contextRef: contextRef || null,
       });
     } else {
       throw error;
@@ -138,6 +153,76 @@ const getConversations = async (userId, query = {}) => {
       .limit(parseInt(limit)),
     Conversation.countDocuments(filter),
   ]);
+
+  const missingLastMessageConversationIds = conversations
+    .filter((conversation) => {
+      const text = conversation?.lastMessage?.text;
+      const timestamp = conversation?.lastMessage?.timestamp;
+      return !text || !timestamp;
+    })
+    .map((conversation) => conversation._id);
+
+  if (missingLastMessageConversationIds.length > 0) {
+    const latestMessages = await Message.aggregate([
+      {
+        $match: {
+          conversationId: { $in: missingLastMessageConversationIds },
+        },
+      },
+      {
+        $sort: { createdAt: -1 },
+      },
+      {
+        $group: {
+          _id: "$conversationId",
+          text: { $first: "$text" },
+          sender: { $first: "$sender" },
+          timestamp: { $first: "$createdAt" },
+        },
+      },
+    ]);
+
+    if (latestMessages.length > 0) {
+      const latestByConversationId = new Map(
+        latestMessages.map((message) => [message._id.toString(), message]),
+      );
+
+      const conversationUpdates = [];
+
+      conversations.forEach((conversation) => {
+        const latest = latestByConversationId.get(conversation._id.toString());
+
+        if (!latest) {
+          return;
+        }
+
+        conversation.lastMessage = {
+          text: latest.text,
+          sender: latest.sender,
+          timestamp: latest.timestamp,
+        };
+
+        conversationUpdates.push({
+          updateOne: {
+            filter: { _id: conversation._id },
+            update: {
+              $set: {
+                lastMessage: {
+                  text: latest.text,
+                  sender: latest.sender,
+                  timestamp: latest.timestamp,
+                },
+              },
+            },
+          },
+        });
+      });
+
+      if (conversationUpdates.length > 0) {
+        await Conversation.bulkWrite(conversationUpdates);
+      }
+    }
+  }
 
   return {
     conversations,

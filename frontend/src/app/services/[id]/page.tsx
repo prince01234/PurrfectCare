@@ -14,11 +14,15 @@ import {
   Clock,
   MessageCircle,
   ChevronRight,
+  ChevronLeft,
+  Calendar,
 } from "lucide-react";
 import MobileLayout from "@/components/layout/MobileLayout";
-import { serviceProviderApi } from "@/lib/api/service";
+import { serviceProviderApi, bookingApi } from "@/lib/api/service";
 import { messagingApi } from "@/lib/api/messaging";
 import type { ServiceProvider } from "@/lib/api/service";
+import { petApi } from "@/lib/api/pet";
+import type { Pet } from "@/lib/api/pet";
 import { useAuth } from "@/context/AuthContext";
 import DynamicMapModal from "@/components/ui/DynamicMapModal";
 import type { MapMarker } from "@/components/ui/DynamicMapModal";
@@ -64,6 +68,50 @@ const LEGACY_SERVICE_TYPE_PATHS: Record<string, string> = {
 
 type TabKey = "services" | "about" | "reviews";
 
+const DAY_NAME_MAP: Record<number, string> = {
+  0: "sunday",
+  1: "monday",
+  2: "tuesday",
+  3: "wednesday",
+  4: "thursday",
+  5: "friday",
+  6: "saturday",
+};
+
+const SHORT_DAY = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const SHORT_MONTH = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+/* ── Week helpers ── */
+function getMonday(d: Date): Date {
+  const copy = new Date(d);
+  const day = copy.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  copy.setDate(copy.getDate() + diff);
+  copy.setHours(0, 0, 0, 0);
+  return copy;
+}
+
+function getWeekDays(monday: Date) {
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return d;
+  });
+}
+
 export default function ProviderDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -75,7 +123,32 @@ export default function ProviderDetailPage() {
   const [showMap, setShowMap] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("services");
   const [isStartingChat, setIsStartingChat] = useState(false);
+  const [pets, setPets] = useState<Pet[]>([]);
+  const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [weekMonday, setWeekMonday] = useState<Date>(() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return getMonday(tomorrow);
+  });
+  const [selectedTime, setSelectedTime] = useState("");
+  const [bookedSlots, setBookedSlots] = useState<string[]>([]);
+  const [selectedPetIds, setSelectedPetIds] = useState<string[]>([]);
+  const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const userCoords = useGeolocation();
+
+  const selectedOption =
+    provider?.serviceOptions.find(
+      (option) => option._id === selectedOptionId,
+    ) || null;
+
+  const stepDateTimeReady = Boolean(selectedDate && selectedTime);
+
+  const estimatedTotal =
+    selectedOption?.price != null && selectedPetIds.length > 0
+      ? selectedOption.price * selectedPetIds.length
+      : selectedOption?.price || null;
 
   const distanceKm =
     userCoords && provider?.latitude && provider?.longitude
@@ -112,6 +185,218 @@ export default function ProviderDetailPage() {
     };
     fetchProvider();
   }, [providerId, router]);
+
+  useEffect(() => {
+    const fetchPets = async () => {
+      if (!user) return;
+      const res = await petApi.getPets({ limit: 100 });
+      if (res.data?.pets) {
+        setPets(res.data.pets);
+      }
+    };
+
+    fetchPets();
+  }, [user]);
+
+  useEffect(() => {
+    const fetchBookedSlots = async () => {
+      if (!provider || !selectedDate || !selectedOption?.name) {
+        setBookedSlots([]);
+        return;
+      }
+
+      const dateStr = selectedDate.toISOString().split("T")[0];
+
+      const res = await bookingApi.getBookedSlots(
+        provider._id,
+        dateStr,
+        selectedOption.name,
+      );
+
+      if (res.data?.bookedSlots) {
+        setBookedSlots(res.data.bookedSlots.map((slot) => slot.startTime));
+      } else {
+        setBookedSlots([]);
+      }
+    };
+
+    fetchBookedSlots();
+  }, [provider, selectedDate, selectedOption?.name]);
+
+  const availableTimeSlots = (() => {
+    if (!provider || !selectedDate) return [];
+
+    const dayName = DAY_NAME_MAP[selectedDate.getDay()];
+    const availability = provider.availability.find(
+      (slot) => slot.day === dayName && slot.isAvailable,
+    );
+
+    if (!availability) return [];
+
+    const [startHour, startMinute] = availability.startTime
+      .split(":")
+      .map(Number);
+    const [endHour, endMinute] = availability.endTime.split(":").map(Number);
+    const duration = provider.slotDuration || 30;
+
+    let currentMinutes = startHour * 60 + startMinute;
+    const endMinutes = endHour * 60 + endMinute;
+    const slots: { value: string; label: string; disabled: boolean }[] = [];
+
+    while (currentMinutes + duration <= endMinutes) {
+      const hh = Math.floor(currentMinutes / 60);
+      const mm = currentMinutes % 60;
+      const value = `${hh.toString().padStart(2, "0")}:${mm.toString().padStart(2, "0")}`;
+
+      const displayHour = hh % 12 || 12;
+      const period = hh >= 12 ? "PM" : "AM";
+      const label = `${displayHour}:${mm.toString().padStart(2, "0")} ${period}`;
+
+      slots.push({
+        value,
+        label,
+        disabled: bookedSlots.includes(value),
+      });
+
+      currentMinutes += duration;
+    }
+
+    return slots;
+  })();
+
+  const resetInlineBookingState = () => {
+    setSelectedDate(null);
+    setSelectedTime("");
+    setSelectedPetIds([]);
+    setBookedSlots([]);
+  };
+
+  const weekDays = getWeekDays(weekMonday);
+
+  const today = (() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  })();
+
+  const shiftWeek = (dir: -1 | 1) => {
+    const next = new Date(weekMonday);
+    next.setDate(next.getDate() + dir * 7);
+    if (next < getMonday(today)) return;
+    setWeekMonday(next);
+    setSelectedDate(null);
+    setSelectedTime("");
+  };
+
+  const monthLabel = (() => {
+    if (weekDays.length === 0) return "";
+    const first = weekDays[0];
+    const last = weekDays[6];
+    if (first.getMonth() === last.getMonth()) {
+      return `${SHORT_MONTH[first.getMonth()]} ${first.getFullYear()}`;
+    }
+    return `${SHORT_MONTH[first.getMonth()]} - ${SHORT_MONTH[last.getMonth()]} ${last.getFullYear()}`;
+  })();
+
+  const handleSelectServiceOption = (optionId?: string) => {
+    if (!optionId) return;
+    if (selectedOptionId !== optionId) {
+      resetInlineBookingState();
+    }
+    setSelectedOptionId(optionId);
+  };
+
+  const handleTogglePet = (petId: string) => {
+    setSelectedPetIds((prev) =>
+      prev.includes(petId)
+        ? prev.filter((currentId) => currentId !== petId)
+        : [...prev, petId],
+    );
+  };
+
+  const handleConfirmInlineBooking = async () => {
+    if (!user) {
+      toast.error("Please login to book an appointment");
+      router.push("/login");
+      return;
+    }
+
+    if (!provider || !selectedOption || !selectedDate || !selectedTime) {
+      toast.error("Please select service, date and time");
+      return;
+    }
+
+    if (selectedPetIds.length === 0) {
+      toast.error("Please select at least one pet");
+      return;
+    }
+
+    // Show payment modal
+    setShowPaymentModal(true);
+  };
+
+  const handleSubmitInlineBooking = async (
+    selectedPayment: "khalti" | "cod" | null,
+  ) => {
+    if (!provider || !selectedOption || !selectedDate || !selectedTime) return;
+    if (selectedPetIds.length === 0) return;
+    if (!selectedPayment) return;
+
+    setIsSubmittingBooking(true);
+    setShowPaymentModal(false);
+
+    const duration = provider.slotDuration || 30;
+    const [hour, minute] = selectedTime.split(":").map(Number);
+    const endMinutes = hour * 60 + minute + duration;
+    const endTime = `${Math.floor(endMinutes / 60)
+      .toString()
+      .padStart(2, "0")}:${(endMinutes % 60).toString().padStart(2, "0")}`;
+
+    const dateStr = selectedDate.toISOString().split("T")[0];
+
+    const res = await bookingApi.createBooking({
+      providerId: provider._id,
+      petIds: selectedPetIds,
+      date: dateStr,
+      startTime: selectedTime,
+      endTime,
+      serviceOption: {
+        name: selectedOption.name,
+        price: selectedOption.price || undefined,
+        duration: selectedOption.duration || undefined,
+      },
+      paymentMethod: selectedPayment,
+    });
+
+    if (res.error) {
+      toast.error(res.error);
+      setIsSubmittingBooking(false);
+      return;
+    }
+
+    // If Khalti payment, initiate payment flow
+    if (selectedPayment === "khalti" && res.data) {
+      const paymentRes = await bookingApi.initiateKhaltiPayment(res.data._id);
+
+      if (paymentRes.error) {
+        toast.error("Payment initiation failed: " + paymentRes.error);
+        setIsSubmittingBooking(false);
+        return;
+      }
+
+      if (paymentRes.data?.payment_url) {
+        // Redirect to Khalti payment page
+        toast.success("Redirecting to payment...");
+        window.location.href = paymentRes.data.payment_url;
+        return;
+      }
+    }
+
+    // For COD or if Khalti URL is missing, just show success
+    toast.success("Booking confirmed");
+    router.push("/bookings");
+    setIsSubmittingBooking(false);
+  };
 
   const handleStartChat = async () => {
     if (!user || !provider) return;
@@ -366,16 +651,7 @@ export default function ProviderDetailPage() {
                     provider.serviceOptions.map((option, i) => (
                       <button
                         key={option._id || i}
-                        onClick={() => {
-                          if (!user) {
-                            toast.error("Please login to book an appointment");
-                            router.push("/login");
-                            return;
-                          }
-                          router.push(
-                            `/services/${provider._id}/book?service=${option._id}`,
-                          );
-                        }}
+                        onClick={() => handleSelectServiceOption(option._id)}
                         className="w-full flex items-center gap-3 py-3 px-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer text-left"
                       >
                         {/* Service option thumbnail */}
@@ -410,6 +686,238 @@ export default function ProviderDetailPage() {
                         </div>
                       </button>
                     ))
+                  )}
+
+                  {selectedOption && (
+                    <div className="mt-3 rounded-2xl border border-teal-100 bg-teal-50/60 p-4">
+                      <p className="text-sm font-bold text-teal-800">
+                        Booking: {selectedOption.name}
+                      </p>
+
+                      <div className="mt-3 space-y-4">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-600">
+                            1. Select date and time
+                          </p>
+
+                          <div className="mt-3 bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+                            {/* Calendar header */}
+                            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
+                              <button
+                                onClick={() => shiftWeek(-1)}
+                                className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                              >
+                                <ChevronLeft className="w-4 h-4 text-gray-500" />
+                              </button>
+                              <span className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
+                                <Calendar className="w-3.5 h-3.5 text-teal-500" />
+                                {monthLabel}
+                              </span>
+                              <button
+                                onClick={() => shiftWeek(1)}
+                                className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                              >
+                                <ChevronRight className="w-4 h-4 text-gray-500" />
+                              </button>
+                            </div>
+
+                            {/* Day cells */}
+                            <div className="grid grid-cols-7 gap-1 px-3 py-3">
+                              {weekDays.map((d, i) => {
+                                const isPast = d <= today;
+                                const dayName = DAY_NAME_MAP[d.getDay()];
+                                const avail = provider.availability.find(
+                                  (a) => a.day === dayName && a.isAvailable,
+                                );
+                                const disabled = isPast || !avail;
+                                const isSelected =
+                                  selectedDate &&
+                                  d.toDateString() ===
+                                    selectedDate.toDateString();
+                                const isToday =
+                                  d.toDateString() ===
+                                  new Date().toDateString();
+
+                                return (
+                                  <button
+                                    key={i}
+                                    disabled={disabled}
+                                    onClick={() => {
+                                      setSelectedDate(d);
+                                      setSelectedTime("");
+                                    }}
+                                    className={`flex flex-col items-center py-2.5 rounded-xl transition-all ${
+                                      isSelected
+                                        ? "bg-teal-500 text-white shadow-md shadow-teal-500/30"
+                                        : isToday && !disabled
+                                          ? "text-teal-600 bg-teal-50 font-bold"
+                                          : disabled
+                                            ? "text-gray-300 cursor-not-allowed"
+                                            : "text-gray-700 hover:bg-gray-50"
+                                    }`}
+                                  >
+                                    <span
+                                      className={`text-[10px] font-semibold uppercase mb-0.5 ${isSelected ? "text-white/80" : ""}`}
+                                    >
+                                      {SHORT_DAY[i]}
+                                    </span>
+                                    <span className="text-sm font-bold">
+                                      {d.getDate()}
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+
+                            {/* Time slot pills */}
+                            {selectedDate && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                className="border-t border-gray-100 px-4 py-3"
+                              >
+                                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                                  Available Times
+                                </p>
+                                {availableTimeSlots.length === 0 ? (
+                                  <p className="text-xs text-gray-400 text-center py-3">
+                                    No available slots this day
+                                  </p>
+                                ) : (
+                                  <div className="flex flex-wrap gap-2">
+                                    {availableTimeSlots.map((slot) => (
+                                      <button
+                                        key={slot.value}
+                                        disabled={!slot.value || slot.disabled}
+                                        onClick={() =>
+                                          setSelectedTime(slot.value)
+                                        }
+                                        className={`py-2 px-3.5 rounded-xl text-xs font-semibold transition-all ${
+                                          selectedTime === slot.value
+                                            ? "bg-teal-500 text-white shadow-md shadow-teal-500/30"
+                                            : slot.disabled
+                                              ? "bg-gray-50 text-gray-300 cursor-not-allowed line-through"
+                                              : "bg-gray-50 text-gray-700 hover:bg-teal-50 hover:text-teal-700 border border-gray-100"
+                                        }`}
+                                      >
+                                        {slot.label}
+                                        {slot.disabled ? " (Booked)" : ""}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </motion.div>
+                            )}
+                          </div>
+                        </div>
+
+                        {stepDateTimeReady && (
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-600">
+                              2. Select pet(s)
+                            </p>
+
+                            {pets.length === 0 ? (
+                              <div className="mt-2 rounded-xl border border-dashed border-gray-300 bg-white p-3 text-sm text-gray-500">
+                                No pets found. Add a pet first to continue.
+                              </div>
+                            ) : (
+                              <div className="mt-2 grid grid-cols-2 gap-2">
+                                {pets.map((pet) => {
+                                  const selected = selectedPetIds.includes(
+                                    pet._id,
+                                  );
+                                  const photo = pet.photos?.[0];
+
+                                  return (
+                                    <button
+                                      key={pet._id}
+                                      type="button"
+                                      onClick={() => handleTogglePet(pet._id)}
+                                      className={`flex items-center gap-2 rounded-xl border px-2.5 py-2 text-left transition ${
+                                        selected
+                                          ? "border-teal-400 bg-teal-100"
+                                          : "border-gray-200 bg-white hover:border-teal-300"
+                                      }`}
+                                    >
+                                      <div className="relative h-9 w-9 overflow-hidden rounded-full bg-gray-100 shrink-0">
+                                        {photo ? (
+                                          <Image
+                                            src={photo}
+                                            alt={pet.name}
+                                            fill
+                                            className="object-cover"
+                                          />
+                                        ) : (
+                                          <div className="flex h-full w-full items-center justify-center text-xs">
+                                            🐾
+                                          </div>
+                                        )}
+                                      </div>
+                                      <span className="truncate text-sm font-medium text-gray-800">
+                                        {pet.name}
+                                      </span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {stepDateTimeReady && selectedPetIds.length > 0 && (
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-600">
+                              3. Confirm booking
+                            </p>
+
+                            <div className="mt-2 rounded-xl border border-gray-200 bg-white p-3">
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-gray-500">Service</span>
+                                <span className="font-semibold text-gray-800">
+                                  {selectedOption.name}
+                                </span>
+                              </div>
+                              <div className="mt-1 flex items-center justify-between text-sm">
+                                <span className="text-gray-500">When</span>
+                                <span className="font-semibold text-gray-800">
+                                  {selectedDate
+                                    ? selectedDate.toLocaleDateString() +
+                                      " " +
+                                      selectedTime
+                                    : "-"}
+                                </span>
+                              </div>
+                              <div className="mt-1 flex items-center justify-between text-sm">
+                                <span className="text-gray-500">Pets</span>
+                                <span className="font-semibold text-gray-800">
+                                  {selectedPetIds.length}
+                                </span>
+                              </div>
+                              {estimatedTotal != null && (
+                                <div className="mt-2 flex items-center justify-between border-t border-gray-100 pt-2 text-sm">
+                                  <span className="text-gray-600">Total</span>
+                                  <span className="font-bold text-gray-900">
+                                    Rs.{estimatedTotal}
+                                  </span>
+                                </div>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={handleConfirmInlineBooking}
+                                disabled={isSubmittingBooking}
+                                className="mt-3 w-full rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:opacity-60"
+                              >
+                                {isSubmittingBooking
+                                  ? "Confirming..."
+                                  : "Confirm booking"}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   )}
                 </motion.div>
               )}
@@ -526,6 +1034,84 @@ export default function ProviderDetailPage() {
         markers={mapMarkers}
         focusMarkerId={provider._id}
       />
+
+      {/* Payment Modal */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-100 flex items-end">
+          <motion.div
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 30, stiffness: 300 }}
+            className="w-full max-w-lg mx-auto bg-white rounded-t-4xl shadow-2xl"
+          >
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-gray-100">
+              <h3 className="text-lg font-bold text-gray-900">
+                Select Payment Method
+              </h3>
+              {estimatedTotal && (
+                <p className="text-sm text-gray-500 mt-1">
+                  Total:{" "}
+                  <span className="font-semibold text-gray-900">
+                    Rs.{estimatedTotal}
+                  </span>
+                </p>
+              )}
+            </div>
+
+            {/* Payment Options */}
+            <div className="p-6 space-y-3 max-h-96 overflow-y-auto">
+              {/* Khalti Option */}
+              <button
+                onClick={() => handleSubmitInlineBooking("khalti")}
+                disabled={isSubmittingBooking}
+                className="w-full flex items-center justify-between p-4 rounded-2xl border-2 border-gray-100 bg-white hover:border-emerald-500 hover:shadow-sm transition-all disabled:opacity-50"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full border-2 border-gray-300" />
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">
+                      Khalti Wallet
+                    </p>
+                    <p className="text-xs text-gray-400">Pay online</p>
+                  </div>
+                </div>
+              </button>
+
+              {/* COD Option */}
+              <button
+                onClick={() => handleSubmitInlineBooking("cod")}
+                disabled={isSubmittingBooking}
+                className="w-full flex items-center justify-between p-4 rounded-2xl border-2 border-gray-100 bg-white hover:border-teal-500 hover:shadow-sm transition-all disabled:opacity-50"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full border-2 border-gray-300" />
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">
+                      Cash on Delivery
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      Pay when service is provided
+                    </p>
+                  </div>
+                </div>
+              </button>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex gap-3">
+              <button
+                onClick={() => setShowPaymentModal(false)}
+                disabled={isSubmittingBooking}
+                className="flex-1 py-3 rounded-xl border border-gray-200 bg-white text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </MobileLayout>
   );
 }

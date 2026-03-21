@@ -3,7 +3,9 @@
 import { useEffect, useState, useRef, use } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
+import { useNotifications } from "@/context/NotificationCenterContext";
 import {
   useSocket,
   NewMessageEvent,
@@ -47,6 +49,7 @@ export default function AdminChatPage({
 }) {
   const { id: conversationId } = use(params);
   const { user, isLoading: authLoading } = useAuth();
+  const { refreshNotifications } = useNotifications();
   const {
     sendMessage: socketSendMessage,
     onNewMessage,
@@ -106,9 +109,11 @@ export default function AdminChatPage({
   useEffect(() => {
     if (conversation && user) {
       markAsRead(conversationId);
-      messagingApi.markAsRead(conversationId);
+      void messagingApi.markAsRead(conversationId).then(() => {
+        void refreshNotifications();
+      });
     }
-  }, [conversation, conversationId, user, markAsRead]);
+  }, [conversation, conversationId, user, markAsRead, refreshNotifications]);
 
   // Scroll to bottom on initial load
   useEffect(() => {
@@ -127,11 +132,13 @@ export default function AdminChatPage({
           messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
         }, 50);
         markAsRead(conversationId);
-        messagingApi.markAsRead(conversationId);
+        void messagingApi.markAsRead(conversationId).then(() => {
+          void refreshNotifications();
+        });
       }
     });
     return unsub;
-  }, [conversationId, onNewMessage, markAsRead]);
+  }, [conversationId, onNewMessage, markAsRead, refreshNotifications]);
 
   // Typing indicators
   useEffect(() => {
@@ -217,26 +224,70 @@ export default function AdminChatPage({
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, 50);
 
+    let deliveredMessage: Message | null = null;
+
     if (isConnected) {
       const result = await socketSendMessage(conversationId, text);
       if (result.message) {
-        setMessages((prev) =>
-          prev.map((m) =>
-            m._id === optimisticMessage._id ? result.message! : m,
-          ),
-        );
+        deliveredMessage = result.message;
       }
-    } else {
-      const { data } = await messagingApi.sendMessage(conversationId, text);
-      if (data) {
+    }
+
+    if (!deliveredMessage) {
+      const { data, error } = await messagingApi.sendMessage(
+        conversationId,
+        text,
+      );
+      if (data?.message) {
+        deliveredMessage = data.message;
+      } else if (error) {
         setMessages((prev) =>
-          prev.map((m) => (m._id === optimisticMessage._id ? data.message : m)),
+          prev.filter((m) => m._id !== optimisticMessage._id),
         );
+        toast.error(error);
+        return;
       }
+    }
+
+    if (deliveredMessage) {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m._id === optimisticMessage._id ? deliveredMessage! : m,
+        ),
+      );
     }
   };
 
   const groupedMessages = groupMessagesByDate(messages);
+
+  useEffect(() => {
+    if (!conversationId || !user) {
+      return () => undefined;
+    }
+
+    const interval = window.setInterval(async () => {
+      const { data } = await messagingApi.getMessages(conversationId);
+      if (!data) {
+        return;
+      }
+
+      setMessages((prev) => {
+        const seen = new Set(prev.map((message) => message._id));
+        const incoming = data.messages.filter(
+          (message) => !seen.has(message._id),
+        );
+        if (!incoming.length) {
+          return prev;
+        }
+
+        return [...prev, ...incoming];
+      });
+    }, 4000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [conversationId, user]);
 
   if (authLoading || isLoading) {
     return (

@@ -5,6 +5,7 @@ import AdoptionListing from "../models/AdoptionListing.js";
 import Pet from "../models/Pet.js";
 import { APPLICATION_STATUS, LISTING_STATUS } from "../constants/adoption.js";
 import adoptionListingService from "./adoptionListingService.js";
+import inAppNotificationService from "./inAppNotificationService.js";
 
 // Submit an adoption application
 const createApplication = async (applicantId, listingId, data) => {
@@ -59,6 +60,21 @@ const createApplication = async (applicantId, listingId, data) => {
     ...safeData,
     listingId,
     applicantId,
+  });
+
+  await inAppNotificationService.createNotification({
+    userId: listing.postedBy.toString(),
+    type: "adoption",
+    title: "New adoption request",
+    body: `You received a new application for ${listing.name}.`,
+    entityId: application._id.toString(),
+    entityType: "adoption_application",
+    data: {
+      applicationId: application._id.toString(),
+      listingId: listing._id.toString(),
+      listingName: listing.name,
+      applicantId: applicantId.toString(),
+    },
   });
 
   return application;
@@ -185,6 +201,15 @@ const approveApplication = async (applicationId, userId, reviewNotes) => {
   if (reviewNotes) application.reviewNotes = reviewNotes;
   await application.save();
 
+  const otherPendingApplications = await AdoptionApplication.find(
+    {
+      listingId: application.listingId,
+      _id: { $ne: applicationId },
+      status: APPLICATION_STATUS.PENDING,
+    },
+    { applicantId: 1 },
+  );
+
   // 2. Mark the listing as adopted
   await AdoptionListing.findByIdAndUpdate(application.listingId, {
     status: LISTING_STATUS.ADOPTED,
@@ -230,6 +255,38 @@ const approveApplication = async (applicationId, userId, reviewNotes) => {
       null,
   });
 
+  await inAppNotificationService.createNotification({
+    userId: application.applicantId.toString(),
+    type: "adoption",
+    title: "Adoption approved",
+    body: `Your application for ${listing.name} was approved.`,
+    entityId: application._id.toString(),
+    entityType: "adoption_application",
+    data: {
+      applicationId: application._id.toString(),
+      listingId: listing._id.toString(),
+      listingName: listing.name,
+      status: APPLICATION_STATUS.APPROVED,
+    },
+  });
+
+  await inAppNotificationService.createManyNotifications(
+    otherPendingApplications.map((pendingApplication) => ({
+      userId: pendingApplication.applicantId.toString(),
+      type: "adoption",
+      title: "Adoption request update",
+      body: `Your application for ${listing.name} was closed because another adopter was approved.`,
+      entityId: pendingApplication._id.toString(),
+      entityType: "adoption_application",
+      data: {
+        applicationId: pendingApplication._id.toString(),
+        listingId: listing._id.toString(),
+        listingName: listing.name,
+        status: APPLICATION_STATUS.REJECTED,
+      },
+    })),
+  );
+
   return application;
 };
 
@@ -261,6 +318,27 @@ const rejectApplication = async (applicationId, userId, reviewNotes) => {
   application.reviewedAt = new Date();
   if (reviewNotes) application.reviewNotes = reviewNotes;
   await application.save();
+
+  const listing = await AdoptionListing.findById(application.listingId).select(
+    "name",
+  );
+
+  await inAppNotificationService.createNotification({
+    userId: application.applicantId.toString(),
+    type: "adoption",
+    title: "Adoption rejected",
+    body:
+      reviewNotes?.trim() ||
+      `Your application for ${listing?.name || "this pet"} was rejected.`,
+    entityId: application._id.toString(),
+    entityType: "adoption_application",
+    data: {
+      applicationId: application._id.toString(),
+      listingId: application.listingId.toString(),
+      listingName: listing?.name || null,
+      status: APPLICATION_STATUS.REJECTED,
+    },
+  });
 
   return application;
 };

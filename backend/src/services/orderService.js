@@ -5,6 +5,7 @@ import Product from "../models/Product.js";
 import Payment from "../models/Payment.js";
 import User from "../models/User.js";
 import payment from "../utils/payment.js";
+import inAppNotificationService from "./inAppNotificationService.js";
 
 // Create order from cart (no payment processing here)
 const createOrder = async (data, userId) => {
@@ -20,6 +21,7 @@ const createOrder = async (data, userId) => {
   // Validate all items are still available
   const validatedItems = [];
   let totalAmount = 0;
+  const merchantUserIds = new Set();
 
   for (const item of cart.items) {
     const product = await Product.findById(item.productId);
@@ -47,6 +49,9 @@ const createOrder = async (data, userId) => {
     });
 
     totalAmount += product.price * item.quantity;
+    if (product.createdBy) {
+      merchantUserIds.add(product.createdBy.toString());
+    }
 
     // Reduce stock
     if (product.stockQty !== null) {
@@ -69,6 +74,38 @@ const createOrder = async (data, userId) => {
   // Clear cart
   cart.items = [];
   await cart.save();
+
+  const buyer = await User.findById(userId).select("name");
+
+  await inAppNotificationService.createNotification({
+    userId,
+    type: "order",
+    title: "Order placed",
+    body: `Your order #${order._id.toString().slice(-6)} has been placed successfully.`,
+    entityId: order._id.toString(),
+    entityType: "order",
+    data: {
+      orderId: order._id.toString(),
+      status: order.status,
+    },
+  });
+
+  await inAppNotificationService.createManyNotifications(
+    [...merchantUserIds].map((merchantUserId) => ({
+      userId: merchantUserId,
+      type: "order",
+      title: "New marketplace order",
+      body: `${buyer?.name || "A customer"} placed an order containing your product(s).`,
+      entityId: order._id.toString(),
+      entityType: "order",
+      data: {
+        orderId: order._id.toString(),
+        customerId: userId.toString(),
+        customerName: buyer?.name || "Customer",
+        status: order.status,
+      },
+    })),
+  );
 
   return order;
 };
@@ -156,11 +193,53 @@ const confirmOrderPayment = async (id, status, user) => {
     status: "completed",
   });
 
-  return await Order.findByIdAndUpdate(
+  const updatedOrder = await Order.findByIdAndUpdate(
     id,
     { status: "confirmed" },
     { new: true },
   );
+
+  const merchantProducts = await Product.find(
+    { _id: { $in: updatedOrder.items.map((item) => item.productId) } },
+    { createdBy: 1 },
+  );
+  const merchantUserIds = [
+    ...new Set(
+      merchantProducts
+        .map((product) => product.createdBy?.toString())
+        .filter(Boolean),
+    ),
+  ];
+
+  await inAppNotificationService.createNotification({
+    userId: user._id.toString(),
+    type: "order",
+    title: "Payment confirmed",
+    body: `Payment for order #${updatedOrder._id.toString().slice(-6)} was confirmed.`,
+    entityId: updatedOrder._id.toString(),
+    entityType: "order",
+    data: {
+      orderId: updatedOrder._id.toString(),
+      status: updatedOrder.status,
+    },
+  });
+
+  await inAppNotificationService.createManyNotifications(
+    merchantUserIds.map((merchantUserId) => ({
+      userId: merchantUserId,
+      type: "order",
+      title: "Order payment confirmed",
+      body: `Order #${updatedOrder._id.toString().slice(-6)} is now confirmed and ready to process.`,
+      entityId: updatedOrder._id.toString(),
+      entityType: "order",
+      data: {
+        orderId: updatedOrder._id.toString(),
+        status: updatedOrder.status,
+      },
+    })),
+  );
+
+  return updatedOrder;
 };
 
 // Get user's orders with pagination
@@ -258,6 +337,46 @@ const cancelOrder = async (orderId, userId) => {
 
   order.status = "cancelled";
   await order.save();
+
+  const merchantProducts = await Product.find(
+    { _id: { $in: order.items.map((item) => item.productId) } },
+    { createdBy: 1 },
+  );
+  const merchantUserIds = [
+    ...new Set(
+      merchantProducts
+        .map((product) => product.createdBy?.toString())
+        .filter(Boolean),
+    ),
+  ];
+
+  await inAppNotificationService.createNotification({
+    userId: userId.toString(),
+    type: "order",
+    title: "Order cancelled",
+    body: `Order #${order._id.toString().slice(-6)} was cancelled.`,
+    entityId: order._id.toString(),
+    entityType: "order",
+    data: {
+      orderId: order._id.toString(),
+      status: order.status,
+    },
+  });
+
+  await inAppNotificationService.createManyNotifications(
+    merchantUserIds.map((merchantUserId) => ({
+      userId: merchantUserId,
+      type: "order",
+      title: "Order cancelled",
+      body: `A customer cancelled order #${order._id.toString().slice(-6)}.`,
+      entityId: order._id.toString(),
+      entityType: "order",
+      data: {
+        orderId: order._id.toString(),
+        status: order.status,
+      },
+    })),
+  );
 
   return order;
 };

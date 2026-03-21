@@ -16,8 +16,10 @@ import {
   Settings,
   BarChart3,
   ShoppingBag,
+  Bell,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useNotifications } from "@/context/NotificationCenterContext";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -27,6 +29,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const { user, isLoading } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
+  const { unreadCount, openSheet } = useNotifications();
 
   const isAdmin = user?.roles === "ADMIN" || user?.roles === "SUPER_ADMIN";
   const isSuperAdmin = user?.roles === "SUPER_ADMIN";
@@ -139,6 +142,18 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={openSheet}
+              className="relative rounded-full bg-gray-100 p-2 text-gray-600 transition-colors hover:bg-gray-200"
+            >
+              <Bell className="h-5 w-5" />
+              {unreadCount > 0 ? (
+                <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              ) : null}
+            </button>
             <span className="text-xs font-medium text-teal-600 bg-teal-50 px-2.5 py-1 rounded-full">
               {user?.serviceType
                 ? user.serviceType
