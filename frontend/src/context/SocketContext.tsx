@@ -12,6 +12,7 @@ import React, {
 import { io, Socket } from "socket.io-client";
 import { useAuth } from "./AuthContext";
 import { API_URL } from "@/lib/api/client";
+import type { AppNotification } from "@/lib/api";
 
 interface SocketContextType {
   socket: Socket | null;
@@ -30,6 +31,7 @@ interface SocketContextType {
   onConversationRead: (
     callback: (data: ConversationReadEvent) => void,
   ) => () => void;
+  onNotification: (callback: (data: NotificationEvent) => void) => () => void;
 }
 
 export interface Message {
@@ -62,6 +64,10 @@ export interface ConversationReadEvent {
   readBy: string;
 }
 
+export interface NotificationEvent {
+  notification: AppNotification;
+}
+
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
 
 export function SocketProvider({ children }: { children: ReactNode }) {
@@ -84,6 +90,9 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   const conversationReadListeners = useRef<
     Set<(data: ConversationReadEvent) => void>
   >(new Set());
+  const notificationListeners = useRef<Set<(data: NotificationEvent) => void>>(
+    new Set(),
+  );
 
   useEffect(() => {
     if (!token || !user) {
@@ -140,6 +149,18 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     socket.on("conversation:read", (data: ConversationReadEvent) => {
       conversationReadListeners.current.forEach((cb) => cb(data));
     });
+
+    socket.on(
+      "notification:new",
+      (data: NotificationEvent | AppNotification) => {
+        const normalizedData =
+          data && typeof data === "object" && "notification" in data
+            ? (data as NotificationEvent)
+            : ({ notification: data as AppNotification } as NotificationEvent);
+
+        notificationListeners.current.forEach((cb) => cb(normalizedData));
+      },
+    );
 
     return () => {
       socket.disconnect();
@@ -225,6 +246,16 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const onNotification = useCallback(
+    (callback: (data: NotificationEvent) => void) => {
+      notificationListeners.current.add(callback);
+      return () => {
+        notificationListeners.current.delete(callback);
+      };
+    },
+    [],
+  );
+
   return (
     <SocketContext.Provider
       value={{
@@ -239,6 +270,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         onTypingStart,
         onTypingStop,
         onConversationRead,
+        onNotification,
       }}
     >
       {children}
