@@ -7,6 +7,7 @@ import cookieParser from "cookie-parser";
 import config from "./config/config.js";
 import connectDB from "./config/dbConnection.js";
 import initializeSocket from "./config/socket.js";
+import "./config/firebase.js";
 
 import userRoutes from "./routes/userRoute.js";
 import authRoutes from "./routes/authRoute.js";

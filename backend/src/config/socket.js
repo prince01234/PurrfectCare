@@ -80,6 +80,7 @@ const initializeSocket = (httpServer) => {
                 conversationId,
                 senderId: result.message.sender?._id || userId,
                 senderName: result.message.sender?.name || "Unknown user",
+                link: `/messages?conversation=${conversationId}`,
               },
             },
             io,

@@ -88,6 +88,7 @@ const sendMessage = async (req, res) => {
               conversationId: req.params.id,
               senderId: data.message.sender?._id || req.user._id,
               senderName: data.message.sender?.name || "Unknown user",
+              link: `/messages?conversation=${req.params.id}`,
             },
           },
           io,

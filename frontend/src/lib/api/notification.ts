@@ -76,4 +76,24 @@ export const notificationApi = {
       { method: "PUT" },
       true,
     ),
+
+  registerFCMToken: (token: string): Promise<ApiResponse<{ message: string }>> =>
+    apiRequest<{ message: string }>(
+      "/api/notifications/fcm-token",
+      {
+        method: "POST",
+        body: JSON.stringify({ token }),
+      },
+      true,
+    ),
+
+  removeFCMToken: (token: string): Promise<ApiResponse<{ message: string }>> =>
+    apiRequest<{ message: string }>(
+      "/api/notifications/fcm-token",
+      {
+        method: "DELETE",
+        body: JSON.stringify({ token }),
+      },
+      true,
+    ),
 };

@@ -1,5 +1,6 @@
 import Notification from "../models/Notification.js";
 import { getIO } from "../config/realtime.js";
+import pushNotificationService from "./pushNotificationService.js";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
@@ -37,6 +38,14 @@ const createNotification = async (payload, io = null) => {
   });
 
   emitNotification(userId, notification.toObject(), io);
+
+  // Send push notification (fire-and-forget)
+  pushNotificationService.sendPushNotification(userId, {
+    title,
+    body,
+    data: { type, entityId, entityType, notificationId: notification._id.toString(), ...data },
+  });
+
   return notification;
 };
 
@@ -48,6 +57,18 @@ const createManyNotifications = async (payloads = [], io = null) => {
   const notifications = await Notification.insertMany(payloads);
   notifications.forEach((notification) => {
     emitNotification(notification.userId, notification.toObject(), io);
+
+    // Send push notification (fire-and-forget)
+    pushNotificationService.sendPushNotification(notification.userId, {
+      title: notification.title,
+      body: notification.body,
+      data: {
+        type: notification.type,
+        entityId: notification.entityId,
+        entityType: notification.entityType,
+        notificationId: notification._id.toString(),
+      },
+    });
   });
 
   return notifications;
