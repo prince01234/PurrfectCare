@@ -110,6 +110,14 @@ const userSchema = new mongoose.Schema(
       enum: ["pet_owner", "looking_to_adopt", "exploring", null],
       default: null,
     },
+
+    // FCM push notification tokens
+    fcmTokens: [
+      {
+        token: { type: String, required: true },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   {
     timestamps: true,
