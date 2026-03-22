@@ -1,4 +1,5 @@
 import inAppNotificationService from "../services/inAppNotificationService.js";
+import pushNotificationService from "../services/pushNotificationService.js";
 
 const getNotifications = async (req, res) => {
   try {
@@ -55,9 +56,41 @@ const markAllAsRead = async (req, res) => {
   }
 };
 
+const registerFCMToken = async (req, res) => {
+  try {
+    const data = await pushNotificationService.registerToken(
+      req.user._id,
+      req.body.token,
+    );
+    res.status(200).json(data);
+  } catch (error) {
+    console.error("Error registering FCM token:", error);
+    res
+      .status(error.statusCode || 500)
+      .send({ error: error.message || "Failed to register FCM token" });
+  }
+};
+
+const removeFCMToken = async (req, res) => {
+  try {
+    const data = await pushNotificationService.removeToken(
+      req.user._id,
+      req.body.token,
+    );
+    res.status(200).json(data);
+  } catch (error) {
+    console.error("Error removing FCM token:", error);
+    res
+      .status(error.statusCode || 500)
+      .send({ error: error.message || "Failed to remove FCM token" });
+  }
+};
+
 export default {
   getNotifications,
   getUnreadCount,
   markAsRead,
   markAllAsRead,
+  registerFCMToken,
+  removeFCMToken,
 };
