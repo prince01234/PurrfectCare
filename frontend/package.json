@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
+    "firebase": "^12.11.0",
     "framer-motion": "^12.29.2",
     "js-cookie": "^3.0.5",
     "leaflet": "^1.9.4",
