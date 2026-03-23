@@ -21,12 +21,16 @@ import { useAuth } from "@/context/AuthContext";
 const statusIcon = {
   pending: Clock,
   confirmed: CheckCircle2,
+  processing: ShoppingBag,
+  delivered: CheckCircle2,
   cancelled: XCircle,
 };
 
 const statusColor = {
   pending: "text-amber-500",
   confirmed: "text-green-500",
+  processing: "text-blue-500",
+  delivered: "text-emerald-500",
   cancelled: "text-red-400",
 };
 

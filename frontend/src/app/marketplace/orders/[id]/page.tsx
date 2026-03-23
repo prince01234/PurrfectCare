@@ -34,6 +34,18 @@ const statusConfig = {
     bg: "bg-green-50",
     label: "Confirmed",
   },
+  processing: {
+    icon: Package,
+    color: "text-blue-500",
+    bg: "bg-blue-50",
+    label: "Processing",
+  },
+  delivered: {
+    icon: CheckCircle2,
+    color: "text-emerald-500",
+    bg: "bg-emerald-50",
+    label: "Delivered",
+  },
   cancelled: {
     icon: XCircle,
     color: "text-red-500",

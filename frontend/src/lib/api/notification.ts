@@ -12,9 +12,11 @@ export type NotificationType =
 export interface AppNotification {
   _id: string;
   userId: string;
+  actorId?: string | null;
   type: NotificationType;
   title: string;
   body: string;
+  link?: string | null;
   entityId?: string | null;
   entityType?: string | null;
   data?: Record<string, unknown>;
@@ -77,7 +79,9 @@ export const notificationApi = {
       true,
     ),
 
-  registerFCMToken: (token: string): Promise<ApiResponse<{ message: string }>> =>
+  registerFCMToken: (
+    token: string,
+  ): Promise<ApiResponse<{ message: string }>> =>
     apiRequest<{ message: string }>(
       "/api/notifications/fcm-token",
       {

@@ -146,8 +146,8 @@ export default function LoginPage() {
             onClick={() => toast("Facebook login coming soon!", { icon: "🚧" })}
           />
           <SocialButton
-            provider="apple"
-            onClick={() => toast("Apple login coming soon!", { icon: "🚧" })}
+            provider="github"
+            onClick={() => toast("GitHub login coming soon!", { icon: "🚧" })}
           />
         </div>
       </motion.div>
