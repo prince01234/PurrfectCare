@@ -147,8 +147,8 @@ export default function RegisterPage() {
             }
           />
           <SocialButton
-            provider="apple"
-            onClick={() => toast("Apple signup coming soon!", { icon: "🚧" })}
+            provider="github"
+            onClick={() => toast("GitHub signup coming soon!", { icon: "🚧" })}
           />
         </div>
       </motion.div>
