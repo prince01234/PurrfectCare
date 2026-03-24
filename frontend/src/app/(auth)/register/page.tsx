@@ -20,6 +20,15 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
+  const getApiUrl = () => {
+    return process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+  };
+
+  const handleSocialLogin = (provider: "google" | "facebook" | "github") => {
+    const apiUrl = getApiUrl();
+    window.location.href = `${apiUrl}/api/auth/${provider}`;
+  };
+
   const {
     register,
     handleSubmit,
@@ -118,7 +127,7 @@ export default function RegisterPage() {
           Already have an account?{" "}
           <Link
             href="/login"
-            className="text-violet-600 font-semibold hover:text-violet-700 transition-colors"
+            className="text-teal-600 font-semibold hover:text-teal-700 transition-colors"
           >
             Login
           </Link>
@@ -129,7 +138,7 @@ export default function RegisterPage() {
             <div className="w-full border-t border-gray-200" />
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-4 bg-white text-gray-500">
+            <span className="px-4 bg-slate-50 text-gray-500">
               Or continue with
             </span>
           </div>
@@ -138,17 +147,15 @@ export default function RegisterPage() {
         <div className="flex justify-center gap-4">
           <SocialButton
             provider="google"
-            onClick={() => toast("Google signup coming soon!", { icon: "🚧" })}
+            onClick={() => handleSocialLogin("google")}
           />
           <SocialButton
             provider="facebook"
-            onClick={() =>
-              toast("Facebook signup coming soon!", { icon: "🚧" })
-            }
+            onClick={() => handleSocialLogin("facebook")}
           />
           <SocialButton
-            provider="apple"
-            onClick={() => toast("Apple signup coming soon!", { icon: "🚧" })}
+            provider="github"
+            onClick={() => handleSocialLogin("github")}
           />
         </div>
       </motion.div>

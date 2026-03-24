@@ -8,36 +8,36 @@ const services = [
   {
     name: "Veterinary",
     icon: Stethoscope,
-    color: "bg-indigo-50",
-    iconColor: "text-indigo-500",
+    color: "bg-white border border-slate-200",
+    iconColor: "text-teal-600",
     href: "/services?type=veterinary",
   },
   {
     name: "Grooming",
     icon: Scissors,
-    color: "bg-pink-50",
-    iconColor: "text-pink-500",
+    color: "bg-white border border-slate-200",
+    iconColor: "text-teal-600",
     href: "/services?type=grooming",
   },
   {
     name: "Training",
     icon: GraduationCap,
-    color: "bg-purple-50",
-    iconColor: "text-purple-500",
+    color: "bg-white border border-slate-200",
+    iconColor: "text-teal-600",
     href: "/services?type=training",
   },
   {
     name: "Pet Sitting",
     icon: Home,
-    color: "bg-amber-50",
-    iconColor: "text-amber-600",
+    color: "bg-white border border-slate-200",
+    iconColor: "text-teal-600",
     href: "/services?type=pet_sitting",
   },
 ];
 
 export default function PetServices() {
   return (
-    <div className="px-5 mt-7">
+    <div className="mt-8 px-5">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-gray-900 font-bold text-lg">Pet Services</h2>
@@ -50,12 +50,12 @@ export default function PetServices() {
       </div>
 
       {/* Services grid */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-4 gap-3.5">
         {services.map((service) => (
           <Link key={service.name} href={service.href}>
             <motion.div
               whileTap={{ scale: 0.95 }}
-              className="flex flex-col items-center gap-2"
+              className="flex flex-col items-center gap-2.5"
             >
               <div
                 className={`w-14 h-14 ${service.color} rounded-2xl flex items-center justify-center`}

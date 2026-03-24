@@ -3,14 +3,17 @@ import { createServer } from "http";
 import bodyParser from "body-parser";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import session from "express-session";
 
 import config from "./config/config.js";
 import connectDB from "./config/dbConnection.js";
 import initializeSocket from "./config/socket.js";
 import "./config/firebase.js";
+import passport from "./config/passport.js";
 
 import userRoutes from "./routes/userRoute.js";
 import authRoutes from "./routes/authRoute.js";
+import socialAuthRoutes from "./routes/socialAuthRoute.js";
 import petRoutes from "./routes/petRoute.js";
 import healthRoutes from "./routes/healthRoute.js";
 import { userReminderRouter } from "./routes/reminderRoute.js";
@@ -51,6 +54,23 @@ const httpServer = createServer(app);
 app.use(cors({ origin: true, credentials: true }));
 app.use(cookieParser());
 
+// Initialize Passport.js middleware
+app.use(
+  session({
+    secret: config.jwtSecret || "your-secret-key",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Lax",
+      maxAge: 24 * 60 * 60 * 1000, // 1 day
+    },
+  }),
+);
+app.use(passport.initialize());
+app.use(passport.session());
+
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -72,6 +92,9 @@ app.use("/api/users", userRoutes);
 
 // Auth Routes
 app.use("/api/auth", authRoutes);
+
+// Social Auth Routes (OAuth)
+app.use("/api/auth", socialAuthRoutes);
 
 // Pet Routes
 app.use("/api/pets", petRoutes);

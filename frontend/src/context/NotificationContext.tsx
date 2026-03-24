@@ -23,7 +23,7 @@ import { useSocket } from "./SocketContext";
 import {
   notificationApi,
   type AppNotification,
-  type NotificationsResponse,
+  type NotificationListResponse,
 } from "@/lib/api/notification";
 
 interface NotificationContextType {
@@ -142,7 +142,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     const { data } = await notificationApi.getNotifications({ limit: 25 });
 
     if (data) {
-      const response = data as NotificationsResponse;
+      const response = data as NotificationListResponse;
       setNotifications(response.notifications);
       setUnreadCount(response.unreadCount);
     }
@@ -288,7 +288,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       const { data } = await notificationApi.getNotifications({ limit: 25 });
 
       if (!isCancelled && data) {
-        const response = data as NotificationsResponse;
+        const response = data as NotificationListResponse;
         setNotifications(response.notifications);
         setUnreadCount(response.unreadCount);
       }
@@ -310,35 +310,37 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       return () => undefined;
     }
 
-    const unsubscribe = onNotification((incomingNotification) => {
-      const shouldAutoRead =
-        Boolean(incomingNotification.link) &&
-        pathname === incomingNotification.link;
+    const unsubscribe = onNotification(
+      ({ notification: incomingNotification }) => {
+        const shouldAutoRead =
+          Boolean(incomingNotification.link) &&
+          pathname === incomingNotification.link;
 
-      const notification = shouldAutoRead
-        ? { ...incomingNotification, readAt: new Date().toISOString() }
-        : incomingNotification;
+        const notification = shouldAutoRead
+          ? { ...incomingNotification, readAt: new Date().toISOString() }
+          : incomingNotification;
 
-      setNotifications((prev) => {
-        const next = [
-          notification,
-          ...prev.filter((item) => item._id !== incomingNotification._id),
-        ];
+        setNotifications((prev) => {
+          const next = [
+            notification,
+            ...prev.filter((item) => item._id !== incomingNotification._id),
+          ];
 
-        return next.slice(0, 40);
-      });
+          return next.slice(0, 40);
+        });
 
-      if (shouldAutoRead) {
-        void notificationApi.markAsRead(incomingNotification._id);
-        return;
-      }
+        if (shouldAutoRead) {
+          void notificationApi.markAsRead(incomingNotification._id);
+          return;
+        }
 
-      setUnreadCount((prev) => prev + 1);
+        setUnreadCount((prev) => prev + 1);
 
-      if (incomingNotification.actorId !== user._id) {
-        showNotificationToast(incomingNotification);
-      }
-    });
+        if (incomingNotification.actorId !== user._id) {
+          showNotificationToast(incomingNotification);
+        }
+      },
+    );
 
     return unsubscribe;
   }, [onNotification, pathname, showNotificationToast, user?._id]);

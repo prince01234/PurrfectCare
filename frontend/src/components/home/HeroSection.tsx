@@ -22,9 +22,8 @@ export default function HeroSection({
   onNotificationClick,
 }: HeroSectionProps) {
   return (
-    <div className="relative overflow-hidden rounded-b-4xl bg-linear-to-br from-teal-500 via-teal-600 to-cyan-700 px-5 pb-5 pt-8 shadow-[0_14px_36px_rgba(13,148,136,0.26)]">
-      <div className="pointer-events-none absolute -right-14 -top-10 h-36 w-36 rounded-full bg-white/12 blur-2xl" />
-      <div className="pointer-events-none absolute -bottom-12 -left-8 h-28 w-28 rounded-full bg-cyan-300/20 blur-2xl" />
+    <div className="relative overflow-hidden rounded-b-4xl bg-linear-to-br from-teal-700 to-teal-600 px-5 pb-6 pt-8 shadow-[0_12px_28px_rgba(15,118,110,0.24)]">
+      <div className="pointer-events-none absolute -right-14 -top-10 h-36 w-36 rounded-full bg-white/10 blur-2xl" />
 
       {/* Top bar */}
       <div className="relative mb-4 flex items-start justify-between gap-4">
@@ -32,7 +31,7 @@ export default function HeroSection({
           <h1 className="text-xl font-bold tracking-tight text-white">
             PurrfectCare
           </h1>
-          <p className="mt-1 text-[13px] text-teal-100">
+          <p className="mt-1 text-[13px] text-teal-100/95">
             {userName
               ? `Hi ${userName}, stay on top of your pets`
               : "All-in-One Pet Care"}
@@ -45,7 +44,7 @@ export default function HeroSection({
         <div className="flex items-center gap-2">
           <Link
             href="/messages"
-            className="relative flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/15 backdrop-blur-sm transition hover:bg-white/25"
+            className="relative flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/12 transition hover:bg-white/20"
           >
             <MessageCircle className="h-4.5 w-4.5 text-white" />
           </Link>
@@ -53,7 +52,7 @@ export default function HeroSection({
           <button
             type="button"
             onClick={onNotificationClick}
-            className="relative flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/15 backdrop-blur-sm transition hover:bg-white/25"
+            className="relative flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/12 transition hover:bg-white/20"
           >
             <Bell className="h-4.5 w-4.5 text-white" />
             {notificationCount > 0 ? (
@@ -66,11 +65,11 @@ export default function HeroSection({
       </div>
 
       {/* Action cards */}
-      <div className="relative grid grid-cols-2 gap-3">
+      <div className="relative grid grid-cols-2 gap-3.5">
         <Link href="/pets">
           <motion.div
             whileTap={{ scale: 0.97 }}
-            className="group flex min-h-24 flex-col justify-between rounded-2xl border border-white/25 bg-white/14 p-3.5 backdrop-blur-sm transition hover:bg-white/20"
+            className="group flex min-h-24 flex-col justify-between rounded-2xl border border-white/20 bg-white/10 p-3.5 transition hover:bg-white/18"
           >
             <div className="flex items-start justify-between">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/25">
@@ -81,7 +80,7 @@ export default function HeroSection({
 
             <div className="mt-3.5">
               <p className="text-sm font-semibold text-white">My Pets</p>
-              <p className="text-teal-100 text-xs">Health & records</p>
+              <p className="text-teal-100/95 text-xs">Health & records</p>
             </div>
           </motion.div>
         </Link>
@@ -89,7 +88,7 @@ export default function HeroSection({
         <Link href="/adopt">
           <motion.div
             whileTap={{ scale: 0.97 }}
-            className="group flex min-h-24 flex-col justify-between rounded-2xl border border-white/25 bg-white/14 p-3.5 backdrop-blur-sm transition hover:bg-white/20"
+            className="group flex min-h-24 flex-col justify-between rounded-2xl border border-white/20 bg-white/10 p-3.5 transition hover:bg-white/18"
           >
             <div className="flex items-start justify-between">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/25">
@@ -103,7 +102,7 @@ export default function HeroSection({
 
             <div className="mt-3.5">
               <p className="text-sm font-semibold text-white">Adopt</p>
-              <p className="text-teal-100 text-xs">Find a friend</p>
+              <p className="text-teal-100/95 text-xs">Find a friend</p>
             </div>
           </motion.div>
         </Link>

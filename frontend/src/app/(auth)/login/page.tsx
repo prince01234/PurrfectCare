@@ -22,6 +22,15 @@ export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
 
+  const getApiUrl = () => {
+    return process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+  };
+
+  const handleSocialLogin = (provider: "google" | "facebook" | "github") => {
+    const apiUrl = getApiUrl();
+    window.location.href = `${apiUrl}/api/auth/${provider}`;
+  };
+
   const {
     register,
     handleSubmit,
@@ -104,7 +113,7 @@ export default function LoginPage() {
           <div className="flex justify-end">
             <Link
               href="/forgot-password"
-              className="text-violet-600 font-medium text-sm hover:text-violet-700 transition-colors"
+              className="text-teal-600 font-medium text-sm hover:text-teal-700 transition-colors"
             >
               Forgot Password?
             </Link>
@@ -119,7 +128,7 @@ export default function LoginPage() {
           Don&apos;t have an account?{" "}
           <Link
             href="/register"
-            className="text-violet-600 font-semibold hover:text-violet-700 transition-colors"
+            className="text-teal-600 font-semibold hover:text-teal-700 transition-colors"
           >
             Sign up
           </Link>
@@ -130,7 +139,7 @@ export default function LoginPage() {
             <div className="w-full border-t border-gray-200" />
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-4 bg-white text-gray-500">
+            <span className="px-4 bg-slate-50 text-gray-500">
               or continue with
             </span>
           </div>
@@ -139,15 +148,15 @@ export default function LoginPage() {
         <div className="flex justify-center gap-4">
           <SocialButton
             provider="google"
-            onClick={() => toast("Google login coming soon!", { icon: "🚧" })}
+            onClick={() => handleSocialLogin("google")}
           />
           <SocialButton
             provider="facebook"
-            onClick={() => toast("Facebook login coming soon!", { icon: "🚧" })}
+            onClick={() => handleSocialLogin("facebook")}
           />
           <SocialButton
-            provider="apple"
-            onClick={() => toast("Apple login coming soon!", { icon: "🚧" })}
+            provider="github"
+            onClick={() => handleSocialLogin("github")}
           />
         </div>
       </motion.div>

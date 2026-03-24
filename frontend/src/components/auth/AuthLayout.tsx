@@ -12,16 +12,9 @@ export default function AuthLayout({
   variant = "login",
 }: AuthLayoutProps) {
   return (
-    <div
-      className={`min-h-screen w-full flex items-center justify-center px-4 py-6 ${
-        variant === "login"
-          ? "bg-gradient-to-br from-blue-100 via-purple-50 to-pink-100"
-          : "bg-gradient-to-br from-orange-100 via-pink-50 to-cyan-100"
-      }`}
-    >
-      {/* Centered Card */}
-      <div className="w-full max-w-md bg-white/95 backdrop-blur-sm rounded-3xl shadow-xl p-6 md:p-8">
-        {children}
+    <div className="min-h-screen w-full bg-slate-50">
+      <div className="mx-auto w-full max-w-md px-5 py-8 sm:py-10">
+        <div data-variant={variant}>{children}</div>
       </div>
     </div>
   );

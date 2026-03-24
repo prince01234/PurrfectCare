@@ -21,9 +21,40 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: [true, "Password is required"],
       minLength: [6, "Password must be at least 6 characters long"],
       select: false,
+      default: null,
+    },
+    // OAuth provider IDs
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      default: null,
+    },
+    facebookId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      default: null,
+    },
+    githubId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      default: null,
+    },
+    // Tracks which authentication providers are linked to this account
+    authProviders: {
+      type: [String],
+      enum: ["email", "google", "facebook", "github"],
+      default: ["email"],
+    },
+    // Stores social profile data (name, email, profile picture)
+    socialProfile: {
+      displayName: String,
+      profilePicture: String,
+      provider: String,
     },
     roles: {
       type: String,

@@ -6,6 +6,7 @@ import React, {
   useCallback,
   useMemo,
   useRef,
+  Suspense,
 } from "react";
 import { motion } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -51,7 +52,7 @@ const SERVICE_COLORS: Record<string, string> = {
   other: "text-gray-600",
 };
 
-export default function ServicesPage() {
+function ServicesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [providers, setProviders] = useState<ServiceProvider[]>([]);
@@ -353,5 +354,19 @@ export default function ServicesPage() {
         focusMarkerId={focusProviderId}
       />
     </MobileLayout>
+  );
+}
+
+export default function ServicesPage() {
+  return (
+    <Suspense
+      fallback={
+        <MobileLayout>
+          <div className="min-h-screen bg-gray-50" />
+        </MobileLayout>
+      }
+    >
+      <ServicesPageContent />
+    </Suspense>
   );
 }

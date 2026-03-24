@@ -15,9 +15,9 @@ export default function LostAndFound() {
   useEffect(() => {
     const fetchPosts = async () => {
       try {
-        const res = await lostFoundApi.getPosts({ limit: 3 });
+        const res = await lostFoundApi.getPosts({ limit: 4 });
         if (res.data) {
-          setPosts(res.data.posts);
+          setPosts(res.data.posts.slice(0, 4));
         }
       } catch {
         // silently fail on dashboard
@@ -45,22 +45,22 @@ export default function LostAndFound() {
 
   if (isLoading) {
     return (
-      <div className="px-5 mt-7 pb-4">
+      <div className="px-5 mt-8 mb-8">
         <div className="flex items-center gap-2 mb-4">
-          <AlertTriangle className="w-5 h-5 text-red-500" />
+          <AlertTriangle className="w-5 h-5 text-teal-600" />
           <h2 className="text-gray-900 font-bold text-lg">Lost & Found</h2>
         </div>
-        <div className="space-y-3">
+        <div className="space-y-2">
           {[1, 2].map((i) => (
             <div
               key={i}
-              className="rounded-2xl border border-gray-200 p-4 flex gap-3 animate-pulse"
+              className="rounded-2xl border border-slate-200 p-2.5 flex min-h-16 items-center gap-3 bg-white animate-pulse"
             >
-              <div className="w-16 h-16 rounded-xl bg-gray-200 shrink-0" />
+              <div className="w-16 h-16 rounded-xl bg-slate-200 shrink-0" />
               <div className="flex-1 space-y-2">
-                <div className="h-4 bg-gray-200 rounded w-3/4" />
-                <div className="h-3 bg-gray-200 rounded w-full" />
-                <div className="h-3 bg-gray-200 rounded w-1/2" />
+                <div className="h-4 bg-slate-200 rounded w-3/4" />
+                <div className="h-3 bg-slate-200 rounded w-full" />
+                <div className="h-3 bg-slate-200 rounded w-1/2" />
               </div>
             </div>
           ))}
@@ -70,11 +70,11 @@ export default function LostAndFound() {
   }
 
   return (
-    <div className="px-5 mt-7 pb-4">
+    <div className="px-5 mt-8 mb-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <AlertTriangle className="w-5 h-5 text-red-500" />
+          <AlertTriangle className="w-5 h-5 text-teal-600" />
           <h2 className="text-gray-900 font-bold text-lg">Lost & Found</h2>
         </div>
         <Link
@@ -89,28 +89,32 @@ export default function LostAndFound() {
       {posts.length === 0 ? (
         <Link
           href="/lost-and-found/create"
-          className="block rounded-2xl border border-dashed border-gray-300 p-6 text-center hover:border-teal-400 hover:bg-teal-50/30 transition-colors"
+          className="block rounded-2xl border border-dashed border-slate-200 p-6 text-center hover:border-teal-400 hover:bg-teal-50/30 transition-colors"
         >
-          <PawPrint className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+          <PawPrint className="w-8 h-8 text-slate-300 mx-auto mb-2" />
           <p className="text-sm text-gray-500">No active alerts</p>
           <p className="text-xs text-teal-600 font-medium mt-1">
             Report a lost or found pet
           </p>
         </Link>
       ) : (
-        <div className="space-y-3">
+        <div>
           {posts.map((post) => (
-            <Link key={post._id} href={`/lost-and-found/${post._id}`}>
+            <Link
+              key={post._id}
+              href={`/lost-and-found/${post._id}`}
+              className="block mb-2 last:mb-0"
+            >
               <motion.div
                 whileTap={{ scale: 0.98 }}
-                className={`rounded-2xl border p-4 flex gap-3 ${
+                className={`rounded-2xl border p-2.5 flex min-h-16 items-center gap-3 shadow-sm hover:shadow-md transition-shadow ${
                   post.postType === "lost"
-                    ? "border-red-200 bg-red-50/50"
-                    : "border-green-200 bg-green-50/50"
+                    ? "border-orange-200 bg-orange-50/40"
+                    : "border-teal-200 bg-teal-50/40"
                 }`}
               >
                 {/* Pet image */}
-                <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-200 shrink-0">
+                <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-200 shrink-0">
                   {post.photos[0] ? (
                     <Image
                       src={post.photos[0]}
@@ -121,7 +125,7 @@ export default function LostAndFound() {
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <PawPrint className="w-6 h-6 text-gray-300" />
+                      <PawPrint className="w-6 h-6 text-slate-400" />
                     </div>
                   )}
                 </div>
@@ -129,13 +133,7 @@ export default function LostAndFound() {
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
-                    <p
-                      className={`font-bold text-sm ${
-                        post.postType === "lost"
-                          ? "text-red-600"
-                          : "text-green-600"
-                      }`}
-                    >
+                    <p className="font-bold text-sm text-gray-900 truncate pr-2">
                       {post.postType === "lost" ? "LOST" : "FOUND"}:{" "}
                       {(
                         post.petName || `Unknown ${post.species}`
@@ -145,13 +143,13 @@ export default function LostAndFound() {
                       {formatDate(post.eventDate)}
                     </span>
                   </div>
-                  <p className="text-gray-600 text-xs mt-0.5 line-clamp-2">
-                    {post.description}
+                  <p className="text-gray-700 text-xs mt-1 line-clamp-1">
+                    {post.description || "No description provided"}
                   </p>
-                  <div className="flex items-center gap-1 mt-1.5">
-                    <MapPin className="w-3 h-3 text-gray-400" />
-                    <span className="text-gray-500 text-xs">
-                      {post.locationAddress}
+                  <div className="flex items-center gap-1 mt-1">
+                    <MapPin className="w-3 h-3 text-teal-600" />
+                    <span className="text-gray-500 text-xs line-clamp-1">
+                      {post.locationAddress || "Location unavailable"}
                     </span>
                   </div>
                 </div>

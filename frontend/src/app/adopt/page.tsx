@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -26,7 +27,9 @@ export default function AdoptPage() {
 
   const [listings, setListings] = useState<AdoptionListing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [speciesFilter, setSpeciesFilter] = useState("All");
   const [genderFilter, setGenderFilter] = useState("All");
@@ -43,25 +46,48 @@ export default function AdoptPage() {
     genderFilter !== "All" ||
     Boolean(searchQuery.trim());
 
-  const fetchListings = useCallback(async () => {
-    setIsLoading(true);
-    const params: Record<string, string | number> = { limit: 20 };
-    if (speciesFilter !== "All") params.species = speciesFilter.toLowerCase();
-    if (genderFilter !== "All") params.gender = genderFilter.toLowerCase();
-    if (searchQuery.trim()) params.search = searchQuery.trim();
-    if (pagination.page > 1) params.page = pagination.page;
+  const activeFilterCount =
+    (speciesFilter !== "All" ? 1 : 0) +
+    (genderFilter !== "All" ? 1 : 0) +
+    (searchQuery.trim() ? 1 : 0);
 
-    const res = await adoptionListingApi.getListings(params);
-    if (res.data) {
-      setListings(res.data.listings);
-      setPagination((prev) => ({
-        ...prev,
-        total: res.data!.pagination.total,
-        totalPages: res.data!.pagination.totalPages,
-      }));
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery.trim());
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const fetchListings = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const params: Record<string, string | number> = { limit: 20 };
+      if (speciesFilter !== "All") params.species = speciesFilter.toLowerCase();
+      if (genderFilter !== "All") params.gender = genderFilter.toLowerCase();
+      if (debouncedSearchQuery) params.search = debouncedSearchQuery;
+      if (pagination.page > 1) params.page = pagination.page;
+
+      const res = await adoptionListingApi.getListings(params);
+      if (res.data) {
+        setListings(res.data.listings);
+        setPagination((prev) => ({
+          ...prev,
+          total: res.data!.pagination.total,
+          totalPages: res.data!.pagination.totalPages,
+        }));
+      }
+      if (res.error) {
+        setError(res.error);
+      }
+    } catch {
+      setError("Failed to load pets. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
-  }, [speciesFilter, genderFilter, searchQuery, pagination.page]);
+  }, [speciesFilter, genderFilter, debouncedSearchQuery, pagination.page]);
 
   useEffect(() => {
     fetchListings();
@@ -85,12 +111,12 @@ export default function AdoptPage() {
 
   return (
     <MobileLayout>
-      <div className="min-h-screen bg-gray-50 pb-24">
+      <div className="min-h-screen bg-slate-50 pb-24">
         {/* Teal accent */}
         <div className="h-1 bg-linear-to-r from-teal-500 to-teal-400" />
 
         {/* Header */}
-        <div className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-gray-100">
+        <div className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
           <div className="flex items-center justify-between px-5 py-4">
             <div className="flex items-center gap-3">
               <button
@@ -111,13 +137,18 @@ export default function AdoptPage() {
               </button>
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ${
+                className={`relative w-9 h-9 flex items-center justify-center rounded-full transition-colors ${
                   hasFilters
                     ? "bg-teal-50 text-teal-600"
                     : "hover:bg-gray-100 text-gray-600"
                 }`}
               >
                 <SlidersHorizontal className="w-5 h-5" />
+                {activeFilterCount > 0 && (
+                  <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-teal-600 px-1 text-[10px] font-bold text-white">
+                    {activeFilterCount}
+                  </span>
+                )}
               </button>
             </div>
           </div>
@@ -139,7 +170,7 @@ export default function AdoptPage() {
                     setPagination((p) => ({ ...p, page: 1 }));
                   }}
                   autoFocus
-                  className="w-full pl-10 pr-4 py-2.5 bg-gray-100 rounded-xl text-sm text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-teal-500/30"
+                  className="w-full rounded-xl bg-slate-100 py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-teal-500/30"
                 />
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 {searchQuery && (
@@ -154,33 +185,33 @@ export default function AdoptPage() {
             </motion.div>
           )}
 
-          {/* Species filter tabs */}
-          <div className="px-5 pb-3 flex gap-2 overflow-x-auto hide-scrollbar">
-            {SPECIES_FILTERS.map((species) => (
-              <button
-                key={species}
-                onClick={() => {
-                  setSpeciesFilter(species);
-                  setPagination((p) => ({ ...p, page: 1 }));
-                }}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-                  speciesFilter === species
-                    ? "bg-teal-500 text-white"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
-              >
-                {species}
-              </button>
-            ))}
-          </div>
-
-          {/* Gender filter (collapsible) */}
+          {/* Filter panel (collapsible) */}
           {showFilters && (
             <motion.div
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               className="px-5 pb-3"
             >
+              <p className="mb-2 text-xs font-medium text-gray-500">Species</p>
+              <div className="mb-3 flex gap-2 overflow-x-auto hide-scrollbar">
+                {SPECIES_FILTERS.map((species) => (
+                  <button
+                    key={species}
+                    onClick={() => {
+                      setSpeciesFilter(species);
+                      setPagination((p) => ({ ...p, page: 1 }));
+                    }}
+                    className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                      speciesFilter === species
+                        ? "bg-teal-600 text-white"
+                        : "bg-slate-100 text-gray-600 hover:bg-slate-200"
+                    }`}
+                  >
+                    {species}
+                  </button>
+                ))}
+              </div>
+
               <p className="text-xs font-medium text-gray-500 mb-2">Gender</p>
               <div className="flex gap-2">
                 {GENDER_FILTERS.map((g) => (
@@ -192,8 +223,8 @@ export default function AdoptPage() {
                     }}
                     className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
                       genderFilter === g
-                        ? "bg-teal-500 text-white"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        ? "bg-teal-600 text-white"
+                        : "bg-slate-100 text-gray-600 hover:bg-slate-200"
                     }`}
                   >
                     {g}
@@ -204,32 +235,44 @@ export default function AdoptPage() {
           )}
 
           {/* Results summary */}
-          <div className="px-5 pb-3 flex items-center justify-between text-xs text-gray-500">
-            <span>
-              {pagination.total} pet{pagination.total !== 1 ? "s" : ""}{" "}
-              available
-            </span>
-            {hasFilters && (
-              <button
-                onClick={resetFilters}
-                className="text-teal-600 font-medium hover:text-teal-700"
-              >
-                Clear filters
-              </button>
-            )}
-          </div>
+          {(showFilters || hasFilters) && (
+            <div className="px-5 pb-3 flex items-center justify-between text-xs text-gray-500">
+              <span>
+                {pagination.total} pet{pagination.total !== 1 ? "s" : ""}{" "}
+                available
+              </span>
+              {hasFilters && (
+                <button
+                  onClick={resetFilters}
+                  className="text-teal-600 font-medium hover:text-teal-700"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Listings */}
-        <div className="px-5 pt-4 space-y-4">
-          {isLoading ? (
+        <div className="space-y-3 px-5 pt-4">
+          {error ? (
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+              <p>{error}</p>
+              <button
+                onClick={fetchListings}
+                className="mt-2 text-teal-700 font-semibold"
+              >
+                Retry
+              </button>
+            </div>
+          ) : isLoading ? (
             // Skeleton loading
             [...Array(3)].map((_, i) => (
               <div
                 key={i}
-                className="bg-white rounded-2xl overflow-hidden shadow-sm animate-pulse"
+                className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm animate-pulse"
               >
-                <div className="h-52 bg-gray-200" />
+                <div className="h-48 bg-gray-200" />
                 <div className="p-4 space-y-2.5">
                   <div className="flex justify-between">
                     <div className="h-5 bg-gray-200 rounded w-24" />
@@ -265,15 +308,17 @@ export default function AdoptPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
                     whileTap={{ scale: 0.98 }}
-                    className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 mb-4"
+                    className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md"
                   >
                     {/* Image */}
-                    <div className="relative h-52 bg-gray-100">
+                    <div className="relative h-48 bg-gray-100">
                       {listing.photos?.[0] ? (
-                        <img
+                        <Image
                           src={listing.photos[0]}
                           alt={listing.name}
-                          className="w-full h-full object-cover"
+                          fill
+                          sizes="(max-width: 768px) 100vw, 50vw"
+                          className="object-cover"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-teal-50 to-teal-100">
@@ -282,7 +327,13 @@ export default function AdoptPage() {
                       )}
 
                       {/* Status badge */}
-                      <span className="absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 shadow-sm">
+                      <span
+                        className={`absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-semibold shadow-sm ${
+                          listing.status === "available"
+                            ? "bg-teal-100 text-teal-700"
+                            : "bg-slate-200 text-slate-700"
+                        }`}
+                      >
                         {listing.status === "available"
                           ? "Available"
                           : "Adopted"}
@@ -296,23 +347,17 @@ export default function AdoptPage() {
 
                     {/* Info */}
                     <div className="p-4">
-                      <div className="flex items-start justify-between mb-1">
+                      <div className="mb-1 flex items-start justify-between">
                         <h3 className="text-lg font-bold text-gray-900">
                           {listing.name}
                         </h3>
-                        <span
-                          className={`text-sm font-semibold ${
-                            listing.gender === "female"
-                              ? "text-pink-500"
-                              : "text-blue-500"
-                          }`}
-                        >
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
                           {listing.gender.charAt(0).toUpperCase() +
                             listing.gender.slice(1)}
                         </span>
                       </div>
 
-                      <p className="text-sm text-gray-500">
+                      <p className="line-clamp-1 text-sm text-gray-500">
                         {listing.breed.charAt(0).toUpperCase() +
                           listing.breed.slice(1)}{" "}
                         &bull; {formatAge(listing.age)}
