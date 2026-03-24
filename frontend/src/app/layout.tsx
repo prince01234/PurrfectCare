@@ -1,22 +1,27 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import "./globals.css";
 import Providers from "@/components/providers/Providers";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const appSans = Plus_Jakarta_Sans({
+  variable: "--font-app-sans",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const appMono = JetBrains_Mono({
+  variable: "--font-app-mono",
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
   title: "PurrfectCare - Pet Care Made Easy",
   description: "Your trusted companion for pet care management",
+  icons: {
+    icon: "/favicon.png",
+    shortcut: "/favicon.png",
+    apple: "/favicon.png",
+  },
 };
 
 export default function RootLayout({
@@ -28,7 +33,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body
         suppressHydrationWarning
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${appSans.variable} ${appMono.variable} antialiased`}
       >
         <Providers>
           <Toaster

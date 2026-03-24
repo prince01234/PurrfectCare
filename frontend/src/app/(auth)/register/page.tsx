@@ -118,7 +118,7 @@ export default function RegisterPage() {
           Already have an account?{" "}
           <Link
             href="/login"
-            className="text-violet-600 font-semibold hover:text-violet-700 transition-colors"
+            className="text-teal-600 font-semibold hover:text-teal-700 transition-colors"
           >
             Login
           </Link>
@@ -129,7 +129,7 @@ export default function RegisterPage() {
             <div className="w-full border-t border-gray-200" />
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-4 bg-white text-gray-500">
+            <span className="px-4 bg-slate-50 text-gray-500">
               Or continue with
             </span>
           </div>

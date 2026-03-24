@@ -104,7 +104,7 @@ export default function LoginPage() {
           <div className="flex justify-end">
             <Link
               href="/forgot-password"
-              className="text-violet-600 font-medium text-sm hover:text-violet-700 transition-colors"
+              className="text-teal-600 font-medium text-sm hover:text-teal-700 transition-colors"
             >
               Forgot Password?
             </Link>
@@ -119,7 +119,7 @@ export default function LoginPage() {
           Don&apos;t have an account?{" "}
           <Link
             href="/register"
-            className="text-violet-600 font-semibold hover:text-violet-700 transition-colors"
+            className="text-teal-600 font-semibold hover:text-teal-700 transition-colors"
           >
             Sign up
           </Link>
@@ -130,7 +130,7 @@ export default function LoginPage() {
             <div className="w-full border-t border-gray-200" />
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-4 bg-white text-gray-500">
+            <span className="px-4 bg-slate-50 text-gray-500">
               or continue with
             </span>
           </div>
