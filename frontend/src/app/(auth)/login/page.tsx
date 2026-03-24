@@ -22,6 +22,15 @@ export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
 
+  const getApiUrl = () => {
+    return process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+  };
+
+  const handleSocialLogin = (provider: "google" | "facebook" | "github") => {
+    const apiUrl = getApiUrl();
+    window.location.href = `${apiUrl}/api/auth/${provider}`;
+  };
+
   const {
     register,
     handleSubmit,
@@ -139,15 +148,15 @@ export default function LoginPage() {
         <div className="flex justify-center gap-4">
           <SocialButton
             provider="google"
-            onClick={() => toast("Google login coming soon!", { icon: "🚧" })}
+            onClick={() => handleSocialLogin("google")}
           />
           <SocialButton
             provider="facebook"
-            onClick={() => toast("Facebook login coming soon!", { icon: "🚧" })}
+            onClick={() => handleSocialLogin("facebook")}
           />
           <SocialButton
             provider="github"
-            onClick={() => toast("GitHub login coming soon!", { icon: "🚧" })}
+            onClick={() => handleSocialLogin("github")}
           />
         </div>
       </motion.div>

@@ -20,6 +20,15 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
+  const getApiUrl = () => {
+    return process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+  };
+
+  const handleSocialLogin = (provider: "google" | "facebook" | "github") => {
+    const apiUrl = getApiUrl();
+    window.location.href = `${apiUrl}/api/auth/${provider}`;
+  };
+
   const {
     register,
     handleSubmit,
@@ -138,17 +147,15 @@ export default function RegisterPage() {
         <div className="flex justify-center gap-4">
           <SocialButton
             provider="google"
-            onClick={() => toast("Google signup coming soon!", { icon: "🚧" })}
+            onClick={() => handleSocialLogin("google")}
           />
           <SocialButton
             provider="facebook"
-            onClick={() =>
-              toast("Facebook signup coming soon!", { icon: "🚧" })
-            }
+            onClick={() => handleSocialLogin("facebook")}
           />
           <SocialButton
             provider="github"
-            onClick={() => toast("GitHub signup coming soon!", { icon: "🚧" })}
+            onClick={() => handleSocialLogin("github")}
           />
         </div>
       </motion.div>
