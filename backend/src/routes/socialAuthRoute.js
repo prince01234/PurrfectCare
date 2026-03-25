@@ -20,7 +20,7 @@ router.get(
   "/google/callback",
   passport.authenticate("google", {
     session: false,
-    failureRedirect: "/login",
+    failureRedirect: `${config.frontendUrl}/login?error=oauth_failed`,
   }),
   (req, res) => {
     try {
@@ -36,7 +36,7 @@ router.get(
       res.cookie("authToken", authToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "Lax",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "Lax",
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
@@ -65,7 +65,7 @@ router.get(
   "/facebook/callback",
   passport.authenticate("facebook", {
     session: false,
-    failureRedirect: "/login",
+    failureRedirect: `${config.frontendUrl}/login?error=oauth_failed`,
   }),
   (req, res) => {
     try {
@@ -78,12 +78,7 @@ router.get(
       const authToken = createJWT(userData);
 
       // Set HTTP-only cookie
-      res.cookie("authToken", authToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "Lax",
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      });
+      res.cookie("authToken", authToken, authCookieOptions);
 
       // Redirect to frontend with token in URL query param
       const redirectUrl = `${config.frontendUrl}/auth/callback?token=${authToken}&provider=facebook`;
@@ -110,7 +105,7 @@ router.get(
   "/github/callback",
   passport.authenticate("github", {
     session: false,
-    failureRedirect: "/login",
+    failureRedirect: `${config.frontendUrl}/login?error=oauth_failed`,
   }),
   (req, res) => {
     try {
@@ -123,12 +118,7 @@ router.get(
       const authToken = createJWT(userData);
 
       // Set HTTP-only cookie
-      res.cookie("authToken", authToken, {
-        httpOnly: true,
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "Lax",
-        secure: process.env.NODE_ENV === "production",
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      });
+      res.cookie("authToken", authToken, authCookieOptions);
 
       // Redirect to frontend with token in URL query param
       const redirectUrl = `${config.frontendUrl}/auth/callback?token=${authToken}&provider=github`;
@@ -139,5 +129,12 @@ router.get(
     }
   },
 );
+
+const authCookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "Lax",
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+};
 
 export default router;
