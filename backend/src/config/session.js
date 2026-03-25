@@ -2,14 +2,8 @@ import session from "express-session";
 import MongoStore from "connect-mongo";
 import config from "./config.js";
 
-/**
- * Session configuration with MongoDB store
- * - Sessions stored in MongoDB Atlas
- * - 7-day expiration with auto-cleanup
- * - Production-ready cookies (httpOnly, secure, sameSite)
- */
 const sessionConfig = session({
-  secret: config.sessionSecret || config.jwtSecret || "your-secret-key",
+  secret: config.sessionSecret,
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({

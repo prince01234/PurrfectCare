@@ -125,8 +125,8 @@ router.get(
       // Set HTTP-only cookie
       res.cookie("authToken", authToken, {
         httpOnly: true,
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "Lax",
         secure: process.env.NODE_ENV === "production",
-        sameSite: "Lax",
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 

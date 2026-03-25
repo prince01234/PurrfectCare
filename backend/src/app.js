@@ -42,16 +42,22 @@ import { setIO } from "./config/realtime.js";
 const app = express();
 const httpServer = createServer(app);
 
-// const allowedOrigins = ["http://localhost:3000", process.env.FRONTEND_URL].filter(Boolean);
-// app.use(cors({
-//   origin: (origin, callback) => {
-//     if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
-//     callback(null, false);
-//   },
-//   credentials: true,
-// }));
+const allowedOrigins = [
+  "http://localhost:3000",
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin))
+        return callback(null, true);
+      callback(null, false);
+    },
+    credentials: true,
+  }),
+);
 
-app.use(cors({ origin: true, credentials: true }));
+//app.use(cors({ origin: true, credentials: true }));
 app.use(cookieParser());
 
 // Trust proxy for Render deployment (behind reverse proxy)
@@ -132,5 +138,9 @@ app.use("/api/notifications", notificationRoutes);
 reminderScheduler.startScheduler();
 
 httpServer.listen(config.port, () => {
-  console.log(`Server is running at port http://localhost:${config.port}...`);
+  console.log(
+    `Server running at ${
+      process.env.APP_URL || `http://localhost:${config.port}`
+    }`,
+  );
 });
