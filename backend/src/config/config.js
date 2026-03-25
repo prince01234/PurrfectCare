@@ -9,6 +9,7 @@ const config = {
   port: process.env.PORT || "",
   version: process.env.VERSION || "",
   jwtSecret: process.env.JWT_SECRET || "",
+  sessionSecret: process.env.SESSION_SECRET || "",
   emailApiKey: process.env.EMAIL_API_KEY || "",
   cloudinary: {
     cloudName: process.env.CLOUDINARY_CLOUD_NAME || "",

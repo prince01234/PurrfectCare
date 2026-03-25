@@ -3,11 +3,11 @@ import { createServer } from "http";
 import bodyParser from "body-parser";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import session from "express-session";
 
 import config from "./config/config.js";
 import connectDB from "./config/dbConnection.js";
 import initializeSocket from "./config/socket.js";
+import sessionConfig from "./config/session.js";
 import "./config/firebase.js";
 import passport from "./config/passport.js";
 
@@ -54,20 +54,11 @@ const httpServer = createServer(app);
 app.use(cors({ origin: true, credentials: true }));
 app.use(cookieParser());
 
-// Initialize Passport.js middleware
-app.use(
-  session({
-    secret: config.jwtSecret || "your-secret-key",
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "Lax",
-      maxAge: 24 * 60 * 60 * 1000, // 1 day
-    },
-  }),
-);
+// Trust proxy for Render deployment (behind reverse proxy)
+app.set("trust proxy", 1);
+
+// MongoDB Session Store (configured in config/session.js)
+app.use(sessionConfig);
 app.use(passport.initialize());
 app.use(passport.session());
 
