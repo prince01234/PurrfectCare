@@ -1,12 +1,16 @@
 import admin from "firebase-admin";
-import { createRequire } from "module";
-
-const require = createRequire(import.meta.url);
+import fs from "fs";
+import path from "path";
 
 let firebaseAdmin = null;
 
 try {
-  const serviceAccount = require("../../serviceAccountKey.json");
+  const localPath = path.resolve("src/config/serviceAccountKey.json");
+  const renderPath = "/etc/secrets/serviceAccountKey.json";
+
+  const filePath = process.env.RENDER ? renderPath : localPath;
+
+  const serviceAccount = JSON.parse(fs.readFileSync(filePath, "utf8"));
 
   firebaseAdmin = admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
