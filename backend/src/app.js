@@ -84,6 +84,10 @@ app.get("/", (req, res) => {
   });
 });
 
+app.get("/healthz", (req, res) => {
+  res.status(200).json({ ok: true });
+});
+
 // User Routes
 app.use("/api/users", userRoutes);
 

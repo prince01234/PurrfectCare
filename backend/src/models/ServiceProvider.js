@@ -180,7 +180,7 @@ const serviceProviderSchema = new mongoose.Schema(
 
 // Indexes
 serviceProviderSchema.index({ serviceType: 1, isActive: 1 });
-serviceProviderSchema.index({ userId: 1 });
+// Note: userId already has unique index from unique: true constraint
 serviceProviderSchema.index({ name: "text", description: "text" });
 
 const ServiceProvider = mongoose.model(
