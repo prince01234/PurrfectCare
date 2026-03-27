@@ -32,6 +32,17 @@ interface AuthContextType {
   isLoading: boolean;
 }
 
+function isUser(value: unknown): value is User {
+  if (!value || typeof value !== "object") return false;
+
+  const candidate = value as Partial<User>;
+  return (
+    typeof candidate._id === "string" &&
+    typeof candidate.name === "string" &&
+    typeof candidate.email === "string"
+  );
+}
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -46,14 +57,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         // Check if there's an auth cookie
         if (Cookies.get("authToken")) {
-          const response = await apiRequest("/auth/me");
+          const response = await apiRequest<User>("/auth/me");
 
-          if (response.data) {
+          if (isUser(response.data)) {
             setUser(response.data);
             // Token is in the httpOnly cookie, we don't need to store it
             setToken("authenticated");
           } else {
-            // Cookie exists but user data fetch failed
+            // Cookie exists but user data fetch failed or shape is invalid
             Cookies.remove("authToken", { path: "/" });
           }
         }
