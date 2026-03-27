@@ -32,7 +32,7 @@ router.get(
       // Create JWT token
       const authToken = createJWT(userData);
 
-      // Set HTTP-only cookie
+      // Set HTTP-only cookie (more secure than URL params)
       res.cookie("authToken", authToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
@@ -40,8 +40,9 @@ router.get(
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
-      // Redirect to frontend with token in URL query param for JS access
-      const redirectUrl = `${config.frontendUrl}/auth/callback?token=${authToken}&provider=google`;
+      // Redirect to frontend callback WITHOUT token in URL
+      // Frontend will verify auth status by calling /api/auth/me
+      const redirectUrl = `${config.frontendUrl}/auth/callback?provider=google`;
       res.redirect(redirectUrl);
     } catch (error) {
       console.error("Google OAuth callback error:", error);
@@ -77,11 +78,12 @@ router.get(
       // Create JWT token
       const authToken = createJWT(userData);
 
-      // Set HTTP-only cookie
+      // Set HTTP-only cookie (more secure than URL params)
       res.cookie("authToken", authToken, authCookieOptions);
 
-      // Redirect to frontend with token in URL query param
-      const redirectUrl = `${config.frontendUrl}/auth/callback?token=${authToken}&provider=facebook`;
+      // Redirect to frontend callback WITHOUT token in URL
+      // Frontend will verify auth status by calling /api/auth/me
+      const redirectUrl = `${config.frontendUrl}/auth/callback?provider=facebook`;
       res.redirect(redirectUrl);
     } catch (error) {
       console.error("Facebook OAuth callback error:", error);
@@ -117,11 +119,12 @@ router.get(
       // Create JWT token
       const authToken = createJWT(userData);
 
-      // Set HTTP-only cookie
+      // Set HTTP-only cookie (more secure than URL params)
       res.cookie("authToken", authToken, authCookieOptions);
 
-      // Redirect to frontend with token in URL query param
-      const redirectUrl = `${config.frontendUrl}/auth/callback?token=${authToken}&provider=github`;
+      // Redirect to frontend callback WITHOUT token in URL
+      // Frontend will verify auth status by calling /api/auth/me
+      const redirectUrl = `${config.frontendUrl}/auth/callback?provider=github`;
       res.redirect(redirectUrl);
     } catch (error) {
       console.error("GitHub OAuth callback error:", error);

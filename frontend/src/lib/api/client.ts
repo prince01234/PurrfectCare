@@ -24,14 +24,13 @@ export interface ApiResponse<T = unknown> {
   errorCode?: string;
 }
 
-// Helper to get auth token — try cookie first, fall back to localStorage
+// Helper to get auth token from cookie (for Bearer header if needed)
+// Note: Token is primarily stored in httpOnly cookie and sent automatically
+// This is mainly for manual header construction in edge cases
 export const getAuthToken = (): string | null => {
   if (typeof window === "undefined") return null;
-  // Use js-cookie for consistent reading (matches how AuthContext sets it)
-  const token = Cookies.get("authToken");
-  if (token) return token;
-  // Fallback to localStorage if cookie was lost (e.g. browser cleared cookies)
-  return localStorage.getItem("authToken");
+  // Only check cookie - no localStorage fallback (secure cookie-based auth only)
+  return Cookies.get("authToken") || null;
 };
 
 export async function apiRequest<T>(

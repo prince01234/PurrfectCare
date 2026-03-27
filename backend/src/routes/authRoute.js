@@ -1,5 +1,6 @@
 import express from "express";
 import authController from "../controllers/authController.js";
+import { auth } from "../middlewares/auth.js";
 
 const router = express.Router();
 
@@ -8,6 +9,10 @@ router.post("/register", authController.registerUser);
 
 //URl: /api/auth/login
 router.post("/login", authController.loginUser);
+
+// URL: /api/auth/me
+// Get current authenticated user info
+router.get("/me", auth, authController.getCurrentUser);
 
 // URL: /api/auth/forgot-password
 router.post("/forgot-password", authController.forgotPassword);

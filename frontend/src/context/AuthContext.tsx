@@ -8,6 +8,7 @@ import React, {
   ReactNode,
 } from "react";
 import Cookies from "js-cookie";
+import { apiRequest } from "@/lib/api";
 
 interface User {
   _id: string;
@@ -25,7 +26,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (user: User, token: string) => void;
+  login: (user: User, token?: string | null) => void;
   logout: () => void;
   updateUser: (userData: Partial<User>) => void;
   isLoading: boolean;
@@ -39,43 +40,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Try cookie first, then localStorage fallback
-    const storedToken =
-      Cookies.get("authToken") || localStorage.getItem("authToken");
-    const storedUser = localStorage.getItem("user");
+    // On mount, verify authentication via /api/auth/me
+    // The httpOnly cookie is automatically sent with the request
+    const verifyAuth = async () => {
+      try {
+        // Check if there's an auth cookie
+        if (Cookies.get("authToken")) {
+          const response = await apiRequest("/auth/me");
 
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-      // Re-sync cookie if it was missing but localStorage had the token
-      if (!Cookies.get("authToken")) {
-        Cookies.set("authToken", storedToken, { expires: 7, path: "/" });
+          if (response.data) {
+            setUser(response.data);
+            // Token is in the httpOnly cookie, we don't need to store it
+            setToken("authenticated");
+          } else {
+            // Cookie exists but user data fetch failed
+            Cookies.remove("authToken", { path: "/" });
+          }
+        }
+      } catch (error) {
+        console.error("Auth verification error:", error);
+      } finally {
+        setIsLoading(false);
       }
-    }
-    setIsLoading(false);
+    };
+
+    verifyAuth();
   }, []);
 
-  const login = (userData: User, authToken: string) => {
+  // Accept optional token (for compatibility)
+  // Token is actually stored in httpOnly cookie by backend
+  const login = (userData: User, authToken?: string | null) => {
     setUser(userData);
-    setToken(authToken);
-    Cookies.set("authToken", authToken, { expires: 7, path: "/" });
-    localStorage.setItem("authToken", authToken);
-    localStorage.setItem("user", JSON.stringify(userData));
+    // Token value doesn't matter for cookie-based auth, marking as authenticated
+    setToken(authToken ?? "authenticated");
   };
 
-  const logout = () => {
-    setUser(null);
-    setToken(null);
-    Cookies.remove("authToken", { path: "/" });
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("user");
+  const logout = async () => {
+    try {
+      // Call logout endpoint to clear cookie
+      await apiRequest("/auth/logout", { method: "POST" });
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      setUser(null);
+      setToken(null);
+      Cookies.remove("authToken", { path: "/" });
+    }
   };
 
   const updateUser = (userData: Partial<User>) => {
     if (user) {
       const updatedUser = { ...user, ...userData };
       setUser(updatedUser);
-      localStorage.setItem("user", JSON.stringify(updatedUser));
     }
   };
 

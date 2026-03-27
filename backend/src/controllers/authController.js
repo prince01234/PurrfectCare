@@ -1,5 +1,6 @@
 import authService from "../services/authService.js";
 import { createJWT } from "../utils/jwt.js";
+import User from "../models/User.js";
 
 const loginUser = async (req, res) => {
   const data = req.body;
@@ -186,6 +187,27 @@ const logout = async (req, res) => {
   res.json({ message: "Logout successful" });
 };
 
+const getCurrentUser = async (req, res) => {
+  try {
+    // Auth middleware already verified the token and attached user to req.user
+    if (!req.user) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    // Fetch fresh user data from database to include all fields
+    const user = await User.findById(req.user._id).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.json(user);
+  } catch (error) {
+    console.error("Get current user error:", error);
+    res.status(500).json({ error: "Failed to get user information" });
+  }
+};
+
 export default {
   registerUser,
   loginUser,
@@ -195,4 +217,5 @@ export default {
   verifyAccount,
   resendVerification,
   logout,
+  getCurrentUser,
 };
