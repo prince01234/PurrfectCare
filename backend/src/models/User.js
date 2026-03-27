@@ -28,21 +28,15 @@ const userSchema = new mongoose.Schema(
     // OAuth provider IDs
     googleId: {
       type: String,
-      unique: true,
-      sparse: true,
-      default: null,
+      default: undefined,
     },
     facebookId: {
       type: String,
-      unique: true,
-      sparse: true,
-      default: null,
+      default: undefined,
     },
     githubId: {
       type: String,
-      unique: true,
-      sparse: true,
-      default: null,
+      default: undefined,
     },
     // Tracks which authentication providers are linked to this account
     authProviders: {
@@ -153,6 +147,23 @@ const userSchema = new mongoose.Schema(
   {
     timestamps: true,
   },
+);
+
+// Enforce uniqueness only when OAuth provider IDs are actually present as strings.
+userSchema.index(
+  { googleId: 1 },
+  { unique: true, partialFilterExpression: { googleId: { $type: "string" } } },
+);
+userSchema.index(
+  { facebookId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { facebookId: { $type: "string" } },
+  },
+);
+userSchema.index(
+  { githubId: 1 },
+  { unique: true, partialFilterExpression: { githubId: { $type: "string" } } },
 );
 
 const User = mongoose.model("User", userSchema);

@@ -83,13 +83,10 @@ export default function DashboardPage() {
   const [upcomingReminders, setUpcomingReminders] = useState<
     UpcomingReminder[]
   >([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Redirect if not authenticated or onboarding not completed
+  // Keep onboarding protection for signed-in users only.
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.replace("/login");
-    }
     if (!authLoading && user && !user.hasCompletedOnboarding) {
       router.replace("/onboarding");
     }
@@ -201,7 +198,7 @@ export default function DashboardPage() {
     };
   }, [user, authLoading]);
 
-  if (authLoading || isLoading) {
+  if (authLoading || (user && isLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
         <motion.div
@@ -212,8 +209,6 @@ export default function DashboardPage() {
       </div>
     );
   }
-
-  if (!user) return null;
 
   // Get the pet with the most urgent reminder
   const mostUrgentReminder = upcomingReminders[0];
@@ -227,13 +222,14 @@ export default function DashboardPage() {
   return (
     <MobileLayout>
       <HeroSection
-        userName={user.name}
-        notificationCount={unreadCount}
-        onNotificationClick={openSheet}
+        userName={user?.name}
+        isGuest={!user}
+        notificationCount={user ? unreadCount : 0}
+        onNotificationClick={user ? openSheet : undefined}
       />
 
       {/* Most Urgent Pet Card */}
-      {mostUrgentPet && (
+      {user && mostUrgentPet && (
         <div className="px-5 py-6">
           <Link href={`/pets/${mostUrgentPet.id}`}>
             <motion.div
@@ -301,7 +297,7 @@ export default function DashboardPage() {
       )}
 
       {/* Upcoming Reminders Section */}
-      {upcomingReminders.length > 0 && (
+      {user && upcomingReminders.length > 0 && (
         <div className="px-5 py-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-gray-900">
@@ -384,6 +380,23 @@ export default function DashboardPage() {
                 </div>
               </motion.div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {!user && (
+        <div className="px-5 pt-6">
+          <div className="rounded-2xl border border-teal-100 bg-teal-50/60 px-4 py-3">
+            <p className="text-sm text-teal-800">
+              Browsing as guest. Sign in to manage pets, reminders, bookings,
+              and messages.
+            </p>
+            <Link
+              href="/login"
+              className="mt-2 inline-block text-sm font-semibold text-teal-700 hover:text-teal-800"
+            >
+              Sign in
+            </Link>
           </div>
         </div>
       )}

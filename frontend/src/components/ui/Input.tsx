@@ -10,7 +10,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 }
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, icon: Icon, error, type, ...props }, ref) => {
+  ({ label, icon: Icon, error, type, className, ...props }, ref) => {
     const [showPassword, setShowPassword] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
 
@@ -46,7 +46,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             <input
               ref={ref}
               type={inputType}
-              className="flex-1 bg-transparent outline-none text-gray-800 placeholder:text-gray-400 min-w-0"
+              className={`flex-1 bg-transparent outline-none text-gray-800 placeholder:text-gray-400 min-w-0 ${className || ""}`}
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
               {...props}

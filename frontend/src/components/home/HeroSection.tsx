@@ -12,15 +12,20 @@ import { motion } from "framer-motion";
 
 interface HeroSectionProps {
   userName?: string;
+  isGuest?: boolean;
   notificationCount?: number;
   onNotificationClick?: () => void;
 }
 
 export default function HeroSection({
   userName,
+  isGuest = false,
   notificationCount = 0,
   onNotificationClick,
 }: HeroSectionProps) {
+  const messagesHref = isGuest ? "/login" : "/messages";
+  const petsHref = isGuest ? "/adopt" : "/pets";
+
   return (
     <div className="relative overflow-hidden rounded-b-4xl bg-linear-to-br from-teal-700 to-teal-600 px-5 pb-6 pt-8 shadow-[0_12px_28px_rgba(15,118,110,0.24)]">
       <div className="pointer-events-none absolute -right-14 -top-10 h-36 w-36 rounded-full bg-white/10 blur-2xl" />
@@ -43,7 +48,7 @@ export default function HeroSection({
 
         <div className="flex items-center gap-2">
           <Link
-            href="/messages"
+            href={messagesHref}
             className="relative flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/12 transition hover:bg-white/20"
           >
             <MessageCircle className="h-4.5 w-4.5 text-white" />
@@ -66,7 +71,7 @@ export default function HeroSection({
 
       {/* Action cards */}
       <div className="relative grid grid-cols-2 gap-3.5">
-        <Link href="/pets">
+        <Link href={petsHref}>
           <motion.div
             whileTap={{ scale: 0.97 }}
             className="group flex min-h-24 flex-col justify-between rounded-2xl border border-white/20 bg-white/10 p-3.5 transition hover:bg-white/18"
@@ -79,8 +84,12 @@ export default function HeroSection({
             </div>
 
             <div className="mt-3.5">
-              <p className="text-sm font-semibold text-white">My Pets</p>
-              <p className="text-teal-100/95 text-xs">Health & records</p>
+              <p className="text-sm font-semibold text-white">
+                {isGuest ? "Browse Pets" : "My Pets"}
+              </p>
+              <p className="text-teal-100/95 text-xs">
+                {isGuest ? "Find pets to adopt" : "Health & records"}
+              </p>
             </div>
           </motion.div>
         </Link>
