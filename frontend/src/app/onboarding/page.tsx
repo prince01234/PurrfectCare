@@ -64,51 +64,81 @@ export default function OnboardingPage() {
     }
   }, [user, authLoading, router]);
 
+  const getRedirectPath = (intent: UserIntent | null): string => {
+    switch (intent) {
+      case "pet_owner":
+        return "/pets";
+      case "looking_to_adopt":
+        return "/adopt";
+      case "exploring":
+        return "/dashboard";
+      default:
+        return "/dashboard";
+    }
+  };
+
   const handleContinue = async () => {
     if (!selectedIntent || !user) return;
 
     setIsLoading(true);
-    const response = await userApi.completeOnboarding(user._id, selectedIntent);
+    try {
+      const response = await userApi.completeOnboarding(
+        user._id,
+        selectedIntent,
+      );
 
-    if (response.error) {
-      toast.error(response.error);
+      if (response.error) {
+        toast.error(response.error);
+        setIsLoading(false);
+        return;
+      }
+
+      if (response.data) {
+        updateUser({
+          hasCompletedOnboarding: true,
+          userIntent: selectedIntent,
+        });
+        toast.success("Welcome to PurrfectCare!");
+
+        // Route to appropriate page based on intent
+        const redirectPath = getRedirectPath(selectedIntent);
+        router.push(redirectPath);
+      }
+    } catch (error) {
+      console.error("Error completing onboarding:", error);
+      toast.error("Something went wrong. Please try again.");
       setIsLoading(false);
-      return;
     }
-
-    if (response.data) {
-      updateUser({
-        hasCompletedOnboarding: true,
-        userIntent: selectedIntent,
-      });
-      toast.success("Welcome to PurrfectCare!");
-      router.push("/dashboard");
-    }
-
-    setIsLoading(false);
   };
 
   const handleSkip = async () => {
     if (!user) return;
 
     setIsLoading(true);
-    const response = await userApi.completeOnboarding(user._id);
+    try {
+      const response = await userApi.completeOnboarding(user._id);
 
-    if (response.error) {
-      toast.error(response.error);
+      if (response.error) {
+        toast.error(response.error);
+        setIsLoading(false);
+        return;
+      }
+
+      if (response.data) {
+        updateUser({
+          hasCompletedOnboarding: true,
+          userIntent: null,
+        });
+        toast.success("Let's explore!");
+
+        // Explorers go to dashboard
+        router.push("/dashboard");
+      }
+    } catch (error) {
+      console.error("Error skipping onboarding:", error);
+      toast.error("Something went wrong. Please try again.");
       setIsLoading(false);
-      return;
     }
-
-    if (response.data) {
-      updateUser({
-        hasCompletedOnboarding: true,
-        userIntent: null,
-      });
-      router.push("/dashboard");
-    }
-
-    setIsLoading(false);
   };
 
   if (authLoading) {

@@ -12,9 +12,14 @@ export default function AuthLayout({
   variant = "login",
 }: AuthLayoutProps) {
   return (
-    <div className="min-h-screen w-full bg-slate-50">
-      <div className="mx-auto w-full max-w-md px-5 py-8 sm:py-10">
-        <div data-variant={variant}>{children}</div>
+    <div className="min-h-screen w-full bg-slate-50" suppressHydrationWarning>
+      <div
+        className="mx-auto w-full max-w-md px-5 py-8 sm:py-10"
+        suppressHydrationWarning
+      >
+        <div data-variant={variant} suppressHydrationWarning>
+          {children}
+        </div>
       </div>
     </div>
   );

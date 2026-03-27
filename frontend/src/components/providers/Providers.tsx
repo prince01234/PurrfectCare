@@ -14,14 +14,16 @@ function FCMInitializer({ children }: { children: ReactNode }) {
 
 export default function Providers({ children }: { children: ReactNode }) {
   return (
-    <AuthProvider>
-      <SocketProvider>
-        <NotificationCenterProvider>
-          <CartProvider>
-            <FCMInitializer>{children}</FCMInitializer>
-          </CartProvider>
-        </NotificationCenterProvider>
-      </SocketProvider>
-    </AuthProvider>
+    <div suppressHydrationWarning>
+      <AuthProvider>
+        <SocketProvider>
+          <NotificationCenterProvider>
+            <CartProvider>
+              <FCMInitializer>{children}</FCMInitializer>
+            </CartProvider>
+          </NotificationCenterProvider>
+        </SocketProvider>
+      </AuthProvider>
+    </div>
   );
 }

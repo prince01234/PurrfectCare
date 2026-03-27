@@ -237,7 +237,7 @@ export default function AdoptDetailPage() {
               alt={listing.name}
               fill
               className="object-cover"
-              sizes="100vw"
+              sizes="(max-width: 32rem) 100vw, 32rem"
               priority
             />
           ) : (

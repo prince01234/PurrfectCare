@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import "./globals.css";
@@ -35,6 +36,56 @@ export default function RootLayout({
         suppressHydrationWarning
         className={`${appSans.variable} ${appMono.variable} antialiased`}
       >
+        <Script id="strip-bis-attributes" strategy="beforeInteractive">
+          {`(function () {
+  var attrs = ["bis_skin_checked", "bis_register", "bis_size"];
+
+  function stripFromElement(el) {
+    if (!el || el.nodeType !== 1) return;
+    for (var i = 0; i < attrs.length; i++) {
+      if (el.hasAttribute(attrs[i])) {
+        el.removeAttribute(attrs[i]);
+      }
+    }
+  }
+
+  function stripFromTree(root) {
+    if (!root || !root.querySelectorAll) return;
+    stripFromElement(root);
+    for (var i = 0; i < attrs.length; i++) {
+      var nodes = root.querySelectorAll("[" + attrs[i] + "]");
+      for (var j = 0; j < nodes.length; j++) {
+        nodes[j].removeAttribute(attrs[i]);
+      }
+    }
+  }
+
+  stripFromTree(document.documentElement);
+
+  var observer = new MutationObserver(function (mutations) {
+    for (var i = 0; i < mutations.length; i++) {
+      var mutation = mutations[i];
+      if (mutation.type === "attributes") {
+        stripFromElement(mutation.target);
+      }
+
+      if (mutation.type === "childList") {
+        for (var j = 0; j < mutation.addedNodes.length; j++) {
+          var node = mutation.addedNodes[j];
+          stripFromTree(node);
+        }
+      }
+    }
+  });
+
+  observer.observe(document.documentElement, {
+    subtree: true,
+    childList: true,
+    attributes: true,
+    attributeFilter: attrs,
+  });
+})();`}
+        </Script>
         <Providers>
           <Toaster
             position="top-center"
@@ -69,7 +120,7 @@ export default function RootLayout({
               },
             }}
           />
-          {children}
+          <div suppressHydrationWarning>{children}</div>
         </Providers>
       </body>
     </html>

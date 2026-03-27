@@ -423,7 +423,7 @@ export default function PetProfilePage({
             alt={pet.name}
             fill
             className="object-cover"
-            sizes="100vw"
+            sizes="(max-width: 32rem) 100vw, 32rem"
             priority
           />
         ) : (
