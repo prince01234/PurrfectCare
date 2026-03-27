@@ -29,8 +29,19 @@ export interface ApiResponse<T = unknown> {
 // This is mainly for manual header construction in edge cases
 export const getAuthToken = (): string | null => {
   if (typeof window === "undefined") return null;
-  // Only check cookie - no localStorage fallback (secure cookie-based auth only)
-  return Cookies.get("authToken") || null;
+  // Prefer cookie token, but fallback to localStorage for cross-site cookie constraints.
+  return Cookies.get("authToken") || localStorage.getItem("authToken") || null;
+};
+
+export const setAuthToken = (token: string) => {
+  if (typeof window === "undefined") return;
+  localStorage.setItem("authToken", token);
+};
+
+export const clearAuthToken = () => {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem("authToken");
+  Cookies.remove("authToken", { path: "/" });
 };
 
 export async function apiRequest<T>(

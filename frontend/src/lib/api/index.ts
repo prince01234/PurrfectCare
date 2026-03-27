@@ -1,7 +1,14 @@
 // Central re-export for all API modules
 // Import from "@/lib/api" as before — no changes needed in consuming files
 
-export { apiRequest, isVerificationError, API_URL } from "./client";
+export {
+  apiRequest,
+  isVerificationError,
+  API_URL,
+  getAuthToken,
+  setAuthToken,
+  clearAuthToken,
+} from "./client";
 export type { ApiResponse } from "./client";
 export { authApi } from "./auth";
 export { userApi } from "./user";

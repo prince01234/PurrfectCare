@@ -2,6 +2,13 @@ import authService from "../services/authService.js";
 import { createJWT } from "../utils/jwt.js";
 import User from "../models/User.js";
 
+const authCookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "Lax",
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+};
+
 const loginUser = async (req, res) => {
   const data = req.body;
 
@@ -21,12 +28,7 @@ const loginUser = async (req, res) => {
 
     const authToken = createJWT(user);
 
-    res.cookie("authToken", authToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "Lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    res.cookie("authToken", authToken, authCookieOptions);
 
     res.json({ ...user, authToken });
   } catch (error) {
@@ -182,7 +184,11 @@ const resendVerification = async (req, res) => {
 };
 
 const logout = async (req, res) => {
-  res.clearCookie("authToken");
+  res.clearCookie("authToken", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "Lax",
+  });
 
   res.json({ message: "Logout successful" });
 };

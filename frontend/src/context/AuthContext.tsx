@@ -7,8 +7,12 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
-import Cookies from "js-cookie";
-import { apiRequest } from "@/lib/api";
+import {
+  apiRequest,
+  getAuthToken,
+  setAuthToken,
+  clearAuthToken,
+} from "@/lib/api";
 
 interface User {
   _id: string;
@@ -52,24 +56,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // On mount, verify authentication via /api/auth/me
-    // The httpOnly cookie is automatically sent with the request
+    // The httpOnly cookie is sent automatically; bearer token fallback is used when needed.
     const verifyAuth = async () => {
       try {
-        // Check if there's an auth cookie
-        if (Cookies.get("authToken")) {
-          const response = await apiRequest<User>("/auth/me");
+        const response = await apiRequest<User>("/auth/me", {}, true);
 
-          if (isUser(response.data)) {
-            setUser(response.data);
-            // Token is in the httpOnly cookie, we don't need to store it
-            setToken("authenticated");
-          } else {
-            // Cookie exists but user data fetch failed or shape is invalid
-            Cookies.remove("authToken", { path: "/" });
-          }
+        if (isUser(response.data)) {
+          setUser(response.data);
+          setToken(getAuthToken() ?? "authenticated");
+        } else {
+          clearAuthToken();
         }
       } catch (error) {
         console.error("Auth verification error:", error);
+        clearAuthToken();
       } finally {
         setIsLoading(false);
       }
@@ -82,8 +82,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Token is actually stored in httpOnly cookie by backend
   const login = (userData: User, authToken?: string | null) => {
     setUser(userData);
-    // Token value doesn't matter for cookie-based auth, marking as authenticated
-    setToken(authToken ?? "authenticated");
+    if (authToken) {
+      setAuthToken(authToken);
+      setToken(authToken);
+      return;
+    }
+
+    setToken(getAuthToken() ?? "authenticated");
   };
 
   const logout = async () => {
@@ -95,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setUser(null);
       setToken(null);
-      Cookies.remove("authToken", { path: "/" });
+      clearAuthToken();
     }
   };
 
