@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
 import {
@@ -11,8 +11,6 @@ import {
   Shield,
   Smile,
   AlertTriangle,
-  ChevronLeft,
-  ChevronRight,
   Send,
   Loader2,
   X,
@@ -23,6 +21,7 @@ import {
   Baby,
   FileText,
   Share2,
+  Check,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -43,6 +42,128 @@ const LIVING_OPTIONS = [
   { value: "other", label: "Other" },
 ];
 
+// Simple markdown-like text renderer
+function RichText({ content, className = "" }: { content: string; className?: string }) {
+  // Convert markdown-like syntax to HTML
+  const renderContent = () => {
+    if (!content) return null;
+    
+    // Split by paragraphs (double newlines)
+    const paragraphs = content.split(/\n\n+/);
+    
+    return paragraphs.map((paragraph, pIdx) => {
+      // Process each line in the paragraph
+      const lines = paragraph.split('\n');
+      
+      return (
+        <div key={pIdx} className={pIdx > 0 ? "mt-3" : ""}>
+          {lines.map((line, lIdx) => {
+            // Check for headers
+            if (line.startsWith('### ')) {
+              return <h4 key={lIdx} className="font-semibold text-gray-800 mt-2">{line.slice(4)}</h4>;
+            }
+            if (line.startsWith('## ')) {
+              return <h3 key={lIdx} className="font-bold text-gray-900 mt-2">{line.slice(3)}</h3>;
+            }
+            if (line.startsWith('# ')) {
+              return <h2 key={lIdx} className="text-lg font-bold text-gray-900 mt-2">{line.slice(2)}</h2>;
+            }
+            
+            // Check for bullet points
+            if (line.match(/^[-*•]\s/)) {
+              return (
+                <div key={lIdx} className="flex gap-2 ml-2">
+                  <span className="text-teal-500">•</span>
+                  <span>{processInlineStyles(line.slice(2))}</span>
+                </div>
+              );
+            }
+            
+            // Check for numbered lists
+            const numberedMatch = line.match(/^(\d+)\.\s/);
+            if (numberedMatch) {
+              return (
+                <div key={lIdx} className="flex gap-2 ml-2">
+                  <span className="text-teal-500 font-medium">{numberedMatch[1]}.</span>
+                  <span>{processInlineStyles(line.slice(numberedMatch[0].length))}</span>
+                </div>
+              );
+            }
+            
+            // Regular text
+            if (line.trim()) {
+              return <p key={lIdx}>{processInlineStyles(line)}</p>;
+            }
+            return null;
+          })}
+        </div>
+      );
+    });
+  };
+
+  // Process bold, italic, and other inline styles
+  const processInlineStyles = (text: string): React.ReactNode => {
+    const parts: React.ReactNode[] = [];
+    let remaining = text;
+    let key = 0;
+    
+    while (remaining.length > 0) {
+      // Bold **text**
+      const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
+      // Italic *text* or _text_
+      const italicMatch = remaining.match(/(?<!\*)\*([^*]+)\*(?!\*)|_([^_]+)_/);
+      
+      if (boldMatch && (!italicMatch || boldMatch.index! <= italicMatch.index!)) {
+        if (boldMatch.index! > 0) {
+          parts.push(remaining.slice(0, boldMatch.index));
+        }
+        parts.push(<strong key={key++} className="font-semibold">{boldMatch[1]}</strong>);
+        remaining = remaining.slice(boldMatch.index! + boldMatch[0].length);
+      } else if (italicMatch) {
+        if (italicMatch.index! > 0) {
+          parts.push(remaining.slice(0, italicMatch.index));
+        }
+        parts.push(<em key={key++} className="italic">{italicMatch[1] || italicMatch[2]}</em>);
+        remaining = remaining.slice(italicMatch.index! + italicMatch[0].length);
+      } else {
+        parts.push(remaining);
+        break;
+      }
+    }
+    
+    return parts.length > 0 ? parts : text;
+  };
+
+  return <div className={`space-y-1 ${className}`}>{renderContent()}</div>;
+}
+
+// Local storage favorites helper
+const FAVORITES_KEY = "purrfectcare_adoption_favorites";
+
+const getFavorites = (): string[] => {
+  if (typeof window === "undefined") return [];
+  try {
+    const stored = localStorage.getItem(FAVORITES_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+};
+
+const toggleFavorite = (listingId: string): boolean => {
+  const favorites = getFavorites();
+  const index = favorites.indexOf(listingId);
+  if (index > -1) {
+    favorites.splice(index, 1);
+    localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+    return false;
+  } else {
+    favorites.push(listingId);
+    localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+    return true;
+  }
+};
+
 export default function AdoptDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -56,7 +177,18 @@ export default function AdoptDetailPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasApplied, setHasApplied] = useState(false);
   const [showMap, setShowMap] = useState(false);
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [justCopied, setJustCopied] = useState(false);
   const userCoords = useGeolocation();
+  
+  // Touch handling for swipe
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Check if listing is favorited on mount
+  useEffect(() => {
+    setIsFavorited(getFavorites().includes(listingId));
+  }, [listingId]);
 
   const [formData, setFormData] = useState({
     message: "",
@@ -204,14 +336,77 @@ export default function AdoptDetailPage() {
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
-  const nextPhoto = () => {
+  const nextPhoto = useCallback(() => {
     if (listing?.photos) setActivePhoto((p) => (p + 1) % listing.photos.length);
-  };
-  const prevPhoto = () => {
+  }, [listing?.photos]);
+  
+  const prevPhoto = useCallback(() => {
     if (listing?.photos)
       setActivePhoto(
         (p) => (p - 1 + listing.photos.length) % listing.photos.length,
       );
+  }, [listing?.photos]);
+
+  // Handle swipe gesture for photos
+  const handleDragEnd = useCallback(
+    (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+      if (!listing?.photos || listing.photos.length <= 1) return;
+      
+      const threshold = 50;
+      const velocity = info.velocity.x;
+      const offset = info.offset.x;
+      
+      if (offset < -threshold || velocity < -500) {
+        nextPhoto();
+      } else if (offset > threshold || velocity > 500) {
+        prevPhoto();
+      }
+      setIsDragging(false);
+    },
+    [listing?.photos, nextPhoto, prevPhoto]
+  );
+
+  // Handle favorite toggle
+  const handleFavoriteToggle = () => {
+    const newState = toggleFavorite(listingId);
+    setIsFavorited(newState);
+    toast.success(newState ? "Added to favorites" : "Removed from favorites", {
+      icon: newState ? "❤️" : "💔",
+      duration: 2000,
+    });
+  };
+
+  // Handle share
+  const handleShare = async () => {
+    const shareData = {
+      title: `Adopt ${listing?.name}`,
+      text: `Check out ${listing?.name} available for adoption!`,
+      url: window.location.href,
+    };
+
+    try {
+      if (navigator.share && navigator.canShare?.(shareData)) {
+        await navigator.share(shareData);
+      } else {
+        // Fallback: copy to clipboard
+        await navigator.clipboard.writeText(window.location.href);
+        setJustCopied(true);
+        toast.success("Link copied to clipboard!");
+        setTimeout(() => setJustCopied(false), 2000);
+      }
+    } catch (err) {
+      if ((err as Error).name !== "AbortError") {
+        // User didn't cancel, try clipboard fallback
+        try {
+          await navigator.clipboard.writeText(window.location.href);
+          setJustCopied(true);
+          toast.success("Link copied to clipboard!");
+          setTimeout(() => setJustCopied(false), 2000);
+        } catch {
+          toast.error("Failed to share");
+        }
+      }
+    }
   };
 
   if (isLoading) {
@@ -229,17 +424,38 @@ export default function AdoptDetailPage() {
   return (
     <MobileLayout showBottomNav={false}>
       <div className="min-h-screen bg-gray-50 pb-28">
-        {/* Photo Gallery — covers top portion like reference */}
-        <div className="relative h-[55vh] min-h-85 bg-gray-200">
+        {/* Photo Gallery — swipeable for mobile */}
+        <div className="relative h-[55vh] min-h-85 bg-gray-200 overflow-hidden" ref={containerRef}>
           {listing.photos?.length > 0 ? (
-            <Image
-              src={listing.photos[activePhoto]}
-              alt={listing.name}
-              fill
-              className="object-cover"
-              sizes="(max-width: 32rem) 100vw, 32rem"
-              priority
-            />
+            <motion.div
+              className="relative w-full h-full cursor-grab active:cursor-grabbing"
+              drag={listing.photos.length > 1 ? "x" : false}
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.2}
+              onDragStart={() => setIsDragging(true)}
+              onDragEnd={handleDragEnd}
+            >
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={activePhoto}
+                  initial={{ opacity: 0, scale: 1.05 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.3 }}
+                  className="absolute inset-0"
+                >
+                  <Image
+                    src={listing.photos[activePhoto]}
+                    alt={listing.name}
+                    fill
+                    className="object-cover pointer-events-none select-none"
+                    sizes="(max-width: 32rem) 100vw, 32rem"
+                    priority
+                    draggable={false}
+                  />
+                </motion.div>
+              </AnimatePresence>
+            </motion.div>
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-teal-50 to-teal-100">
               <span className="text-7xl">🐾</span>
@@ -252,50 +468,60 @@ export default function AdoptDetailPage() {
           {/* Back button */}
           <button
             onClick={() => router.back()}
-            className="absolute top-4 left-4 w-10 h-10 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm z-10"
+            className="absolute top-4 left-4 w-10 h-10 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm z-10 active:scale-95 transition-transform"
           >
             <ArrowLeft className="w-5 h-5 text-gray-700" />
           </button>
 
           {/* Right action buttons */}
           <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
-            <button className="w-10 h-10 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm">
-              <Share2 className="w-5 h-5 text-gray-600" />
+            <button
+              onClick={handleShare}
+              className="w-10 h-10 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm active:scale-95 transition-all"
+            >
+              {justCopied ? (
+                <Check className="w-5 h-5 text-green-500" />
+              ) : (
+                <Share2 className="w-5 h-5 text-gray-600" />
+              )}
             </button>
-            <button className="w-10 h-10 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm">
-              <Heart className="w-5 h-5 text-pink-400" />
+            <button
+              onClick={handleFavoriteToggle}
+              className="w-10 h-10 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm active:scale-95 transition-all"
+            >
+              <Heart
+                className={`w-5 h-5 transition-colors ${
+                  isFavorited ? "fill-pink-500 text-pink-500" : "text-gray-400"
+                }`}
+              />
             </button>
           </div>
 
-          {/* Photo nav arrows */}
+          {/* Photo indicators - progress bar style */}
           {listing.photos?.length > 1 && (
-            <>
-              <button
-                onClick={prevPhoto}
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center"
-              >
-                <ChevronLeft className="w-5 h-5 text-white" />
-              </button>
-              <button
-                onClick={nextPhoto}
-                className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center"
-              >
-                <ChevronRight className="w-5 h-5 text-white" />
-              </button>
-
-              {/* Dot indicators */}
-              <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+            <div className="absolute bottom-6 left-0 right-0 px-6 z-10">
+              <div className="flex justify-center gap-1.5">
                 {listing.photos.map((_, i) => (
                   <button
                     key={i}
                     onClick={() => setActivePhoto(i)}
-                    className={`w-2 h-2 rounded-full transition-all ${
-                      i === activePhoto ? "bg-white w-5" : "bg-white/50"
-                    }`}
-                  />
+                    className="flex-1 max-w-12 h-1 rounded-full overflow-hidden bg-white/30 backdrop-blur-sm"
+                  >
+                    <motion.div
+                      className="h-full bg-white rounded-full"
+                      initial={false}
+                      animate={{
+                        width: i === activePhoto ? "100%" : "0%",
+                      }}
+                      transition={{
+                        duration: 0.3,
+                        ease: "easeOut",
+                      }}
+                    />
+                  </button>
                 ))}
               </div>
-            </>
+            </div>
           )}
         </div>
 
@@ -430,52 +656,68 @@ export default function AdoptDetailPage() {
             <h2 className="text-base font-bold text-gray-900">
               About {listing.name}
             </h2>
-            <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
-              {listing.description}
-            </p>
+            <RichText 
+              content={listing.description} 
+              className="text-sm text-gray-600 leading-relaxed"
+            />
 
             {/* Health info */}
             {listing.healthInfo && (
               <div className="pt-3 border-t border-gray-100">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <Shield className="w-4 h-4 text-green-500" />
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-7 h-7 rounded-full bg-green-50 flex items-center justify-center">
+                    <Shield className="w-4 h-4 text-green-500" />
+                  </div>
                   <h3 className="text-sm font-semibold text-gray-800">
                     Health Information
                   </h3>
                 </div>
-                <p className="text-sm text-gray-600 pl-6">
-                  {listing.healthInfo}
-                </p>
+                <div className="pl-9">
+                  <RichText 
+                    content={listing.healthInfo} 
+                    className="text-sm text-gray-600"
+                  />
+                </div>
               </div>
             )}
 
             {/* Temperament */}
             {listing.temperament && (
               <div className="pt-3 border-t border-gray-100">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <Smile className="w-4 h-4 text-amber-500" />
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-7 h-7 rounded-full bg-amber-50 flex items-center justify-center">
+                    <Smile className="w-4 h-4 text-amber-500" />
+                  </div>
                   <h3 className="text-sm font-semibold text-gray-800">
                     Temperament
                   </h3>
                 </div>
-                <p className="text-sm text-gray-600 pl-6">
-                  {listing.temperament}
-                </p>
+                <div className="pl-9">
+                  <RichText 
+                    content={listing.temperament} 
+                    className="text-sm text-gray-600"
+                  />
+                </div>
               </div>
             )}
 
             {/* Special Needs */}
             {listing.specialNeeds && (
               <div className="pt-3 border-t border-gray-100">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <AlertTriangle className="w-4 h-4 text-orange-500" />
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-7 h-7 rounded-full bg-orange-50 flex items-center justify-center">
+                    <AlertTriangle className="w-4 h-4 text-orange-500" />
+                  </div>
                   <h3 className="text-sm font-semibold text-gray-800">
                     Special Needs
                   </h3>
                 </div>
-                <p className="text-sm text-gray-600 pl-6">
-                  {listing.specialNeeds}
-                </p>
+                <div className="pl-9">
+                  <RichText 
+                    content={listing.specialNeeds} 
+                    className="text-sm text-gray-600"
+                  />
+                </div>
               </div>
             )}
           </div>

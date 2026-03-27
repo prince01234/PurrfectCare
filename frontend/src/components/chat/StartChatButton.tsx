@@ -4,7 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { ConversationContext } from "@/lib/api/messaging";
 import { useRouter } from "next/navigation";
 import { messagingApi } from "@/lib/api";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useState } from "react";
 
@@ -60,8 +60,11 @@ export default function StartChatButton({
       "bg-teal-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-teal-700 active:scale-[0.98] transition-all flex items-center gap-2",
     secondary:
       "bg-gray-100 text-gray-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-gray-200 active:scale-[0.98] transition-all flex items-center gap-2",
-    icon: "p-2 rounded-full bg-teal-50 text-teal-600 hover:bg-teal-100 active:scale-[0.95] transition-all",
+    icon: "rounded-xl flex items-center justify-center active:scale-[0.95] transition-all",
   };
+
+  // Icon sizes based on variant
+  const iconSize = variant === "icon" ? "w-5 h-5" : "w-4 h-4";
 
   return (
     <button
@@ -69,7 +72,11 @@ export default function StartChatButton({
       disabled={isLoading}
       className={`${variants[variant]} disabled:opacity-50 ${className}`}
     >
-      <MessageCircle className="w-4 h-4" />
+      {isLoading ? (
+        <Loader2 className={`${iconSize} animate-spin`} />
+      ) : (
+        <MessageCircle className={iconSize} />
+      )}
       {variant !== "icon" && <span>{isLoading ? "Opening..." : label}</span>}
     </button>
   );
