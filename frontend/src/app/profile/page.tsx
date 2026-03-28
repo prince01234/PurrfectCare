@@ -22,6 +22,9 @@ import {
   Clock,
   XCircle,
   Calendar,
+  MapPin,
+  Mail,
+  User,
 } from "lucide-react";
 
 import { useAuth } from "@/context/AuthContext";
@@ -41,8 +44,6 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch pets, orders, and user profile
-  // Use user._id as dependency to avoid infinite re-render loop
-  // (updateUser creates a new object ref which would re-trigger [user])
   useEffect(() => {
     if (!user?._id) return;
 
@@ -152,7 +153,7 @@ export default function ProfilePage() {
   if (authLoading) {
     return (
       <MobileLayout>
-        <div className="flex items-center justify-center h-screen bg-gray-50">
+        <div className="flex items-center justify-center h-screen bg-slate-50">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-teal-500" />
         </div>
       </MobileLayout>
@@ -162,9 +163,12 @@ export default function ProfilePage() {
   if (!user) {
     return (
       <MobileLayout>
-        <div className="min-h-screen bg-gray-50 pb-24">
-          <div className="h-1.5 bg-teal-500" />
+        <div className="min-h-screen bg-slate-50 pb-24">
+          <div className="h-1 bg-gradient-to-r from-teal-500 to-teal-400" />
           <div className="mx-4 mt-6 bg-white rounded-2xl shadow-sm p-8 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-teal-50 flex items-center justify-center">
+              <User className="w-8 h-8 text-teal-500" />
+            </div>
             <h1 className="text-2xl font-bold text-gray-900">Profile</h1>
             <p className="text-sm text-gray-500 mt-2">
               You are browsing as guest.
@@ -172,16 +176,16 @@ export default function ProfilePage() {
             <p className="text-sm text-gray-500 mt-1">
               Sign in to manage pets, bookings, orders, and account settings.
             </p>
-            <div className="mt-6 flex items-center justify-center gap-2">
+            <div className="mt-6 flex items-center justify-center gap-3">
               <Link
                 href="/dashboard"
-                className="px-4 py-2.5 rounded-full border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-100 transition-colors"
+                className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-colors"
               >
-                Continue Browsing
+                Browse
               </Link>
               <Link
                 href="/login"
-                className="px-4 py-2.5 rounded-full bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 transition-colors"
+                className="px-5 py-2.5 rounded-xl bg-teal-500 text-white text-sm font-semibold hover:bg-teal-600 transition-colors shadow-sm"
               >
                 Sign In
               </Link>
@@ -198,98 +202,128 @@ export default function ProfilePage() {
       icon: Calendar,
       href: "/bookings",
       badge: null,
+      iconBg: "bg-teal-50",
+      iconColor: "text-teal-600",
     },
     {
       label: "My Orders",
       icon: Package,
       href: "/marketplace/orders",
       badge: orderCount > 0 ? orderCount : null,
+      iconBg: "bg-emerald-50",
+      iconColor: "text-emerald-600",
     },
     {
       label: "Adoption Requests",
       icon: Heart,
       href: "/adoption-requests",
       badge: null,
+      iconBg: "bg-rose-50",
+      iconColor: "text-rose-500",
     },
     {
       label: "Payment Methods",
       icon: CreditCard,
       href: "/payment-methods",
       badge: null,
+      iconBg: "bg-violet-50",
+      iconColor: "text-violet-600",
     },
     {
       label: "Notifications",
       icon: Bell,
       href: "/notifications",
       badge: null,
+      iconBg: "bg-amber-50",
+      iconColor: "text-amber-600",
     },
     {
       label: "Help & Support",
       icon: HelpCircle,
       href: "/help-support",
       badge: null,
+      iconBg: "bg-sky-50",
+      iconColor: "text-sky-600",
     },
   ];
 
   return (
     <MobileLayout>
-      <div className="min-h-screen bg-gray-50 pb-32">
-        {/* Teal top bar */}
-        <div className="h-1.5 bg-teal-500" />
+      <div className="min-h-screen bg-slate-50 pb-32">
+        {/* Teal gradient header */}
+        <div className="h-1 bg-gradient-to-r from-teal-500 to-teal-400" />
 
         {/* ── Profile Card ── */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mx-4 mt-6 bg-white rounded-2xl shadow-sm overflow-hidden"
+          className="mx-4 mt-6 bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100"
         >
-          <div className="flex flex-col items-center pt-10 pb-8 px-4">
-            {/* Avatar with upload */}
-            <div className="relative mb-6">
-              <div className="w-24 h-24 rounded-full bg-gray-200 border-4 border-white shadow-md flex items-center justify-center overflow-hidden">
-                {profilePicture ? (
-                  <img
-                    src={profilePicture}
-                    alt={user.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="text-4xl font-bold text-gray-400">
-                    {user.name?.charAt(0).toUpperCase() || "U"}
-                  </span>
-                )}
+          <div className="relative">
+            {/* Cover gradient */}
+            <div className="h-20 bg-gradient-to-br from-teal-400 via-teal-500 to-emerald-500" />
+            
+            {/* Avatar */}
+            <div className="absolute left-1/2 -translate-x-1/2 -bottom-12">
+              <div className="relative">
+                <div className="w-24 h-24 rounded-full bg-white border-4 border-white shadow-lg flex items-center justify-center overflow-hidden">
+                  {profilePicture ? (
+                    <img
+                      src={profilePicture}
+                      alt={user.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-teal-100 to-teal-200 flex items-center justify-center">
+                      <span className="text-3xl font-bold text-teal-600">
+                        {user.name?.charAt(0).toUpperCase() || "U"}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingPicture}
+                  className="absolute -bottom-1 -right-1 w-8 h-8 bg-teal-500 hover:bg-teal-600 disabled:bg-gray-400 rounded-full border-3 border-white flex items-center justify-center shadow-md transition-colors"
+                >
+                  {isUploadingPicture ? (
+                    <Loader className="w-4 h-4 text-white animate-spin" />
+                  ) : (
+                    <Camera className="w-4 h-4 text-white" />
+                  )}
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
               </div>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploadingPicture}
-                className="absolute -bottom-1 -right-1 w-7 h-7 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 rounded-full border-2 border-white flex items-center justify-center shadow-sm transition-colors"
-              >
-                {isUploadingPicture ? (
-                  <Loader className="w-3.5 h-3.5 text-white animate-spin" />
-                ) : (
-                  <Camera className="w-3.5 h-3.5 text-white" />
-                )}
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileSelect}
-                className="hidden"
-              />
             </div>
+          </div>
 
-            {/* Name + email */}
-            <div className="flex items-center gap-1.5 mb-2">
+          {/* Profile Info */}
+          <div className="pt-14 pb-6 px-5 text-center">
+            <div className="flex items-center justify-center gap-2 mb-1">
               <h2 className="text-xl font-bold text-gray-900">{user.name}</h2>
               <button
                 onClick={() => router.push("/profile/edit")}
-                className="text-gray-400 hover:text-teal-500 transition-colors"
+                className="p-1.5 text-gray-400 hover:text-teal-500 hover:bg-teal-50 rounded-lg transition-colors"
               >
-                <Edit2 className="w-3.5 h-3.5" />
+                <Edit2 className="w-4 h-4" />
               </button>
             </div>
-            <p className="text-sm text-gray-500 mb-2">{user.email}</p>
+            <div className="flex items-center justify-center gap-1.5 text-gray-500">
+              <Mail className="w-3.5 h-3.5" />
+              <span className="text-sm">{user.email}</span>
+            </div>
+            {user.latitude && user.longitude && (
+              <div className="flex items-center justify-center gap-1.5 text-gray-400 mt-1">
+                <MapPin className="w-3.5 h-3.5" />
+                <span className="text-xs">Location enabled</span>
+              </div>
+            )}
           </div>
 
           {/* Stats row */}
@@ -297,18 +331,18 @@ export default function ProfilePage() {
             <div className="grid grid-cols-3 divide-x divide-gray-100">
               <Link
                 href="/pets"
-                className="py-5 text-center hover:bg-gray-50 transition-colors"
+                className="py-4 text-center hover:bg-teal-50/50 transition-colors"
               >
-                <p className="text-xl font-bold text-gray-900">{pets.length}</p>
-                <p className="text-xs text-gray-500 mt-1">Pets</p>
+                <p className="text-xl font-bold text-teal-600">{pets.length}</p>
+                <p className="text-xs text-gray-500 mt-0.5 font-medium">Pets</p>
               </Link>
-              <div className="py-5 text-center">
+              <div className="py-4 text-center">
                 <p className="text-xl font-bold text-gray-900">0</p>
-                <p className="text-xs text-gray-500 mt-1">Reviews</p>
+                <p className="text-xs text-gray-500 mt-0.5 font-medium">Reviews</p>
               </div>
-              <div className="py-5 text-center">
+              <div className="py-4 text-center">
                 <p className="text-xl font-bold text-gray-900">0</p>
-                <p className="text-xs text-gray-500 mt-1">Bookings</p>
+                <p className="text-xs text-gray-500 mt-0.5 font-medium">Bookings</p>
               </div>
             </div>
           </div>
@@ -321,16 +355,24 @@ export default function ProfilePage() {
           transition={{ delay: 0.1 }}
           className="mx-4 mt-8"
         >
-          <h3 className="text-base font-bold text-gray-900 mb-4">My Pets</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base font-bold text-gray-900">My Pets</h3>
+            <Link
+              href="/pets"
+              className="text-sm font-medium text-teal-600 hover:text-teal-700"
+            >
+              View all
+            </Link>
+          </div>
 
-          <div className="flex gap-5 overflow-x-auto pb-2">
+          <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
             {pets.slice(0, 5).map((pet) => (
               <Link
                 key={pet._id}
                 href={`/pets/${pet._id}`}
-                className="shrink-0 text-center"
+                className="shrink-0 text-center group"
               >
-                <div className="w-18 h-18 rounded-2xl bg-gray-200 overflow-hidden shadow-sm">
+                <div className="w-16 h-16 rounded-2xl bg-gray-100 overflow-hidden shadow-sm ring-2 ring-transparent group-hover:ring-teal-300 transition-all">
                   {pet.photos?.[0] ? (
                     <img
                       src={pet.photos[0]}
@@ -338,23 +380,23 @@ export default function ProfilePage() {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full bg-linear-to-br from-teal-100 to-teal-300 flex items-center justify-center text-2xl">
+                    <div className="w-full h-full bg-gradient-to-br from-teal-50 to-teal-100 flex items-center justify-center text-xl">
                       🐾
                     </div>
                   )}
                 </div>
-                <p className="text-xs font-medium text-gray-700 mt-2 truncate max-w-18">
+                <p className="text-xs font-medium text-gray-700 mt-2 truncate max-w-16">
                   {pet.name}
                 </p>
               </Link>
             ))}
 
             {/* Add pet */}
-            <Link href="/pets/add" className="shrink-0 text-center">
-              <div className="w-18 h-18 rounded-2xl border-2 border-dashed border-gray-300 flex items-center justify-center hover:border-teal-400 transition-colors">
-                <Plus className="w-6 h-6 text-gray-400" />
+            <Link href="/pets/add" className="shrink-0 text-center group">
+              <div className="w-16 h-16 rounded-2xl border-2 border-dashed border-gray-300 flex items-center justify-center group-hover:border-teal-400 group-hover:bg-teal-50/50 transition-all">
+                <Plus className="w-5 h-5 text-gray-400 group-hover:text-teal-500" />
               </div>
-              <p className="text-xs font-medium text-gray-700 mt-2">Add Pet</p>
+              <p className="text-xs font-medium text-gray-500 mt-2 group-hover:text-teal-600">Add Pet</p>
             </Link>
           </div>
         </motion.div>
@@ -363,24 +405,24 @@ export default function ProfilePage() {
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
+          transition={{ delay: 0.15 }}
           className="mx-4 mt-8"
         >
           {user.roles === "ADMIN" || user.roles === "SUPER_ADMIN" ? (
             // Already an admin — show portal link
             <Link href="/admin">
-              <div className="bg-linear-to-r from-teal-500 to-teal-600 rounded-2xl px-5 py-5 flex items-center justify-between shadow-md">
-                <div className="flex items-center gap-3.5">
-                  <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center">
-                    <ShieldCheck className="w-5 h-5 text-white" />
+              <div className="bg-gradient-to-r from-teal-500 to-emerald-500 rounded-2xl px-5 py-5 flex items-center justify-between shadow-lg shadow-teal-200/50">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+                    <ShieldCheck className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <span className="text-base font-semibold text-white block">
+                    <span className="text-base font-bold text-white block">
                       {user.roles === "SUPER_ADMIN"
                         ? "Super Admin Portal"
                         : "Service Provider Portal"}
                     </span>
-                    <span className="text-xs text-teal-100">
+                    <span className="text-sm text-teal-100">
                       {user.serviceType
                         ? user.serviceType
                             .replace("_", " ")
@@ -394,15 +436,15 @@ export default function ProfilePage() {
             </Link>
           ) : application?.status === "pending" ? (
             // Application pending
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-5 flex items-center gap-3.5">
-              <div className="w-11 h-11 rounded-xl bg-amber-100 flex items-center justify-center">
-                <Clock className="w-5 h-5 text-amber-600" />
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-5 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center">
+                <Clock className="w-6 h-6 text-amber-600" />
               </div>
               <div className="flex-1">
-                <p className="text-base font-semibold text-amber-800">
+                <p className="text-base font-bold text-amber-800">
                   Application Pending
                 </p>
-                <p className="text-xs text-amber-600 mt-0.5">
+                <p className="text-sm text-amber-600 mt-0.5">
                   Your service provider application is under review
                 </p>
               </div>
@@ -410,15 +452,15 @@ export default function ProfilePage() {
           ) : application?.status === "rejected" ? (
             // Application rejected
             <div className="space-y-3">
-              <div className="bg-red-50 border border-red-200 rounded-2xl px-5 py-5 flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-xl bg-red-100 flex items-center justify-center">
-                  <XCircle className="w-5 h-5 text-red-500" />
+              <div className="bg-red-50 border border-red-200 rounded-2xl px-5 py-5 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center">
+                  <XCircle className="w-6 h-6 text-red-500" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-base font-semibold text-red-800">
+                  <p className="text-base font-bold text-red-800">
                     Application Rejected
                   </p>
-                  <p className="text-xs text-red-600 mt-0.5">
+                  <p className="text-sm text-red-600 mt-0.5">
                     {application.rejectionReason ||
                       "Your application was not approved"}
                   </p>
@@ -426,8 +468,8 @@ export default function ProfilePage() {
               </div>
               <Link href="/provider/apply">
                 <div className="bg-white rounded-2xl px-5 py-4 flex items-center justify-center gap-2 shadow-sm border border-gray-200 active:bg-gray-50">
-                  <Briefcase className="w-4 h-4 text-teal-600" />
-                  <span className="text-sm font-semibold text-teal-600">
+                  <Briefcase className="w-5 h-5 text-teal-600" />
+                  <span className="text-sm font-bold text-teal-600">
                     Apply Again
                   </span>
                 </div>
@@ -436,8 +478,8 @@ export default function ProfilePage() {
           ) : (
             // No application yet — show CTA
             <Link href="/provider/apply">
-              <div className="bg-linear-to-r from-violet-500 to-purple-600 rounded-2xl px-5 py-6 shadow-md">
-                <div className="flex items-center gap-3.5">
+              <div className="bg-gradient-to-r from-violet-500 to-purple-600 rounded-2xl px-5 py-5 shadow-lg shadow-violet-200/50">
+                <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
                     <Briefcase className="w-6 h-6 text-white" />
                   </div>
@@ -445,7 +487,7 @@ export default function ProfilePage() {
                     <p className="text-base font-bold text-white">
                       Become a Service Provider
                     </p>
-                    <p className="text-xs text-purple-100 mt-1">
+                    <p className="text-sm text-purple-100 mt-0.5">
                       Offer adoption, grooming, vet, or training services
                     </p>
                   </div>
@@ -461,26 +503,28 @@ export default function ProfilePage() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="mx-4 mt-10 space-y-4"
+          className="mx-4 mt-8 space-y-3"
         >
+          <h3 className="text-base font-bold text-gray-900 mb-4">Account</h3>
+          
           {menuItems.map((item) => (
             <Link key={item.label} href={item.href}>
-              <div className="bg-white rounded-2xl px-5 py-5 flex items-center justify-between shadow-sm active:bg-gray-50 transition-colors">
+              <div className="bg-white rounded-2xl px-4 py-4 flex items-center justify-between shadow-sm border border-gray-100 active:bg-gray-50 transition-colors">
                 <div className="flex items-center gap-3.5">
-                  <div className="w-11 h-11 rounded-xl bg-gray-100 flex items-center justify-center">
-                    <item.icon className="w-5 h-5 text-gray-600" />
+                  <div className={`w-10 h-10 rounded-xl ${item.iconBg} flex items-center justify-center`}>
+                    <item.icon className={`w-5 h-5 ${item.iconColor}`} />
                   </div>
-                  <span className="text-base font-semibold text-gray-900">
+                  <span className="text-sm font-semibold text-gray-900">
                     {item.label}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   {item.badge !== null && (
-                    <span className="min-w-6 h-6 flex items-center justify-center bg-red-500 text-white text-xs font-bold rounded-full px-2">
+                    <span className="min-w-5 h-5 flex items-center justify-center bg-teal-500 text-white text-xs font-bold rounded-full px-1.5">
                       {item.badge}
                     </span>
                   )}
-                  <ChevronRight className="w-5 h-5 text-gray-400" />
+                  <ChevronRight className="w-5 h-5 text-gray-300" />
                 </div>
               </div>
             </Link>
@@ -489,16 +533,21 @@ export default function ProfilePage() {
           {/* Log Out */}
           <button
             onClick={handleLogout}
-            className="w-full bg-red-50 rounded-2xl px-5 py-5 flex items-center gap-3.5 active:bg-red-100 transition-colors mt-8"
+            className="w-full bg-white rounded-2xl px-4 py-4 flex items-center gap-3.5 border border-red-100 active:bg-red-50 transition-colors mt-6"
           >
-            <div className="w-11 h-11 rounded-xl bg-red-100 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center">
               <LogOut className="w-5 h-5 text-red-500" />
             </div>
-            <span className="text-base font-semibold text-red-600">
+            <span className="text-sm font-semibold text-red-600">
               Log Out
             </span>
           </button>
         </motion.div>
+
+        {/* Version info */}
+        <p className="text-center text-xs text-gray-400 mt-8 mb-4">
+          PurrfectCare v1.0.0
+        </p>
       </div>
     </MobileLayout>
   );

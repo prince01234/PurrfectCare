@@ -13,6 +13,7 @@ interface User {
   roles?: "USER" | "PET_OWNER" | "ADMIN" | "SUPER_ADMIN";
   isVerified?: boolean;
   hasCompletedOnboarding?: boolean;
+  authToken?: string;
 }
 
 function AuthCallbackContent() {
@@ -46,8 +47,8 @@ function AuthCallbackContent() {
         const userData = response.data;
 
         // Login user with data from /api/auth/me
-        // Token is stored in httpOnly cookie, no need to handle it here
-        login(userData, null);
+        // Pass authToken if returned (for cross-origin cookie fallback)
+        login(userData, userData.authToken || null);
 
         toast.success(`Welcome ${userData.name}! Logged in via ${provider}`);
 

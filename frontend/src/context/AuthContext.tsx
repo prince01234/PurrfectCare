@@ -25,6 +25,7 @@ interface User {
   userIntent?: "pet_owner" | "looking_to_adopt" | "exploring" | null;
   latitude?: number | null;
   longitude?: number | null;
+  authToken?: string;
 }
 
 interface AuthContextType {
@@ -84,7 +85,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (isUser(response.data)) {
           setUser(response.data);
-          setToken(getAuthToken() ?? "authenticated");
+          // Store authToken if returned (for cross-origin cookie fallback)
+          if (response.data.authToken) {
+            setAuthToken(response.data.authToken);
+            setToken(response.data.authToken);
+          } else {
+            setToken(getAuthToken() ?? "authenticated");
+          }
         } else {
           clearAuthToken();
         }
