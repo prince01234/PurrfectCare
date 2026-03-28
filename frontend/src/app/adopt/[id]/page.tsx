@@ -6,7 +6,6 @@ import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
 import {
   ArrowLeft,
-  Heart,
   MapPin,
   Shield,
   Smile,
@@ -43,32 +42,50 @@ const LIVING_OPTIONS = [
 ];
 
 // Simple markdown-like text renderer
-function RichText({ content, className = "" }: { content: string; className?: string }) {
+function RichText({
+  content,
+  className = "",
+}: {
+  content: string;
+  className?: string;
+}) {
   // Convert markdown-like syntax to HTML
   const renderContent = () => {
     if (!content) return null;
-    
+
     // Split by paragraphs (double newlines)
     const paragraphs = content.split(/\n\n+/);
-    
+
     return paragraphs.map((paragraph, pIdx) => {
       // Process each line in the paragraph
-      const lines = paragraph.split('\n');
-      
+      const lines = paragraph.split("\n");
+
       return (
         <div key={pIdx} className={pIdx > 0 ? "mt-3" : ""}>
           {lines.map((line, lIdx) => {
             // Check for headers
-            if (line.startsWith('### ')) {
-              return <h4 key={lIdx} className="font-semibold text-gray-800 mt-2">{line.slice(4)}</h4>;
+            if (line.startsWith("### ")) {
+              return (
+                <h4 key={lIdx} className="font-semibold text-gray-800 mt-2">
+                  {line.slice(4)}
+                </h4>
+              );
             }
-            if (line.startsWith('## ')) {
-              return <h3 key={lIdx} className="font-bold text-gray-900 mt-2">{line.slice(3)}</h3>;
+            if (line.startsWith("## ")) {
+              return (
+                <h3 key={lIdx} className="font-bold text-gray-900 mt-2">
+                  {line.slice(3)}
+                </h3>
+              );
             }
-            if (line.startsWith('# ')) {
-              return <h2 key={lIdx} className="text-lg font-bold text-gray-900 mt-2">{line.slice(2)}</h2>;
+            if (line.startsWith("# ")) {
+              return (
+                <h2 key={lIdx} className="text-lg font-bold text-gray-900 mt-2">
+                  {line.slice(2)}
+                </h2>
+              );
             }
-            
+
             // Check for bullet points
             if (line.match(/^[-*•]\s/)) {
               return (
@@ -78,18 +95,22 @@ function RichText({ content, className = "" }: { content: string; className?: st
                 </div>
               );
             }
-            
+
             // Check for numbered lists
             const numberedMatch = line.match(/^(\d+)\.\s/);
             if (numberedMatch) {
               return (
                 <div key={lIdx} className="flex gap-2 ml-2">
-                  <span className="text-teal-500 font-medium">{numberedMatch[1]}.</span>
-                  <span>{processInlineStyles(line.slice(numberedMatch[0].length))}</span>
+                  <span className="text-teal-500 font-medium">
+                    {numberedMatch[1]}.
+                  </span>
+                  <span>
+                    {processInlineStyles(line.slice(numberedMatch[0].length))}
+                  </span>
                 </div>
               );
             }
-            
+
             // Regular text
             if (line.trim()) {
               return <p key={lIdx}>{processInlineStyles(line)}</p>;
@@ -106,63 +127,47 @@ function RichText({ content, className = "" }: { content: string; className?: st
     const parts: React.ReactNode[] = [];
     let remaining = text;
     let key = 0;
-    
+
     while (remaining.length > 0) {
       // Bold **text**
       const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
       // Italic *text* or _text_
       const italicMatch = remaining.match(/(?<!\*)\*([^*]+)\*(?!\*)|_([^_]+)_/);
-      
-      if (boldMatch && (!italicMatch || boldMatch.index! <= italicMatch.index!)) {
+
+      if (
+        boldMatch &&
+        (!italicMatch || boldMatch.index! <= italicMatch.index!)
+      ) {
         if (boldMatch.index! > 0) {
           parts.push(remaining.slice(0, boldMatch.index));
         }
-        parts.push(<strong key={key++} className="font-semibold">{boldMatch[1]}</strong>);
+        parts.push(
+          <strong key={key++} className="font-semibold">
+            {boldMatch[1]}
+          </strong>,
+        );
         remaining = remaining.slice(boldMatch.index! + boldMatch[0].length);
       } else if (italicMatch) {
         if (italicMatch.index! > 0) {
           parts.push(remaining.slice(0, italicMatch.index));
         }
-        parts.push(<em key={key++} className="italic">{italicMatch[1] || italicMatch[2]}</em>);
+        parts.push(
+          <em key={key++} className="italic">
+            {italicMatch[1] || italicMatch[2]}
+          </em>,
+        );
         remaining = remaining.slice(italicMatch.index! + italicMatch[0].length);
       } else {
         parts.push(remaining);
         break;
       }
     }
-    
+
     return parts.length > 0 ? parts : text;
   };
 
   return <div className={`space-y-1 ${className}`}>{renderContent()}</div>;
 }
-
-// Local storage favorites helper
-const FAVORITES_KEY = "purrfectcare_adoption_favorites";
-
-const getFavorites = (): string[] => {
-  if (typeof window === "undefined") return [];
-  try {
-    const stored = localStorage.getItem(FAVORITES_KEY);
-    return stored ? JSON.parse(stored) : [];
-  } catch {
-    return [];
-  }
-};
-
-const toggleFavorite = (listingId: string): boolean => {
-  const favorites = getFavorites();
-  const index = favorites.indexOf(listingId);
-  if (index > -1) {
-    favorites.splice(index, 1);
-    localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
-    return false;
-  } else {
-    favorites.push(listingId);
-    localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
-    return true;
-  }
-};
 
 export default function AdoptDetailPage() {
   const router = useRouter();
@@ -177,18 +182,13 @@ export default function AdoptDetailPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasApplied, setHasApplied] = useState(false);
   const [showMap, setShowMap] = useState(false);
-  const [isFavorited, setIsFavorited] = useState(false);
   const [justCopied, setJustCopied] = useState(false);
   const userCoords = useGeolocation();
-  
+
   // Touch handling for swipe
   const containerRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isDragging, setIsDragging] = useState(false);
-
-  // Check if listing is favorited on mount
-  useEffect(() => {
-    setIsFavorited(getFavorites().includes(listingId));
-  }, [listingId]);
 
   const [formData, setFormData] = useState({
     message: "",
@@ -339,7 +339,7 @@ export default function AdoptDetailPage() {
   const nextPhoto = useCallback(() => {
     if (listing?.photos) setActivePhoto((p) => (p + 1) % listing.photos.length);
   }, [listing?.photos]);
-  
+
   const prevPhoto = useCallback(() => {
     if (listing?.photos)
       setActivePhoto(
@@ -351,11 +351,11 @@ export default function AdoptDetailPage() {
   const handleDragEnd = useCallback(
     (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
       if (!listing?.photos || listing.photos.length <= 1) return;
-      
+
       const threshold = 50;
       const velocity = info.velocity.x;
       const offset = info.offset.x;
-      
+
       if (offset < -threshold || velocity < -500) {
         nextPhoto();
       } else if (offset > threshold || velocity > 500) {
@@ -363,18 +363,8 @@ export default function AdoptDetailPage() {
       }
       setIsDragging(false);
     },
-    [listing?.photos, nextPhoto, prevPhoto]
+    [listing?.photos, nextPhoto, prevPhoto],
   );
-
-  // Handle favorite toggle
-  const handleFavoriteToggle = () => {
-    const newState = toggleFavorite(listingId);
-    setIsFavorited(newState);
-    toast.success(newState ? "Added to favorites" : "Removed from favorites", {
-      icon: newState ? "❤️" : "💔",
-      duration: 2000,
-    });
-  };
 
   // Handle share
   const handleShare = async () => {
@@ -425,14 +415,16 @@ export default function AdoptDetailPage() {
     <MobileLayout showBottomNav={false}>
       <div className="min-h-screen bg-gray-50 pb-28">
         {/* Photo Gallery — swipeable for mobile */}
-        <div className="relative h-[55vh] min-h-85 bg-gray-200 overflow-hidden" ref={containerRef}>
+        <div
+          className="relative h-[55vh] min-h-85 bg-gray-200 overflow-hidden"
+          ref={containerRef}
+        >
           {listing.photos?.length > 0 ? (
             <motion.div
               className="relative w-full h-full cursor-grab active:cursor-grabbing"
               drag={listing.photos.length > 1 ? "x" : false}
               dragConstraints={{ left: 0, right: 0 }}
               dragElastic={0.2}
-              onDragStart={() => setIsDragging(true)}
               onDragEnd={handleDragEnd}
             >
               <AnimatePresence mode="wait" initial={false}>
@@ -484,16 +476,6 @@ export default function AdoptDetailPage() {
               ) : (
                 <Share2 className="w-5 h-5 text-gray-600" />
               )}
-            </button>
-            <button
-              onClick={handleFavoriteToggle}
-              className="w-10 h-10 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm active:scale-95 transition-all"
-            >
-              <Heart
-                className={`w-5 h-5 transition-colors ${
-                  isFavorited ? "fill-pink-500 text-pink-500" : "text-gray-400"
-                }`}
-              />
             </button>
           </div>
 
@@ -656,8 +638,8 @@ export default function AdoptDetailPage() {
             <h2 className="text-base font-bold text-gray-900">
               About {listing.name}
             </h2>
-            <RichText 
-              content={listing.description} 
+            <RichText
+              content={listing.description}
               className="text-sm text-gray-600 leading-relaxed"
             />
 
@@ -673,8 +655,8 @@ export default function AdoptDetailPage() {
                   </h3>
                 </div>
                 <div className="pl-9">
-                  <RichText 
-                    content={listing.healthInfo} 
+                  <RichText
+                    content={listing.healthInfo}
                     className="text-sm text-gray-600"
                   />
                 </div>
@@ -693,8 +675,8 @@ export default function AdoptDetailPage() {
                   </h3>
                 </div>
                 <div className="pl-9">
-                  <RichText 
-                    content={listing.temperament} 
+                  <RichText
+                    content={listing.temperament}
                     className="text-sm text-gray-600"
                   />
                 </div>
@@ -713,8 +695,8 @@ export default function AdoptDetailPage() {
                   </h3>
                 </div>
                 <div className="pl-9">
-                  <RichText 
-                    content={listing.specialNeeds} 
+                  <RichText
+                    content={listing.specialNeeds}
                     className="text-sm text-gray-600"
                   />
                 </div>

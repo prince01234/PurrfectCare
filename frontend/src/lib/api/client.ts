@@ -1,5 +1,3 @@
-import Cookies from "js-cookie";
-
 // Get API URL from environment variable
 // For production (Vercel): NEXT_PUBLIC_API_URL must be set to Render backend URL
 // For local development: set in .env.local
@@ -24,13 +22,11 @@ export interface ApiResponse<T = unknown> {
   errorCode?: string;
 }
 
-// Helper to get auth token from cookie (for Bearer header if needed)
-// Note: Token is primarily stored in httpOnly cookie and sent automatically
-// This is mainly for manual header construction in edge cases
+// Helper to get optional bearer token fallback.
+// Primary auth uses httpOnly cookies sent automatically with credentials.
 export const getAuthToken = (): string | null => {
   if (typeof window === "undefined") return null;
-  // Prefer cookie token, but fallback to localStorage for cross-site cookie constraints.
-  return Cookies.get("authToken") || localStorage.getItem("authToken") || null;
+  return localStorage.getItem("authToken");
 };
 
 export const setAuthToken = (token: string) => {
@@ -41,7 +37,6 @@ export const setAuthToken = (token: string) => {
 export const clearAuthToken = () => {
   if (typeof window === "undefined") return;
   localStorage.removeItem("authToken");
-  Cookies.remove("authToken", { path: "/" });
 };
 
 export async function apiRequest<T>(

@@ -59,7 +59,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // The httpOnly cookie is sent automatically; bearer token fallback is used when needed.
     const verifyAuth = async () => {
       try {
-        const response = await apiRequest<User>("/auth/me", {}, true);
+        const response = await apiRequest<User>("/api/auth/me", {}, true);
+
+        if (response.error) {
+          const errorMessage = response.error.toLowerCase();
+          const isAuthFailure =
+            errorMessage.includes("not authenticated") ||
+            errorMessage.includes("invalid or expired") ||
+            errorMessage.includes("please login");
+
+          if (isAuthFailure) {
+            clearAuthToken();
+            setUser(null);
+            setToken(null);
+          }
+
+          return;
+        }
 
         if (isUser(response.data)) {
           setUser(response.data);
@@ -69,7 +85,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (error) {
         console.error("Auth verification error:", error);
-        clearAuthToken();
       } finally {
         setIsLoading(false);
       }
@@ -94,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try {
       // Call logout endpoint to clear cookie
-      await apiRequest("/auth/logout", { method: "POST" });
+      await apiRequest("/api/auth/logout", { method: "POST" });
     } catch (error) {
       console.error("Logout error:", error);
     } finally {

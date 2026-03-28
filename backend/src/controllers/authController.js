@@ -2,11 +2,14 @@ import authService from "../services/authService.js";
 import { createJWT } from "../utils/jwt.js";
 import User from "../models/User.js";
 
+const AUTH_COOKIE_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000;
+
 const authCookieOptions = {
+  path: "/",
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
   sameSite: process.env.NODE_ENV === "production" ? "none" : "Lax",
-  maxAge: 7 * 24 * 60 * 60 * 1000,
+  maxAge: AUTH_COOKIE_MAX_AGE_MS,
 };
 
 const loginUser = async (req, res) => {
@@ -185,6 +188,7 @@ const resendVerification = async (req, res) => {
 
 const logout = async (req, res) => {
   res.clearCookie("authToken", {
+    path: "/",
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: process.env.NODE_ENV === "production" ? "none" : "Lax",

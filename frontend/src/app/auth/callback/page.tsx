@@ -35,7 +35,7 @@ function AuthCallbackContent() {
 
         // Verify user is authenticated by calling /api/auth/me
         // The httpOnly cookie is automatically sent with this request
-        const response = await apiRequest<User>("/auth/me");
+        const response = await apiRequest<User>("/api/auth/me");
 
         if (response.error || !response.data) {
           toast.error("Authentication verification failed. Please try again.");

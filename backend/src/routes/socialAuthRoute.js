@@ -5,6 +5,16 @@ import config from "../config/config.js";
 
 const router = express.Router();
 
+const AUTH_COOKIE_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000;
+
+const authCookieOptions = {
+  path: "/",
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "Lax",
+  maxAge: AUTH_COOKIE_MAX_AGE_MS,
+};
+
 // Google OAuth Routes
 // URL: /api/auth/google
 router.get(
@@ -33,12 +43,7 @@ router.get(
       const authToken = createJWT(userData);
 
       // Set HTTP-only cookie (more secure than URL params)
-      res.cookie("authToken", authToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "Lax",
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      });
+      res.cookie("authToken", authToken, authCookieOptions);
 
       // Redirect to frontend callback WITHOUT token in URL
       // Frontend will verify auth status by calling /api/auth/me
@@ -132,12 +137,5 @@ router.get(
     }
   },
 );
-
-const authCookieOptions = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: process.env.NODE_ENV === "production" ? "none" : "Lax",
-  maxAge: 7 * 24 * 60 * 60 * 1000,
-};
 
 export default router;

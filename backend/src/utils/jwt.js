@@ -3,7 +3,7 @@ import config from "../config/config.js";
 
 function createJWT(data) {
   const token = jwt.sign(data, config.jwtSecret, {
-    expiresIn: "1d",
+    expiresIn: "3d",
   });
 
   return token;
