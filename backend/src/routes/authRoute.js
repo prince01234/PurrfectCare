@@ -29,4 +29,7 @@ router.post("/verify-email", authController.verifyAccount);
 // URL: /api/auth/resend-verification
 router.post("/resend-verification", authController.resendVerification);
 
+// URL: /api/auth/logout
+router.post("/logout", authController.logout);
+
 export default router;

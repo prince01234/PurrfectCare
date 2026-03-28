@@ -59,17 +59,26 @@ const allowedOrigins = new Set(
     "http://localhost:3000",
     "https://prince-shrestha.me",
     "https://www.prince-shrestha.me",
-    ,
+    "https://purrfect-care-sigma.vercel.app",
     ...configuredOrigins,
   ].map(normalizeOrigin),
 );
 
+// Log allowed origins at startup for debugging
+console.log("CORS allowed origins:", [...allowedOrigins]);
+
 const corsOptions = {
   origin: (origin, callback) => {
+    // Log CORS requests in production for debugging
+    if (process.env.NODE_ENV === "production") {
+      console.log(`CORS check: origin=${origin}, allowed=${!origin || allowedOrigins.has(normalizeOrigin(origin))}`);
+    }
+
     if (!origin || allowedOrigins.has(normalizeOrigin(origin))) {
       return callback(null, true);
     }
 
+    console.warn(`CORS blocked origin: ${origin}`);
     return callback(null, false);
   },
   credentials: true,
@@ -79,7 +88,6 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
 
 app.use(cookieParser());
 
