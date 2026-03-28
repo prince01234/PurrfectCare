@@ -1,4 +1,10 @@
-import { apiRequest, getAuthToken, API_URL } from "./client";
+import {
+  apiRequest,
+  getAuthToken,
+  API_URL,
+  getFetchErrorMessage,
+  parseApiResponse,
+} from "./client";
 
 export const userApi = {
   completeOnboarding: (userId: string, userIntent?: string) =>
@@ -70,14 +76,10 @@ export const userApi = {
         credentials: "include",
       });
 
-      const result = await response.json();
-      if (!response.ok) {
-        return { error: result.error || result.message || "Failed to update" };
-      }
-      return { data: result };
+      return parseApiResponse(response, "Failed to update");
     } catch (error) {
       return {
-        error: error instanceof Error ? error.message : "Update failed",
+        error: getFetchErrorMessage(error, "Update failed"),
       };
     }
   },
