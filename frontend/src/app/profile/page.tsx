@@ -40,12 +40,6 @@ export default function ProfilePage() {
   const [application, setApplication] = useState<AdminApplication | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push("/login");
-    }
-  }, [user, authLoading, router]);
-
   // Fetch pets, orders, and user profile
   // Use user._id as dependency to avoid infinite re-render loop
   // (updateUser creates a new object ref which would re-trigger [user])
@@ -155,11 +149,44 @@ export default function ProfilePage() {
     router.push("/login");
   };
 
-  if (authLoading || !user) {
+  if (authLoading) {
     return (
       <MobileLayout>
         <div className="flex items-center justify-center h-screen bg-gray-50">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-teal-500" />
+        </div>
+      </MobileLayout>
+    );
+  }
+
+  if (!user) {
+    return (
+      <MobileLayout>
+        <div className="min-h-screen bg-gray-50 pb-24">
+          <div className="h-1.5 bg-teal-500" />
+          <div className="mx-4 mt-6 bg-white rounded-2xl shadow-sm p-8 text-center">
+            <h1 className="text-2xl font-bold text-gray-900">Profile</h1>
+            <p className="text-sm text-gray-500 mt-2">
+              You are browsing as guest.
+            </p>
+            <p className="text-sm text-gray-500 mt-1">
+              Sign in to manage pets, bookings, orders, and account settings.
+            </p>
+            <div className="mt-6 flex items-center justify-center gap-2">
+              <Link
+                href="/dashboard"
+                className="px-4 py-2.5 rounded-full border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-100 transition-colors"
+              >
+                Continue Browsing
+              </Link>
+              <Link
+                href="/login"
+                className="px-4 py-2.5 rounded-full bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 transition-colors"
+              >
+                Sign In
+              </Link>
+            </div>
+          </div>
         </div>
       </MobileLayout>
     );

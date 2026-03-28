@@ -7,7 +7,12 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
-import Cookies from "js-cookie";
+import {
+  apiRequest,
+  getAuthToken,
+  setAuthToken,
+  clearAuthToken,
+} from "@/lib/api";
 
 interface User {
   _id: string;
@@ -25,10 +30,21 @@ interface User {
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (user: User, token: string) => void;
+  login: (user: User, token?: string | null) => void;
   logout: () => void;
   updateUser: (userData: Partial<User>) => void;
   isLoading: boolean;
+}
+
+function isUser(value: unknown): value is User {
+  if (!value || typeof value !== "object") return false;
+
+  const candidate = value as Partial<User>;
+  return (
+    typeof candidate._id === "string" &&
+    typeof candidate.name === "string" &&
+    typeof candidate.email === "string"
+  );
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -39,43 +55,74 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Try cookie first, then localStorage fallback
-    const storedToken =
-      Cookies.get("authToken") || localStorage.getItem("authToken");
-    const storedUser = localStorage.getItem("user");
+    // On mount, verify authentication via /api/auth/me
+    // The httpOnly cookie is sent automatically; bearer token fallback is used when needed.
+    const verifyAuth = async () => {
+      try {
+        const response = await apiRequest<User>("/api/auth/me", {}, true);
 
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-      // Re-sync cookie if it was missing but localStorage had the token
-      if (!Cookies.get("authToken")) {
-        Cookies.set("authToken", storedToken, { expires: 7, path: "/" });
+        if (response.error) {
+          const errorMessage = response.error.toLowerCase();
+          const isAuthFailure =
+            errorMessage.includes("not authenticated") ||
+            errorMessage.includes("invalid or expired") ||
+            errorMessage.includes("please login");
+
+          if (isAuthFailure) {
+            clearAuthToken();
+            setUser(null);
+            setToken(null);
+          }
+
+          return;
+        }
+
+        if (isUser(response.data)) {
+          setUser(response.data);
+          setToken(getAuthToken() ?? "authenticated");
+        } else {
+          clearAuthToken();
+        }
+      } catch (error) {
+        console.error("Auth verification error:", error);
+      } finally {
+        setIsLoading(false);
       }
-    }
-    setIsLoading(false);
+    };
+
+    verifyAuth();
   }, []);
 
-  const login = (userData: User, authToken: string) => {
+  // Accept optional token (for compatibility)
+  // Token is actually stored in httpOnly cookie by backend
+  const login = (userData: User, authToken?: string | null) => {
     setUser(userData);
-    setToken(authToken);
-    Cookies.set("authToken", authToken, { expires: 7, path: "/" });
-    localStorage.setItem("authToken", authToken);
-    localStorage.setItem("user", JSON.stringify(userData));
+    if (authToken) {
+      setAuthToken(authToken);
+      setToken(authToken);
+      return;
+    }
+
+    setToken(getAuthToken() ?? "authenticated");
   };
 
-  const logout = () => {
-    setUser(null);
-    setToken(null);
-    Cookies.remove("authToken", { path: "/" });
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("user");
+  const logout = async () => {
+    try {
+      // Call logout endpoint to clear cookie
+      await apiRequest("/api/auth/logout", { method: "POST" });
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      setUser(null);
+      setToken(null);
+      clearAuthToken();
+    }
   };
 
   const updateUser = (userData: Partial<User>) => {
     if (user) {
       const updatedUser = { ...user, ...userData };
       setUser(updatedUser);
-      localStorage.setItem("user", JSON.stringify(updatedUser));
     }
   };
 

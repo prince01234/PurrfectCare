@@ -3,11 +3,11 @@ import { createServer } from "http";
 import bodyParser from "body-parser";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import session from "express-session";
 
 import config from "./config/config.js";
 import connectDB from "./config/dbConnection.js";
 import initializeSocket from "./config/socket.js";
+import sessionConfig from "./config/session.js";
 import "./config/firebase.js";
 import passport from "./config/passport.js";
 
@@ -42,32 +42,29 @@ import { setIO } from "./config/realtime.js";
 const app = express();
 const httpServer = createServer(app);
 
-// const allowedOrigins = ["http://localhost:3000", process.env.FRONTEND_URL].filter(Boolean);
-// app.use(cors({
-//   origin: (origin, callback) => {
-//     if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
-//     callback(null, false);
-//   },
-//   credentials: true,
-// }));
-
-app.use(cors({ origin: true, credentials: true }));
-app.use(cookieParser());
-
-// Initialize Passport.js middleware
+const allowedOrigins = [
+  "http://localhost:3000",
+  process.env.FRONTEND_URL,
+].filter(Boolean);
 app.use(
-  session({
-    secret: config.jwtSecret || "your-secret-key",
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "Lax",
-      maxAge: 24 * 60 * 60 * 1000, // 1 day
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin))
+        return callback(null, true);
+      callback(null, false);
     },
+    credentials: true,
   }),
 );
+
+//app.use(cors({ origin: true, credentials: true }));
+app.use(cookieParser());
+
+// Trust proxy for Render deployment (behind reverse proxy)
+app.set("trust proxy", 1);
+
+// MongoDB Session Store (configured in config/session.js)
+app.use(sessionConfig);
 app.use(passport.initialize());
 app.use(passport.session());
 
@@ -85,6 +82,10 @@ app.get("/", (req, res) => {
     port: config.port,
     version: config.version,
   });
+});
+
+app.get("/healthz", (req, res) => {
+  res.status(200).json({ ok: true });
 });
 
 // User Routes
@@ -141,5 +142,9 @@ app.use("/api/notifications", notificationRoutes);
 reminderScheduler.startScheduler();
 
 httpServer.listen(config.port, () => {
-  console.log(`Server is running at port http://localhost:${config.port}...`);
+  console.log(
+    `Server running at ${
+      process.env.APP_URL || `http://localhost:${config.port}`
+    }`,
+  );
 });

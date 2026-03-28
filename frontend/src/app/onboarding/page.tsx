@@ -27,24 +27,24 @@ const intentOptions: IntentOption[] = [
     title: "Yes, I have pets",
     description: "Tell us about your furry friends",
     icon: <Heart className="w-6 h-6" />,
-    bgColor: "bg-pink-100",
-    iconColor: "text-pink-500",
+    bgColor: "bg-teal-50",
+    iconColor: "text-teal-600",
   },
   {
     id: "looking_to_adopt",
     title: "Looking to adopt",
     description: "Find your perfect companion",
     icon: <Home className="w-6 h-6" />,
-    bgColor: "bg-violet-100",
-    iconColor: "text-violet-500",
+    bgColor: "bg-violet-50",
+    iconColor: "text-violet-600",
   },
   {
     id: "exploring",
     title: "Just exploring",
     description: "Browse and learn more",
     icon: <Compass className="w-6 h-6" />,
-    bgColor: "bg-orange-100",
-    iconColor: "text-orange-500",
+    bgColor: "bg-emerald-50",
+    iconColor: "text-emerald-600",
   },
 ];
 
@@ -64,63 +64,93 @@ export default function OnboardingPage() {
     }
   }, [user, authLoading, router]);
 
+  const getRedirectPath = (intent: UserIntent | null): string => {
+    switch (intent) {
+      case "pet_owner":
+        return "/pets";
+      case "looking_to_adopt":
+        return "/adopt";
+      case "exploring":
+        return "/dashboard";
+      default:
+        return "/dashboard";
+    }
+  };
+
   const handleContinue = async () => {
     if (!selectedIntent || !user) return;
 
     setIsLoading(true);
-    const response = await userApi.completeOnboarding(user._id, selectedIntent);
+    try {
+      const response = await userApi.completeOnboarding(
+        user._id,
+        selectedIntent,
+      );
 
-    if (response.error) {
-      toast.error(response.error);
+      if (response.error) {
+        toast.error(response.error);
+        setIsLoading(false);
+        return;
+      }
+
+      if (response.data) {
+        updateUser({
+          hasCompletedOnboarding: true,
+          userIntent: selectedIntent,
+        });
+        toast.success("Welcome to PurrfectCare!");
+
+        // Route to appropriate page based on intent
+        const redirectPath = getRedirectPath(selectedIntent);
+        router.push(redirectPath);
+      }
+    } catch (error) {
+      console.error("Error completing onboarding:", error);
+      toast.error("Something went wrong. Please try again.");
       setIsLoading(false);
-      return;
     }
-
-    if (response.data) {
-      updateUser({
-        hasCompletedOnboarding: true,
-        userIntent: selectedIntent,
-      });
-      toast.success("Welcome to PurrfectCare!");
-      router.push("/dashboard");
-    }
-
-    setIsLoading(false);
   };
 
   const handleSkip = async () => {
     if (!user) return;
 
     setIsLoading(true);
-    const response = await userApi.completeOnboarding(user._id);
+    try {
+      const response = await userApi.completeOnboarding(user._id);
 
-    if (response.error) {
-      toast.error(response.error);
+      if (response.error) {
+        toast.error(response.error);
+        setIsLoading(false);
+        return;
+      }
+
+      if (response.data) {
+        updateUser({
+          hasCompletedOnboarding: true,
+          userIntent: null,
+        });
+        toast.success("Let's explore!");
+
+        // Explorers go to dashboard
+        router.push("/dashboard");
+      }
+    } catch (error) {
+      console.error("Error skipping onboarding:", error);
+      toast.error("Something went wrong. Please try again.");
       setIsLoading(false);
-      return;
     }
-
-    if (response.data) {
-      updateUser({
-        hasCompletedOnboarding: true,
-        userIntent: null,
-      });
-      router.push("/dashboard");
-    }
-
-    setIsLoading(false);
   };
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-linear-to-b from-orange-50 to-white">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-violet-500"></div>
+      <div className="min-h-screen flex items-center justify-center bg-linear-to-b from-teal-50 via-cyan-50/40 to-white">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-teal-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-linear-to-b from-orange-50 via-rose-50/30 to-white flex flex-col">
+    <div className="min-h-screen bg-linear-to-b from-teal-50 via-cyan-50/30 to-white flex flex-col">
       {/* Main Content */}
       <div className="flex-1 flex flex-col items-center px-6 pt-12 pb-6 max-w-md mx-auto w-full">
         {/* Paw Icon */}
@@ -128,7 +158,7 @@ export default function OnboardingPage() {
           initial={{ scale: 0, rotate: -180 }}
           animate={{ scale: 1, rotate: 0 }}
           transition={{ type: "spring", duration: 0.8 }}
-          className="w-24 h-24 rounded-full bg-linear-to-br from-rose-400 to-orange-400 flex items-center justify-center shadow-lg shadow-rose-200 mb-6"
+          className="w-24 h-24 rounded-full bg-linear-to-br from-teal-500 to-emerald-500 flex items-center justify-center shadow-lg shadow-teal-200 mb-6"
         >
           <PawPrint className="w-12 h-12 text-white" />
         </motion.div>
@@ -179,8 +209,8 @@ export default function OnboardingPage() {
                 onClick={() => setSelectedIntent(option.id)}
                 className={`w-full p-4 rounded-2xl border-2 transition-all duration-200 flex items-center gap-4 ${
                   selectedIntent === option.id
-                    ? "border-violet-400 bg-violet-50/50 shadow-md"
-                    : "border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm"
+                    ? "border-teal-300 bg-teal-50/60 shadow-md"
+                    : "border-gray-100 bg-white/90 hover:border-teal-100 hover:shadow-sm"
                 }`}
               >
                 <div
@@ -197,7 +227,7 @@ export default function OnboardingPage() {
                 <div
                   className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
                     selectedIntent === option.id
-                      ? "border-violet-500 bg-violet-500"
+                      ? "border-teal-600 bg-teal-600"
                       : "border-gray-300"
                   }`}
                 >
@@ -230,8 +260,8 @@ export default function OnboardingPage() {
             disabled={!selectedIntent}
             className={`${
               !selectedIntent
-                ? "bg-linear-to-r! from-rose-300! to-orange-300! shadow-none!"
-                : "bg-linear-to-r! from-rose-400! to-orange-400! shadow-lg! shadow-rose-200!"
+                ? "bg-linear-to-r! from-teal-300! to-emerald-300! shadow-none!"
+                : "bg-linear-to-r! from-teal-500! to-emerald-500! shadow-lg! shadow-teal-200!"
             }`}
           >
             Continue
@@ -240,7 +270,7 @@ export default function OnboardingPage() {
           <button
             onClick={handleSkip}
             disabled={isLoading}
-            className="w-full py-3 text-gray-600 font-medium hover:text-gray-800 transition-colors disabled:opacity-50"
+            className="w-full py-3 text-gray-600 font-medium hover:text-teal-700 transition-colors disabled:opacity-50"
           >
             Skip for now
           </button>

@@ -3,8 +3,17 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import Cookies from "js-cookie";
 import toast from "react-hot-toast";
+import { apiRequest } from "@/lib/api";
+
+interface User {
+  _id: string;
+  name: string;
+  email: string;
+  roles?: "USER" | "PET_OWNER" | "ADMIN" | "SUPER_ADMIN";
+  isVerified?: boolean;
+  hasCompletedOnboarding?: boolean;
+}
 
 function AuthCallbackContent() {
   const router = useRouter();
@@ -15,7 +24,6 @@ function AuthCallbackContent() {
   useEffect(() => {
     const processOAuthToken = async () => {
       try {
-        const token = searchParams.get("token");
         const provider = searchParams.get("provider");
         const error = searchParams.get("error");
 
@@ -25,61 +33,27 @@ function AuthCallbackContent() {
           return;
         }
 
-        if (!token) {
-          toast.error("No authentication token received.");
+        // Verify user is authenticated by calling /api/auth/me
+        // The httpOnly cookie is automatically sent with this request
+        const response = await apiRequest<User>("/api/auth/me");
+
+        if (response.error || !response.data) {
+          toast.error("Authentication verification failed. Please try again.");
           router.push("/login");
           return;
         }
 
-        Cookies.set("authToken", token, {
-          expires: 7,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "Lax",
-        });
+        const userData = response.data;
 
-        localStorage.setItem("authToken", token);
+        // Login user with data from /api/auth/me
+        // Token is stored in httpOnly cookie, no need to handle it here
+        login(userData, null);
 
-        try {
-          const parts = token.split(".");
-          if (parts.length === 3) {
-            const decoded = JSON.parse(
-              decodeURIComponent(
-                atob(parts[1])
-                  .split("")
-                  .map(
-                    (c) =>
-                      "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2),
-                  )
-                  .join(""),
-              ),
-            );
+        toast.success(`Welcome ${userData.name}! Logged in via ${provider}`);
 
-            const userData = {
-              _id: decoded._id || decoded.id,
-              name: decoded.name,
-              email: decoded.email,
-              isVerified: decoded.isVerified || true,
-              hasCompletedOnboarding: decoded.hasCompletedOnboarding || false,
-              userIntent: decoded.userIntent || null,
-            };
-
-            login(userData, token);
-
-            toast.success(
-              `Welcome ${userData.name}! Logged in via ${provider}`,
-            );
-
-            if (!userData.hasCompletedOnboarding) {
-              router.push("/onboarding");
-            } else {
-              router.push("/dashboard");
-            }
-          } else {
-            throw new Error("Invalid token format");
-          }
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        } catch (_decodeError) {
-          toast.success("Authentication successful!");
+        if (!userData.hasCompletedOnboarding) {
+          router.push("/onboarding");
+        } else {
           router.push("/dashboard");
         }
       } catch (err) {

@@ -1,18 +1,15 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { AnimatePresence, motion, PanInfo } from "framer-motion";
 import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
 import {
   ArrowLeft,
-  Heart,
   MapPin,
   Shield,
   Smile,
   AlertTriangle,
-  ChevronLeft,
-  ChevronRight,
   Send,
   Loader2,
   X,
@@ -23,6 +20,7 @@ import {
   Baby,
   FileText,
   Share2,
+  Check,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -34,6 +32,7 @@ import type { AdoptionListing } from "@/lib/api/adoption";
 import StartChatButton from "@/components/chat/StartChatButton";
 import DynamicMapModal from "@/components/ui/DynamicMapModal";
 import { useGeolocation, getDistanceKm } from "@/lib/hooks/useGeolocation";
+import RichText from "@/components/ui/RichText";
 
 const LIVING_OPTIONS = [
   { value: "house_with_yard", label: "House with yard" },
@@ -56,7 +55,13 @@ export default function AdoptDetailPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasApplied, setHasApplied] = useState(false);
   const [showMap, setShowMap] = useState(false);
+  const [justCopied, setJustCopied] = useState(false);
   const userCoords = useGeolocation();
+
+  // Touch handling for swipe
+  const containerRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [isDragging, setIsDragging] = useState(false);
 
   const [formData, setFormData] = useState({
     message: "",
@@ -204,14 +209,67 @@ export default function AdoptDetailPage() {
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
-  const nextPhoto = () => {
+  const nextPhoto = useCallback(() => {
     if (listing?.photos) setActivePhoto((p) => (p + 1) % listing.photos.length);
-  };
-  const prevPhoto = () => {
+  }, [listing?.photos]);
+
+  const prevPhoto = useCallback(() => {
     if (listing?.photos)
       setActivePhoto(
         (p) => (p - 1 + listing.photos.length) % listing.photos.length,
       );
+  }, [listing?.photos]);
+
+  // Handle swipe gesture for photos
+  const handleDragEnd = useCallback(
+    (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+      if (!listing?.photos || listing.photos.length <= 1) return;
+
+      const threshold = 50;
+      const velocity = info.velocity.x;
+      const offset = info.offset.x;
+
+      if (offset < -threshold || velocity < -500) {
+        nextPhoto();
+      } else if (offset > threshold || velocity > 500) {
+        prevPhoto();
+      }
+      setIsDragging(false);
+    },
+    [listing?.photos, nextPhoto, prevPhoto],
+  );
+
+  // Handle share
+  const handleShare = async () => {
+    const shareData = {
+      title: `Adopt ${listing?.name}`,
+      text: `Check out ${listing?.name} available for adoption!`,
+      url: window.location.href,
+    };
+
+    try {
+      if (navigator.share && navigator.canShare?.(shareData)) {
+        await navigator.share(shareData);
+      } else {
+        // Fallback: copy to clipboard
+        await navigator.clipboard.writeText(window.location.href);
+        setJustCopied(true);
+        toast.success("Link copied to clipboard!");
+        setTimeout(() => setJustCopied(false), 2000);
+      }
+    } catch (err) {
+      if ((err as Error).name !== "AbortError") {
+        // User didn't cancel, try clipboard fallback
+        try {
+          await navigator.clipboard.writeText(window.location.href);
+          setJustCopied(true);
+          toast.success("Link copied to clipboard!");
+          setTimeout(() => setJustCopied(false), 2000);
+        } catch {
+          toast.error("Failed to share");
+        }
+      }
+    }
   };
 
   if (isLoading) {
@@ -229,17 +287,30 @@ export default function AdoptDetailPage() {
   return (
     <MobileLayout showBottomNav={false}>
       <div className="min-h-screen bg-gray-50 pb-28">
-        {/* Photo Gallery — covers top portion like reference */}
-        <div className="relative h-[55vh] min-h-85 bg-gray-200">
+        {/* Photo Gallery — swipeable for mobile */}
+        <div
+          className="relative h-[55vh] min-h-85 bg-gray-200 overflow-hidden"
+          ref={containerRef}
+        >
           {listing.photos?.length > 0 ? (
-            <Image
-              src={listing.photos[activePhoto]}
-              alt={listing.name}
-              fill
-              className="object-cover"
-              sizes="100vw"
-              priority
-            />
+            <motion.div
+              className="relative w-full h-full cursor-grab active:cursor-grabbing"
+              drag={listing.photos.length > 1 ? "x" : false}
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.2}
+              onDragStart={() => setIsDragging(true)}
+              onDragEnd={handleDragEnd}
+            >
+              <Image
+                src={listing.photos[activePhoto]}
+                alt={listing.name}
+                fill
+                className="object-cover pointer-events-none select-none"
+                sizes="(max-width: 32rem) 100vw, 32rem"
+                priority
+                draggable={false}
+              />
+            </motion.div>
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-teal-50 to-teal-100">
               <span className="text-7xl">🐾</span>
@@ -248,54 +319,49 @@ export default function AdoptDetailPage() {
 
           {/* Top gradient overlay for readability */}
           <div className="absolute inset-x-0 top-0 h-24 bg-linear-to-b from-black/30 to-transparent pointer-events-none" />
+          
+          {/* Bottom gradient overlay for indicators */}
+          <div className="absolute inset-x-0 bottom-0 h-32 bg-linear-to-t from-black/40 via-black/20 to-transparent pointer-events-none" />
 
           {/* Back button */}
           <button
             onClick={() => router.back()}
-            className="absolute top-4 left-4 w-10 h-10 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm z-10"
+            className="absolute top-4 left-4 w-10 h-10 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm z-10 active:scale-95 transition-transform"
           >
             <ArrowLeft className="w-5 h-5 text-gray-700" />
           </button>
 
           {/* Right action buttons */}
           <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
-            <button className="w-10 h-10 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm">
-              <Share2 className="w-5 h-5 text-gray-600" />
-            </button>
-            <button className="w-10 h-10 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm">
-              <Heart className="w-5 h-5 text-pink-400" />
+            <button
+              onClick={handleShare}
+              className="w-10 h-10 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm active:scale-95 transition-all"
+            >
+              {justCopied ? (
+                <Check className="w-5 h-5 text-green-500" />
+              ) : (
+                <Share2 className="w-5 h-5 text-gray-600" />
+              )}
             </button>
           </div>
 
-          {/* Photo nav arrows */}
+          {/* Photo indicators - pill style */}
           {listing.photos?.length > 1 && (
-            <>
-              <button
-                onClick={prevPhoto}
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center"
-              >
-                <ChevronLeft className="w-5 h-5 text-white" />
-              </button>
-              <button
-                onClick={nextPhoto}
-                className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center"
-              >
-                <ChevronRight className="w-5 h-5 text-white" />
-              </button>
-
-              {/* Dot indicators */}
-              <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+            <div className="absolute bottom-16 left-0 right-0 z-20">
+              <div className="flex justify-center items-center gap-2">
                 {listing.photos.map((_, i) => (
                   <button
                     key={i}
                     onClick={() => setActivePhoto(i)}
-                    className={`w-2 h-2 rounded-full transition-all ${
-                      i === activePhoto ? "bg-white w-5" : "bg-white/50"
+                    className={`rounded-full transition-all duration-300 ${
+                      i === activePhoto 
+                        ? "w-8 h-2 bg-white shadow-lg" 
+                        : "w-2 h-2 bg-white/60 hover:bg-white/80"
                     }`}
                   />
                 ))}
               </div>
-            </>
+            </div>
           )}
         </div>
 
@@ -430,52 +496,68 @@ export default function AdoptDetailPage() {
             <h2 className="text-base font-bold text-gray-900">
               About {listing.name}
             </h2>
-            <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
-              {listing.description}
-            </p>
+            <RichText
+              content={listing.description}
+              className="text-sm text-gray-600 leading-relaxed"
+            />
 
             {/* Health info */}
             {listing.healthInfo && (
               <div className="pt-3 border-t border-gray-100">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <Shield className="w-4 h-4 text-green-500" />
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-7 h-7 rounded-full bg-green-50 flex items-center justify-center">
+                    <Shield className="w-4 h-4 text-green-500" />
+                  </div>
                   <h3 className="text-sm font-semibold text-gray-800">
                     Health Information
                   </h3>
                 </div>
-                <p className="text-sm text-gray-600 pl-6">
-                  {listing.healthInfo}
-                </p>
+                <div className="pl-9">
+                  <RichText
+                    content={listing.healthInfo}
+                    className="text-sm text-gray-600"
+                  />
+                </div>
               </div>
             )}
 
             {/* Temperament */}
             {listing.temperament && (
               <div className="pt-3 border-t border-gray-100">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <Smile className="w-4 h-4 text-amber-500" />
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-7 h-7 rounded-full bg-amber-50 flex items-center justify-center">
+                    <Smile className="w-4 h-4 text-amber-500" />
+                  </div>
                   <h3 className="text-sm font-semibold text-gray-800">
                     Temperament
                   </h3>
                 </div>
-                <p className="text-sm text-gray-600 pl-6">
-                  {listing.temperament}
-                </p>
+                <div className="pl-9">
+                  <RichText
+                    content={listing.temperament}
+                    className="text-sm text-gray-600"
+                  />
+                </div>
               </div>
             )}
 
             {/* Special Needs */}
             {listing.specialNeeds && (
               <div className="pt-3 border-t border-gray-100">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <AlertTriangle className="w-4 h-4 text-orange-500" />
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-7 h-7 rounded-full bg-orange-50 flex items-center justify-center">
+                    <AlertTriangle className="w-4 h-4 text-orange-500" />
+                  </div>
                   <h3 className="text-sm font-semibold text-gray-800">
                     Special Needs
                   </h3>
                 </div>
-                <p className="text-sm text-gray-600 pl-6">
-                  {listing.specialNeeds}
-                </p>
+                <div className="pl-9">
+                  <RichText
+                    content={listing.specialNeeds}
+                    className="text-sm text-gray-600"
+                  />
+                </div>
               </div>
             )}
           </div>

@@ -1,22 +1,17 @@
-import Cookies from "js-cookie";
-
-// Dynamically determine API URL based on current hostname
-// This allows the app to work on localhost AND any network IP automatically
+// Get API URL from environment variable
+// For production (Vercel): NEXT_PUBLIC_API_URL must be set to Render backend URL
+// For local development: set in .env.local
 function getApiUrl(): string {
-  // Server-side: use env variable or default
-  if (typeof window === "undefined") {
-    return process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-  }
-
-  // Client-side: use env variable if set, otherwise auto-detect from window.location
   if (process.env.NEXT_PUBLIC_API_URL) {
     return process.env.NEXT_PUBLIC_API_URL;
   }
 
-  // Auto-detect: use same host as frontend but with backend port 5000
-  const protocol = window.location.protocol; // http: or https:
-  const hostname = window.location.hostname; // localhost or 192.168.x.x
-  return `${protocol}//${hostname}:5000`;
+  // Fallback for local development only
+  if (process.env.NODE_ENV === "development") {
+    return "http://localhost:5000";
+  }
+
+  throw new Error("NEXT_PUBLIC_API_URL environment variable is not set");
 }
 
 export const API_URL = getApiUrl();
@@ -27,14 +22,21 @@ export interface ApiResponse<T = unknown> {
   errorCode?: string;
 }
 
-// Helper to get auth token — try cookie first, fall back to localStorage
+// Helper to get optional bearer token fallback.
+// Primary auth uses httpOnly cookies sent automatically with credentials.
 export const getAuthToken = (): string | null => {
   if (typeof window === "undefined") return null;
-  // Use js-cookie for consistent reading (matches how AuthContext sets it)
-  const token = Cookies.get("authToken");
-  if (token) return token;
-  // Fallback to localStorage if cookie was lost (e.g. browser cleared cookies)
   return localStorage.getItem("authToken");
+};
+
+export const setAuthToken = (token: string) => {
+  if (typeof window === "undefined") return;
+  localStorage.setItem("authToken", token);
+};
+
+export const clearAuthToken = () => {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem("authToken");
 };
 
 export async function apiRequest<T>(

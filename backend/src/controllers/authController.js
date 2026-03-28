@@ -1,5 +1,16 @@
 import authService from "../services/authService.js";
 import { createJWT } from "../utils/jwt.js";
+import User from "../models/User.js";
+
+const AUTH_COOKIE_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000;
+
+const authCookieOptions = {
+  path: "/",
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "Lax",
+  maxAge: AUTH_COOKIE_MAX_AGE_MS,
+};
 
 const loginUser = async (req, res) => {
   const data = req.body;
@@ -20,12 +31,7 @@ const loginUser = async (req, res) => {
 
     const authToken = createJWT(user);
 
-    res.cookie("authToken", authToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "Lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    res.cookie("authToken", authToken, authCookieOptions);
 
     res.json({ ...user, authToken });
   } catch (error) {
@@ -181,9 +187,35 @@ const resendVerification = async (req, res) => {
 };
 
 const logout = async (req, res) => {
-  res.clearCookie("authToken");
+  res.clearCookie("authToken", {
+    path: "/",
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "Lax",
+  });
 
   res.json({ message: "Logout successful" });
+};
+
+const getCurrentUser = async (req, res) => {
+  try {
+    // Auth middleware already verified the token and attached user to req.user
+    if (!req.user) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    // Fetch fresh user data from database to include all fields
+    const user = await User.findById(req.user._id).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.json(user);
+  } catch (error) {
+    console.error("Get current user error:", error);
+    res.status(500).json({ error: "Failed to get user information" });
+  }
 };
 
 export default {
@@ -195,4 +227,5 @@ export default {
   verifyAccount,
   resendVerification,
   logout,
+  getCurrentUser,
 };

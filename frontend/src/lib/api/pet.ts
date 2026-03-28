@@ -91,13 +91,31 @@ export interface Reminder {
   description: string | null;
   reminderType: string;
   dueDate: string;
-  dueTime: string;
+  dueTime: string | null;
   frequency: string;
   status: string;
   priority: string;
   isOverdue: boolean;
+  isDueToday?: boolean;
+  isSnoozed?: boolean;
+  sendEmail?: boolean;
+  completedAt?: string | null;
+  dismissedAt?: string | null;
+  snoozedUntil?: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ReminderQueryParams {
+  page?: number;
+  limit?: number;
+  reminderType?: string;
+  status?: string;
+  priority?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+  includeDeleted?: boolean;
+  includeCompleted?: boolean;
 }
 
 // ---- Health Overview ----
@@ -257,8 +275,23 @@ export const petApi = {
     ),
 
   // ---- Reminders ----
-  getReminders: (petId: string) =>
-    apiRequest<Reminder[]>(`/api/pets/${petId}/health/reminders`, {}, true),
+  getReminders: (petId: string, params?: ReminderQueryParams) => {
+    const query = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+          query.append(key, String(value));
+        }
+      });
+    }
+
+    const qs = query.toString();
+    return apiRequest<Reminder[]>(
+      `/api/pets/${petId}/health/reminders${qs ? `?${qs}` : ""}`,
+      {},
+      true,
+    );
+  },
 
   // Reminders for all pets (user-level)
   getAllReminders: () => apiRequest<Reminder[]>("/api/reminders", {}, true),

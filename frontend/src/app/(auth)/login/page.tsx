@@ -14,7 +14,7 @@ import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import SocialButton from "@/components/ui/SocialButton";
 import { loginSchema, LoginFormData } from "@/lib/validations";
-import { authApi } from "@/lib/api";
+import { authApi, API_URL } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
 export default function LoginPage() {
@@ -22,13 +22,8 @@ export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
 
-  const getApiUrl = () => {
-    return process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-  };
-
   const handleSocialLogin = (provider: "google" | "facebook" | "github") => {
-    const apiUrl = getApiUrl();
-    window.location.href = `${apiUrl}/api/auth/${provider}`;
+    window.location.href = `${API_URL}/api/auth/${provider}`;
   };
 
   const {

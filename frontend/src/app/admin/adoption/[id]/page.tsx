@@ -21,6 +21,7 @@ import toast from "react-hot-toast";
 import { adoptionListingApi, adoptionApplicationApi } from "@/lib/api/adoption";
 import type { AdoptionListing, AdoptionApplication } from "@/lib/api/adoption";
 import AdminLayout from "@/components/layout/AdminLayout";
+import RichText from "@/components/ui/RichText";
 
 export default function AdminAdoptionDetailPage() {
   const router = useRouter();
@@ -207,18 +208,18 @@ export default function AdminAdoptionDetailPage() {
               </div>
             )}
 
-            <p className="text-sm text-gray-700 mb-3">{listing.description}</p>
+            <RichText content={listing.description} className="text-sm text-gray-700 mb-3" />
 
             {listing.healthInfo && (
               <div className="text-sm mb-2">
                 <span className="font-medium text-gray-700">Health: </span>
-                <span className="text-gray-600">{listing.healthInfo}</span>
+                <RichText content={listing.healthInfo} className="text-gray-600 inline" />
               </div>
             )}
             {listing.temperament && (
               <div className="text-sm mb-2">
                 <span className="font-medium text-gray-700">Temperament: </span>
-                <span className="text-gray-600">{listing.temperament}</span>
+                <RichText content={listing.temperament} className="text-gray-600 inline" />
               </div>
             )}
             {listing.specialNeeds && (
@@ -226,7 +227,7 @@ export default function AdminAdoptionDetailPage() {
                 <span className="font-medium text-gray-700">
                   Special Needs:{" "}
                 </span>
-                <span className="text-gray-600">{listing.specialNeeds}</span>
+                <RichText content={listing.specialNeeds} className="text-gray-600 inline" />
               </div>
             )}
 
