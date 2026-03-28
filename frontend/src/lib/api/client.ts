@@ -22,6 +22,86 @@ export interface ApiResponse<T = unknown> {
   errorCode?: string;
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+const getErrorText = (payload: unknown, fallback: string): string => {
+  if (!isRecord(payload)) return fallback;
+
+  const error = payload.error;
+  if (typeof error === "string" && error.trim()) return error;
+
+  const message = payload.message;
+  if (typeof message === "string" && message.trim()) return message;
+
+  return fallback;
+};
+
+const getErrorCode = (payload: unknown): string | undefined => {
+  if (!isRecord(payload)) return undefined;
+  const code = payload.code;
+  return typeof code === "string" ? code : undefined;
+};
+
+const parseResponseBody = async (response: Response): Promise<unknown> => {
+  const contentType = response.headers.get("content-type") || "";
+
+  if (contentType.includes("application/json")) {
+    try {
+      return await response.json();
+    } catch {
+      return null;
+    }
+  }
+
+  try {
+    const text = await response.text();
+    if (!text) return null;
+
+    try {
+      return JSON.parse(text) as unknown;
+    } catch {
+      return { message: text };
+    }
+  } catch {
+    return null;
+  }
+};
+
+export const parseApiResponse = async <T>(
+  response: Response,
+  fallbackError: string = "Something went wrong",
+): Promise<ApiResponse<T>> => {
+  const payload = await parseResponseBody(response);
+
+  if (!response.ok) {
+    return {
+      error: getErrorText(payload, fallbackError),
+      errorCode: getErrorCode(payload),
+    };
+  }
+
+  return { data: payload as T };
+};
+
+export const getFetchErrorMessage = (
+  error: unknown,
+  fallback: string = "Network error. Please try again.",
+): string => {
+  if (error instanceof Error && error.message) {
+    if (
+      error.message.includes("Failed to fetch") ||
+      error.message.includes("NetworkError")
+    ) {
+      return "Request blocked or unreachable. Check deployment URL/CORS and try again.";
+    }
+
+    return error.message;
+  }
+
+  return fallback;
+};
+
 // Helper to get optional bearer token fallback.
 // Primary auth uses httpOnly cookies sent automatically with credentials.
 export const getAuthToken = (): string | null => {
@@ -45,17 +125,23 @@ export async function apiRequest<T>(
   requiresAuth: boolean = false,
 ): Promise<ApiResponse<T>> {
   try {
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      ...(options.headers as Record<string, string>),
-    };
+    const headers = new Headers(options.headers || undefined);
 
     // Add auth token if required or available
     if (requiresAuth) {
       const token = getAuthToken();
       if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
+        headers.set("Authorization", `Bearer ${token}`);
       }
+    }
+
+    // Add JSON content type only when request has string body and no explicit content type.
+    if (
+      options.body != null &&
+      typeof options.body === "string" &&
+      !headers.has("Content-Type")
+    ) {
+      headers.set("Content-Type", "application/json");
     }
 
     const response = await fetch(`${API_URL}${endpoint}`, {
@@ -64,18 +150,9 @@ export async function apiRequest<T>(
       credentials: "include",
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      return {
-        error: data.error || data.message || "Something went wrong",
-        errorCode: data.code,
-      };
-    }
-
-    return { data };
-  } catch {
-    return { error: "Network error. Please try again." };
+    return parseApiResponse<T>(response);
+  } catch (error) {
+    return { error: getFetchErrorMessage(error) };
   }
 }
 

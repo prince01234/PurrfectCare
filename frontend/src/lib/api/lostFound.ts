@@ -1,4 +1,10 @@
-import { apiRequest, API_URL, getAuthToken } from "./client";
+import {
+  apiRequest,
+  API_URL,
+  getAuthToken,
+  getFetchErrorMessage,
+  parseApiResponse,
+} from "./client";
 import type { ApiResponse } from "./client";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -121,13 +127,9 @@ export const lostFoundApi = {
         body: formData,
       });
 
-      const data = await response.json();
-      if (!response.ok) {
-        return { error: data.error || data.message || "Failed to create post" };
-      }
-      return { data };
-    } catch {
-      return { error: "Network error. Please try again." };
+      return parseApiResponse<LostFoundPost>(response, "Failed to create post");
+    } catch (error) {
+      return { error: getFetchErrorMessage(error) };
     }
   },
 
@@ -150,13 +152,9 @@ export const lostFoundApi = {
         body: formData,
       });
 
-      const data = await response.json();
-      if (!response.ok) {
-        return { error: data.error || data.message || "Failed to update post" };
-      }
-      return { data };
-    } catch {
-      return { error: "Network error. Please try again." };
+      return parseApiResponse<LostFoundPost>(response, "Failed to update post");
+    } catch (error) {
+      return { error: getFetchErrorMessage(error) };
     }
   },
 

@@ -1,4 +1,10 @@
-import { apiRequest, getAuthToken, API_URL } from "./client";
+import {
+  apiRequest,
+  getAuthToken,
+  API_URL,
+  getFetchErrorMessage,
+  parseApiResponse,
+} from "./client";
 import type { ApiResponse } from "./client";
 
 // ── Types ──
@@ -184,13 +190,9 @@ async function uploadFormData<T>(
       credentials: "include",
     });
 
-    const data = await response.json();
-    if (!response.ok) {
-      return { error: data.error || data.message || "Something went wrong" };
-    }
-    return { data };
-  } catch {
-    return { error: "Network error. Please try again." };
+    return parseApiResponse<T>(response);
+  } catch (error) {
+    return { error: getFetchErrorMessage(error) };
   }
 }
 

@@ -1,4 +1,10 @@
-import { apiRequest, API_URL, getAuthToken } from "./client";
+import {
+  apiRequest,
+  API_URL,
+  getAuthToken,
+  getFetchErrorMessage,
+  parseApiResponse,
+} from "./client";
 import type { ApiResponse } from "./client";
 
 // ── Types ──
@@ -109,15 +115,9 @@ async function adoptionFormRequest<T>(
       credentials: "include",
     });
 
-    const result = await response.json();
-    if (!response.ok) {
-      return {
-        error: result.error || result.message || "Something went wrong",
-      };
-    }
-    return { data: result };
-  } catch {
-    return { error: "Network error. Please try again." };
+    return parseApiResponse<T>(response);
+  } catch (error) {
+    return { error: getFetchErrorMessage(error) };
   }
 }
 
