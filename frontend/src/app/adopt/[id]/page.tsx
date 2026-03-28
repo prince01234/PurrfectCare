@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { motion, AnimatePresence, PanInfo } from "framer-motion";
+import { AnimatePresence, motion, PanInfo } from "framer-motion";
 import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
 import {
@@ -32,6 +32,7 @@ import type { AdoptionListing } from "@/lib/api/adoption";
 import StartChatButton from "@/components/chat/StartChatButton";
 import DynamicMapModal from "@/components/ui/DynamicMapModal";
 import { useGeolocation, getDistanceKm } from "@/lib/hooks/useGeolocation";
+import RichText from "@/components/ui/RichText";
 
 const LIVING_OPTIONS = [
   { value: "house_with_yard", label: "House with yard" },
@@ -40,134 +41,6 @@ const LIVING_OPTIONS = [
   { value: "farm", label: "Farm" },
   { value: "other", label: "Other" },
 ];
-
-// Simple markdown-like text renderer
-function RichText({
-  content,
-  className = "",
-}: {
-  content: string;
-  className?: string;
-}) {
-  // Convert markdown-like syntax to HTML
-  const renderContent = () => {
-    if (!content) return null;
-
-    // Split by paragraphs (double newlines)
-    const paragraphs = content.split(/\n\n+/);
-
-    return paragraphs.map((paragraph, pIdx) => {
-      // Process each line in the paragraph
-      const lines = paragraph.split("\n");
-
-      return (
-        <div key={pIdx} className={pIdx > 0 ? "mt-3" : ""}>
-          {lines.map((line, lIdx) => {
-            // Check for headers
-            if (line.startsWith("### ")) {
-              return (
-                <h4 key={lIdx} className="font-semibold text-gray-800 mt-2">
-                  {line.slice(4)}
-                </h4>
-              );
-            }
-            if (line.startsWith("## ")) {
-              return (
-                <h3 key={lIdx} className="font-bold text-gray-900 mt-2">
-                  {line.slice(3)}
-                </h3>
-              );
-            }
-            if (line.startsWith("# ")) {
-              return (
-                <h2 key={lIdx} className="text-lg font-bold text-gray-900 mt-2">
-                  {line.slice(2)}
-                </h2>
-              );
-            }
-
-            // Check for bullet points
-            if (line.match(/^[-*•]\s/)) {
-              return (
-                <div key={lIdx} className="flex gap-2 ml-2">
-                  <span className="text-teal-500">•</span>
-                  <span>{processInlineStyles(line.slice(2))}</span>
-                </div>
-              );
-            }
-
-            // Check for numbered lists
-            const numberedMatch = line.match(/^(\d+)\.\s/);
-            if (numberedMatch) {
-              return (
-                <div key={lIdx} className="flex gap-2 ml-2">
-                  <span className="text-teal-500 font-medium">
-                    {numberedMatch[1]}.
-                  </span>
-                  <span>
-                    {processInlineStyles(line.slice(numberedMatch[0].length))}
-                  </span>
-                </div>
-              );
-            }
-
-            // Regular text
-            if (line.trim()) {
-              return <p key={lIdx}>{processInlineStyles(line)}</p>;
-            }
-            return null;
-          })}
-        </div>
-      );
-    });
-  };
-
-  // Process bold, italic, and other inline styles
-  const processInlineStyles = (text: string): React.ReactNode => {
-    const parts: React.ReactNode[] = [];
-    let remaining = text;
-    let key = 0;
-
-    while (remaining.length > 0) {
-      // Bold **text**
-      const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
-      // Italic *text* or _text_
-      const italicMatch = remaining.match(/(?<!\*)\*([^*]+)\*(?!\*)|_([^_]+)_/);
-
-      if (
-        boldMatch &&
-        (!italicMatch || boldMatch.index! <= italicMatch.index!)
-      ) {
-        if (boldMatch.index! > 0) {
-          parts.push(remaining.slice(0, boldMatch.index));
-        }
-        parts.push(
-          <strong key={key++} className="font-semibold">
-            {boldMatch[1]}
-          </strong>,
-        );
-        remaining = remaining.slice(boldMatch.index! + boldMatch[0].length);
-      } else if (italicMatch) {
-        if (italicMatch.index! > 0) {
-          parts.push(remaining.slice(0, italicMatch.index));
-        }
-        parts.push(
-          <em key={key++} className="italic">
-            {italicMatch[1] || italicMatch[2]}
-          </em>,
-        );
-        remaining = remaining.slice(italicMatch.index! + italicMatch[0].length);
-      } else {
-        parts.push(remaining);
-        break;
-      }
-    }
-
-    return parts.length > 0 ? parts : text;
-  };
-
-  return <div className={`space-y-1 ${className}`}>{renderContent()}</div>;
-}
 
 export default function AdoptDetailPage() {
   const router = useRouter();
@@ -425,28 +298,18 @@ export default function AdoptDetailPage() {
               drag={listing.photos.length > 1 ? "x" : false}
               dragConstraints={{ left: 0, right: 0 }}
               dragElastic={0.2}
+              onDragStart={() => setIsDragging(true)}
               onDragEnd={handleDragEnd}
             >
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.div
-                  key={activePhoto}
-                  initial={{ opacity: 0, scale: 1.05 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.3 }}
-                  className="absolute inset-0"
-                >
-                  <Image
-                    src={listing.photos[activePhoto]}
-                    alt={listing.name}
-                    fill
-                    className="object-cover pointer-events-none select-none"
-                    sizes="(max-width: 32rem) 100vw, 32rem"
-                    priority
-                    draggable={false}
-                  />
-                </motion.div>
-              </AnimatePresence>
+              <Image
+                src={listing.photos[activePhoto]}
+                alt={listing.name}
+                fill
+                className="object-cover pointer-events-none select-none"
+                sizes="(max-width: 32rem) 100vw, 32rem"
+                priority
+                draggable={false}
+              />
             </motion.div>
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-teal-50 to-teal-100">
@@ -456,6 +319,9 @@ export default function AdoptDetailPage() {
 
           {/* Top gradient overlay for readability */}
           <div className="absolute inset-x-0 top-0 h-24 bg-linear-to-b from-black/30 to-transparent pointer-events-none" />
+          
+          {/* Bottom gradient overlay for indicators */}
+          <div className="absolute inset-x-0 bottom-0 h-32 bg-linear-to-t from-black/40 via-black/20 to-transparent pointer-events-none" />
 
           {/* Back button */}
           <button
@@ -479,28 +345,20 @@ export default function AdoptDetailPage() {
             </button>
           </div>
 
-          {/* Photo indicators - progress bar style */}
+          {/* Photo indicators - pill style */}
           {listing.photos?.length > 1 && (
-            <div className="absolute bottom-6 left-0 right-0 px-6 z-10">
-              <div className="flex justify-center gap-1.5">
+            <div className="absolute bottom-16 left-0 right-0 z-20">
+              <div className="flex justify-center items-center gap-2">
                 {listing.photos.map((_, i) => (
                   <button
                     key={i}
                     onClick={() => setActivePhoto(i)}
-                    className="flex-1 max-w-12 h-1 rounded-full overflow-hidden bg-white/30 backdrop-blur-sm"
-                  >
-                    <motion.div
-                      className="h-full bg-white rounded-full"
-                      initial={false}
-                      animate={{
-                        width: i === activePhoto ? "100%" : "0%",
-                      }}
-                      transition={{
-                        duration: 0.3,
-                        ease: "easeOut",
-                      }}
-                    />
-                  </button>
+                    className={`rounded-full transition-all duration-300 ${
+                      i === activePhoto 
+                        ? "w-8 h-2 bg-white shadow-lg" 
+                        : "w-2 h-2 bg-white/60 hover:bg-white/80"
+                    }`}
+                  />
                 ))}
               </div>
             </div>

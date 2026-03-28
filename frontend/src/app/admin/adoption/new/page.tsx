@@ -9,6 +9,7 @@ import toast from "react-hot-toast";
 
 import { adoptionListingApi } from "@/lib/api/adoption";
 import AdminLayout from "@/components/layout/AdminLayout";
+import RichTextEditor from "@/components/ui/RichTextEditor";
 
 const SPECIES_OPTIONS = [
   "dog",
@@ -314,20 +315,17 @@ export default function NewAdoptionListingPage() {
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Description *
-            </label>
-            <textarea
-              name="description"
+            <RichTextEditor
+              label="Description *"
               value={formData.description}
-              onChange={handleChange}
+              onChange={(val) => {
+                setFormData((prev) => ({ ...prev, description: val }));
+                if (errors.description) setErrors((prev) => ({ ...prev, description: "" }));
+              }}
               placeholder="Tell adopters about this pet's personality, habits, and why they'd be a great companion..."
-              rows={4}
-              className={`w-full px-4 py-3 rounded-xl border-2 bg-white text-gray-800 outline-none resize-none transition-all ${
-                errors.description
-                  ? "border-red-300"
-                  : "border-gray-200 focus:border-teal-400"
-              }`}
+              rows={5}
+              error={!!errors.description}
+              helpText="Write a compelling description."
             />
             {errors.description && (
               <p className="text-red-500 text-xs mt-1">{errors.description}</p>
@@ -336,46 +334,35 @@ export default function NewAdoptionListingPage() {
 
           {/* Health Info */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Health Information
-            </label>
-            <textarea
-              name="healthInfo"
+            <RichTextEditor
+              label="Health Information"
               value={formData.healthInfo}
-              onChange={handleChange}
+              onChange={(val) => setFormData((prev) => ({ ...prev, healthInfo: val }))}
               placeholder="Vaccination status, medical conditions, etc."
-              rows={2}
-              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-white text-gray-800 outline-none resize-none focus:border-teal-400 transition-all"
+              rows={3}
+              helpText="Add health details."
             />
           </div>
 
           {/* Temperament */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Temperament
-            </label>
-            <input
-              type="text"
-              name="temperament"
+            <RichTextEditor
+              label="Temperament"
               value={formData.temperament}
-              onChange={handleChange}
-              placeholder="e.g., Friendly, playful, good with kids"
-              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-white text-gray-800 outline-none focus:border-teal-400 transition-all"
+              onChange={(val) => setFormData((prev) => ({ ...prev, temperament: val }))}
+              placeholder="e.g., Friendly, playful, good with kids..."
+              rows={2}
             />
           </div>
 
           {/* Special Needs */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Special Needs
-            </label>
-            <input
-              type="text"
-              name="specialNeeds"
+            <RichTextEditor
+              label="Special Needs"
               value={formData.specialNeeds}
-              onChange={handleChange}
-              placeholder="e.g., Requires medication, special diet"
-              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-white text-gray-800 outline-none focus:border-teal-400 transition-all"
+              onChange={(val) => setFormData((prev) => ({ ...prev, specialNeeds: val }))}
+              placeholder="e.g., Requires medication, special diet..."
+              rows={2}
             />
           </div>
 

@@ -8,7 +8,6 @@ import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Search,
-  Heart,
   MapPin,
   SlidersHorizontal,
   X,
@@ -338,11 +337,6 @@ export default function AdoptPage() {
                           ? "Available"
                           : "Adopted"}
                       </span>
-
-                      {/* Favorite heart */}
-                      <div className="absolute top-3 right-3 w-9 h-9 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm">
-                        <Heart className="w-4.5 h-4.5 text-gray-400" />
-                      </div>
                     </div>
 
                     {/* Info */}
@@ -357,33 +351,26 @@ export default function AdoptPage() {
                         </span>
                       </div>
 
-                      <p className="line-clamp-1 text-sm text-gray-500">
-                        {listing.breed.charAt(0).toUpperCase() +
-                          listing.breed.slice(1)}{" "}
-                        &bull; {formatAge(listing.age)}
-                      </p>
-
-                      {listing.postedBy?.organizationName && (
-                        <div className="flex items-center gap-1 mt-2 text-xs text-teal-600">
-                          <MapPin className="w-3.5 h-3.5 shrink-0" />
-                          <span>
-                            {userCoords &&
-                              listing.postedBy?.latitude != null &&
-                              listing.postedBy?.longitude != null && (
-                                <>
-                                  {getDistanceKm(
-                                    userCoords.lat,
-                                    userCoords.lng,
-                                    listing.postedBy.latitude,
-                                    listing.postedBy.longitude,
-                                  ).toFixed(1)}{" "}
-                                  km &bull;{" "}
-                                </>
-                              )}
-                            {listing.postedBy.organizationName}
-                          </span>
-                        </div>
-                      )}
+                      <div className="flex items-center justify-between text-sm text-gray-500">
+                        <p className="line-clamp-1">
+                          {listing.breed.charAt(0).toUpperCase() +
+                            listing.breed.slice(1)}{" "}
+                          &bull; {formatAge(listing.age)}
+                        </p>
+                        {userCoords &&
+                          listing.postedBy?.latitude != null &&
+                          listing.postedBy?.longitude != null && (
+                            <span className="flex items-center gap-1 text-teal-600 font-medium shrink-0 ml-2">
+                              <MapPin className="w-3.5 h-3.5" />
+                              {getDistanceKm(
+                                userCoords.lat,
+                                userCoords.lng,
+                                listing.postedBy.latitude,
+                                listing.postedBy.longitude,
+                              ).toFixed(1)} km
+                            </span>
+                          )}
+                      </div>
                     </div>
                   </motion.div>
                 </Link>
