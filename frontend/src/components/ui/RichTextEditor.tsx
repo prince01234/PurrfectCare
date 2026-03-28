@@ -22,6 +22,21 @@ interface RichTextEditorProps {
   helpText?: string;
 }
 
+type ToolbarAction = "bold" | "italic" | "h2" | "h3" | "bullet" | "numbered";
+
+const TOOLBAR_BUTTONS: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  action: ToolbarAction;
+}[] = [
+  { icon: Bold, label: "Bold", action: "bold" },
+  { icon: Italic, label: "Italic", action: "italic" },
+  { icon: Heading2, label: "Heading", action: "h2" },
+  { icon: Heading3, label: "Subheading", action: "h3" },
+  { icon: List, label: "Bullet List", action: "bullet" },
+  { icon: ListOrdered, label: "Numbered List", action: "numbered" },
+];
+
 // Markdown preview component
 function MarkdownPreview({ content }: { content: string }) {
   if (!content) {
@@ -47,7 +62,10 @@ function MarkdownPreview({ content }: { content: string }) {
             }
             if (line.startsWith("## ")) {
               return (
-                <h3 key={lIdx} className="font-bold text-gray-900 mt-2 text-base">
+                <h3
+                  key={lIdx}
+                  className="font-bold text-gray-900 mt-2 text-base"
+                >
                   {processInline(line.slice(3))}
                 </h3>
               );
@@ -78,7 +96,9 @@ function MarkdownPreview({ content }: { content: string }) {
                   <span className="text-teal-500 font-medium">
                     {numberedMatch[1]}.
                   </span>
-                  <span>{processInline(line.slice(numberedMatch[0].length))}</span>
+                  <span>
+                    {processInline(line.slice(numberedMatch[0].length))}
+                  </span>
                 </div>
               );
             }
@@ -103,14 +123,17 @@ function MarkdownPreview({ content }: { content: string }) {
       const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
       const italicMatch = remaining.match(/(?<!\*)\*([^*]+)\*(?!\*)|_([^_]+)_/);
 
-      if (boldMatch && (!italicMatch || boldMatch.index! <= italicMatch.index!)) {
+      if (
+        boldMatch &&
+        (!italicMatch || boldMatch.index! <= italicMatch.index!)
+      ) {
         if (boldMatch.index! > 0) {
           parts.push(remaining.slice(0, boldMatch.index));
         }
         parts.push(
           <strong key={key++} className="font-semibold">
             {boldMatch[1]}
-          </strong>
+          </strong>,
         );
         remaining = remaining.slice(boldMatch.index! + boldMatch[0].length);
       } else if (italicMatch) {
@@ -120,7 +143,7 @@ function MarkdownPreview({ content }: { content: string }) {
         parts.push(
           <em key={key++} className="italic">
             {italicMatch[1] || italicMatch[2]}
-          </em>
+          </em>,
         );
         remaining = remaining.slice(italicMatch.index! + italicMatch[0].length);
       } else {
@@ -132,7 +155,9 @@ function MarkdownPreview({ content }: { content: string }) {
     return parts.length > 0 ? parts : text;
   };
 
-  return <div className="space-y-1 text-sm text-gray-700">{renderContent()}</div>;
+  return (
+    <div className="space-y-1 text-sm text-gray-700">{renderContent()}</div>
+  );
 }
 
 export default function RichTextEditor({
@@ -167,7 +192,7 @@ export default function RichTextEditor({
       textarea.focus();
       textarea.setSelectionRange(
         start + before.length,
-        start + before.length + selectedText.length
+        start + before.length + selectedText.length,
       );
     }, 0);
   };
@@ -178,7 +203,8 @@ export default function RichTextEditor({
 
     const start = textarea.selectionStart;
     const lineStart = value.lastIndexOf("\n", start - 1) + 1;
-    const newText = value.substring(0, lineStart) + prefix + value.substring(lineStart);
+    const newText =
+      value.substring(0, lineStart) + prefix + value.substring(lineStart);
 
     onChange(newText);
 
@@ -188,34 +214,54 @@ export default function RichTextEditor({
     }, 0);
   };
 
-  const toolbarButtons = [
-    { icon: Bold, label: "Bold", action: () => insertMarkdown("**", "**") },
-    { icon: Italic, label: "Italic", action: () => insertMarkdown("*", "*") },
-    { icon: Heading2, label: "Heading", action: () => insertAtLineStart("## ") },
-    { icon: Heading3, label: "Subheading", action: () => insertAtLineStart("### ") },
-    { icon: List, label: "Bullet List", action: () => insertAtLineStart("- ") },
-    { icon: ListOrdered, label: "Numbered List", action: () => insertAtLineStart("1. ") },
-  ];
+  const handleToolbarAction = (action: ToolbarAction) => {
+    switch (action) {
+      case "bold":
+        insertMarkdown("**", "**");
+        break;
+      case "italic":
+        insertMarkdown("*", "*");
+        break;
+      case "h2":
+        insertAtLineStart("## ");
+        break;
+      case "h3":
+        insertAtLineStart("### ");
+        break;
+      case "bullet":
+        insertAtLineStart("- ");
+        break;
+      case "numbered":
+        insertAtLineStart("1. ");
+        break;
+      default:
+        break;
+    }
+  };
 
   return (
     <div className="space-y-2">
       {label && (
-        <label className="block text-sm font-medium text-gray-700">{label}</label>
+        <label className="block text-sm font-medium text-gray-700">
+          {label}
+        </label>
       )}
 
       <div
         className={`rounded-xl border-2 overflow-hidden transition-all ${
-          error ? "border-red-300" : "border-gray-200 focus-within:border-teal-400"
+          error
+            ? "border-red-300"
+            : "border-gray-200 focus-within:border-teal-400"
         }`}
       >
         {/* Toolbar */}
         <div className="flex items-center justify-between px-2 py-1.5 bg-gray-50 border-b border-gray-200">
           <div className="flex items-center gap-1">
-            {toolbarButtons.map((btn, i) => (
+            {TOOLBAR_BUTTONS.map((btn) => (
               <button
-                key={i}
+                key={btn.action}
                 type="button"
-                onClick={btn.action}
+                onClick={() => handleToolbarAction(btn.action)}
                 disabled={showPreview}
                 title={btn.label}
                 className="p-2 rounded-lg hover:bg-gray-200 text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
@@ -251,7 +297,7 @@ export default function RichTextEditor({
         {/* Content area */}
         {showPreview ? (
           <div
-            className="px-4 py-3 bg-white min-h-[120px] overflow-y-auto"
+            className="px-4 py-3 bg-white min-h-30 overflow-y-auto"
             style={{ minHeight: `${rows * 1.75}rem` }}
           >
             <MarkdownPreview content={value} />
