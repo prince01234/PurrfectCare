@@ -84,7 +84,7 @@ export default function NotificationsPage() {
               <button
                 onClick={() => toggleSetting(setting.id)}
                 className={`relative inline-flex h-6 w-11 rounded-full transition-colors ${
-                  setting.enabled ? "bg-teal-500" : "bg-gray-300"
+                  setting.enabled ? "bg-slate-700" : "bg-gray-300"
                 }`}
               >
                 <span

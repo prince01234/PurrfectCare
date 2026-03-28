@@ -138,9 +138,6 @@ export default function EditProfilePage() {
   return (
     <MobileLayout>
       <div className="min-h-screen bg-slate-50 pb-20">
-        {/* Teal accent bar */}
-        <div className="h-1 bg-gradient-to-r from-teal-500 to-teal-400" />
-
         {/* Header */}
         <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-gray-100">
           <div className="max-w-lg mx-auto px-4 py-4 flex items-center gap-3">
@@ -168,8 +165,8 @@ export default function EditProfilePage() {
                     className="object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-teal-100 to-teal-200 flex items-center justify-center">
-                    <User className="w-12 h-12 text-teal-500" />
+                  <div className="w-full h-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
+                    <User className="w-12 h-12 text-slate-500" />
                   </div>
                 )}
               </div>
@@ -177,7 +174,7 @@ export default function EditProfilePage() {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploadingPicture}
-                className="absolute -bottom-1 -right-1 w-9 h-9 bg-teal-500 hover:bg-teal-600 disabled:bg-gray-400 rounded-full border-3 border-white flex items-center justify-center shadow-md transition-colors"
+                className="absolute -bottom-1 -right-1 w-9 h-9 bg-slate-700 hover:bg-slate-800 disabled:bg-gray-400 rounded-full border-3 border-white flex items-center justify-center shadow-md transition-colors"
               >
                 {isUploadingPicture ? (
                   <Loader className="w-4 h-4 text-white animate-spin" />
@@ -208,7 +205,7 @@ export default function EditProfilePage() {
               name="name"
               value={formData.name}
               onChange={handleChange}
-              className="w-full px-4 py-3.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent text-gray-900 placeholder-gray-400 bg-white"
+              className="w-full px-4 py-3.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent text-gray-900 placeholder-gray-400 bg-white"
               placeholder="Enter your full name"
             />
           </div>
@@ -233,7 +230,7 @@ export default function EditProfilePage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-teal-500 hover:bg-teal-600 disabled:bg-gray-300 text-white py-3.5 rounded-xl font-semibold transition-colors shadow-sm mb-3"
+            className="w-full bg-slate-800 hover:bg-slate-900 disabled:bg-gray-300 text-white py-3.5 rounded-xl font-semibold transition-colors shadow-sm mb-3"
           >
             {isLoading ? (
               <span className="flex items-center justify-center gap-2">

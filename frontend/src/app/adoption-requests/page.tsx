@@ -145,57 +145,33 @@ export default function AdoptionRequestsPage() {
   return (
     <MobileLayout showBottomNav={false}>
       <div className="min-h-screen bg-gray-50">
-        {/* Header */}
+        {/* Header with filters */}
         <div className="sticky top-0 z-40 bg-white border-b border-gray-100">
-          <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
+          <div className="max-w-lg mx-auto px-4 py-4 flex items-center gap-3">
             <button
               onClick={() => router.back()}
               className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
             >
               <ArrowLeft className="w-5 h-5 text-gray-700" />
             </button>
-            <div>
-              <h1 className="text-lg font-bold text-gray-900">
-                My Applications
-              </h1>
-              <p className="text-xs text-gray-400">
-                {applications.length} total application
-                {applications.length !== 1 ? "s" : ""}
-              </p>
-            </div>
+            <h1 className="text-lg font-bold text-gray-900">Adoption Requests</h1>
           </div>
 
-          {/* Tabs */}
-          <div className="max-w-lg mx-auto px-4 pb-3 flex gap-2">
-            {TABS.map((tab) => {
-              const count = tab.value
-                ? applications.filter((a) => a.status === tab.value).length
-                : applications.length;
-              return (
-                <button
-                  key={tab.value}
-                  onClick={() => setActiveTab(tab.value)}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                    activeTab === tab.value
-                      ? "bg-teal-500 text-white shadow-sm"
-                      : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                  }`}
-                >
-                  {tab.label}
-                  {count > 0 && (
-                    <span
-                      className={`ml-1.5 ${
-                        activeTab === tab.value
-                          ? "text-white/80"
-                          : "text-gray-400"
-                      }`}
-                    >
-                      {count}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+          {/* Filter Pills inside header */}
+          <div className="max-w-lg mx-auto px-4 pb-3 flex flex-wrap gap-2">
+            {TABS.map((tab) => (
+              <button
+                key={tab.value}
+                onClick={() => setActiveTab(tab.value)}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+                  activeTab === tab.value
+                    ? "bg-slate-800 text-white shadow-sm"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
         </div>
 

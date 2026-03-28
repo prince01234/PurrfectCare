@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import toast from "react-hot-toast";
 import {
   Camera,
@@ -37,7 +38,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const { user, logout, updateUser, isLoading: authLoading } = useAuth();
   const [pets, setPets] = useState<Pet[]>([]);
-  const [orderCount, setOrderCount] = useState(0);
+  const [pendingOrderCount, setPendingOrderCount] = useState(0);
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [isUploadingPicture, setIsUploadingPicture] = useState(false);
   const [application, setApplication] = useState<AdminApplication | null>(null);
@@ -49,15 +50,17 @@ export default function ProfilePage() {
 
     const fetchData = async () => {
       try {
-        const [petsRes, ordersRes, userRes] = await Promise.all([
+        const [petsRes, pendingOrdersRes, userRes] = await Promise.all([
           petApi.getPets({ limit: 100 }),
-          orderApi.getOrders({ limit: 1 }),
+          orderApi.getOrders({ limit: 50, status: "pending" }),
           userApi.getUserById(user._id),
         ]);
 
         if (petsRes.data?.pets) setPets(petsRes.data.pets);
-        if (ordersRes.data?.pagination)
-          setOrderCount(ordersRes.data.pagination.total);
+        if (pendingOrdersRes.data?.orders) {
+          // Count only orders that need payment (pending status)
+          setPendingOrderCount(pendingOrdersRes.data.orders.length);
+        }
         if (userRes.data?.profileImage)
           setProfilePicture(userRes.data.profileImage);
 
@@ -164,7 +167,6 @@ export default function ProfilePage() {
     return (
       <MobileLayout>
         <div className="min-h-screen bg-slate-50 pb-24">
-          <div className="h-1 bg-gradient-to-r from-teal-500 to-teal-400" />
           <div className="mx-4 mt-6 bg-white rounded-2xl shadow-sm p-8 text-center">
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-teal-50 flex items-center justify-center">
               <User className="w-8 h-8 text-teal-500" />
@@ -209,7 +211,7 @@ export default function ProfilePage() {
       label: "My Orders",
       icon: Package,
       href: "/marketplace/orders",
-      badge: orderCount > 0 ? orderCount : null,
+      badge: pendingOrderCount > 0 ? pendingOrderCount : null,
       iconBg: "bg-emerald-50",
       iconColor: "text-emerald-600",
     },
@@ -250,9 +252,7 @@ export default function ProfilePage() {
   return (
     <MobileLayout>
       <div className="min-h-screen bg-slate-50 pb-32">
-        {/* Teal gradient header */}
-        <div className="h-1 bg-gradient-to-r from-teal-500 to-teal-400" />
-
+        <div className="h-1 bg-linear-to-br from-teal-500 to-emerald-500" />
         {/* ── Profile Card ── */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -260,22 +260,24 @@ export default function ProfilePage() {
           className="mx-4 mt-6 bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100"
         >
           <div className="relative">
-            {/* Cover gradient */}
-            <div className="h-20 bg-gradient-to-br from-teal-400 via-teal-500 to-emerald-500" />
-            
+            {/* Cover - subtle gradient */}
+            <div className="h-20 bg-linear-to-br from-gray-100 via-gray-50 to-white" />
+
             {/* Avatar */}
             <div className="absolute left-1/2 -translate-x-1/2 -bottom-12">
               <div className="relative">
                 <div className="w-24 h-24 rounded-full bg-white border-4 border-white shadow-lg flex items-center justify-center overflow-hidden">
                   {profilePicture ? (
-                    <img
+                    <Image
                       src={profilePicture}
                       alt={user.name}
+                      width={96}
+                      height={96}
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-teal-100 to-teal-200 flex items-center justify-center">
-                      <span className="text-3xl font-bold text-teal-600">
+                    <div className="w-full h-full bg-linear-to-br from-slate-100 to-slate-200 flex items-center justify-center">
+                      <span className="text-3xl font-bold text-slate-600">
                         {user.name?.charAt(0).toUpperCase() || "U"}
                       </span>
                     </div>
@@ -284,7 +286,7 @@ export default function ProfilePage() {
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploadingPicture}
-                  className="absolute -bottom-1 -right-1 w-8 h-8 bg-teal-500 hover:bg-teal-600 disabled:bg-gray-400 rounded-full border-3 border-white flex items-center justify-center shadow-md transition-colors"
+                  className="absolute -bottom-1 -right-1 w-8 h-8 bg-slate-700 hover:bg-slate-800 disabled:bg-gray-400 rounded-full border-3 border-white flex items-center justify-center shadow-md transition-colors"
                 >
                   {isUploadingPicture ? (
                     <Loader className="w-4 h-4 text-white animate-spin" />
@@ -331,18 +333,22 @@ export default function ProfilePage() {
             <div className="grid grid-cols-3 divide-x divide-gray-100">
               <Link
                 href="/pets"
-                className="py-4 text-center hover:bg-teal-50/50 transition-colors"
+                className="py-4 text-center hover:bg-gray-50 transition-colors"
               >
-                <p className="text-xl font-bold text-teal-600">{pets.length}</p>
+                <p className="text-xl font-bold text-gray-900">{pets.length}</p>
                 <p className="text-xs text-gray-500 mt-0.5 font-medium">Pets</p>
               </Link>
               <div className="py-4 text-center">
                 <p className="text-xl font-bold text-gray-900">0</p>
-                <p className="text-xs text-gray-500 mt-0.5 font-medium">Reviews</p>
+                <p className="text-xs text-gray-500 mt-0.5 font-medium">
+                  Reviews
+                </p>
               </div>
               <div className="py-4 text-center">
                 <p className="text-xl font-bold text-gray-900">0</p>
-                <p className="text-xs text-gray-500 mt-0.5 font-medium">Bookings</p>
+                <p className="text-xs text-gray-500 mt-0.5 font-medium">
+                  Bookings
+                </p>
               </div>
             </div>
           </div>
@@ -359,7 +365,7 @@ export default function ProfilePage() {
             <h3 className="text-base font-bold text-gray-900">My Pets</h3>
             <Link
               href="/pets"
-              className="text-sm font-medium text-teal-600 hover:text-teal-700"
+              className="text-sm font-medium text-gray-600 hover:text-gray-900"
             >
               View all
             </Link>
@@ -372,15 +378,17 @@ export default function ProfilePage() {
                 href={`/pets/${pet._id}`}
                 className="shrink-0 text-center group"
               >
-                <div className="w-16 h-16 rounded-2xl bg-gray-100 overflow-hidden shadow-sm ring-2 ring-transparent group-hover:ring-teal-300 transition-all">
+                <div className="w-16 h-16 rounded-2xl bg-gray-100 overflow-hidden shadow-sm ring-2 ring-transparent group-hover:ring-gray-300 transition-all">
                   {pet.photos?.[0] ? (
-                    <img
+                    <Image
                       src={pet.photos[0]}
                       alt={pet.name}
+                      width={64}
+                      height={64}
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-teal-50 to-teal-100 flex items-center justify-center text-xl">
+                    <div className="w-full h-full bg-linear-to-br from-slate-50 to-slate-100 flex items-center justify-center text-xl">
                       🐾
                     </div>
                   )}
@@ -393,10 +401,12 @@ export default function ProfilePage() {
 
             {/* Add pet */}
             <Link href="/pets/add" className="shrink-0 text-center group">
-              <div className="w-16 h-16 rounded-2xl border-2 border-dashed border-gray-300 flex items-center justify-center group-hover:border-teal-400 group-hover:bg-teal-50/50 transition-all">
-                <Plus className="w-5 h-5 text-gray-400 group-hover:text-teal-500" />
+              <div className="w-16 h-16 rounded-2xl border-2 border-dashed border-gray-300 flex items-center justify-center group-hover:border-gray-400 group-hover:bg-gray-50 transition-all">
+                <Plus className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
               </div>
-              <p className="text-xs font-medium text-gray-500 mt-2 group-hover:text-teal-600">Add Pet</p>
+              <p className="text-xs font-medium text-gray-500 mt-2 group-hover:text-gray-700">
+                Add Pet
+              </p>
             </Link>
           </div>
         </motion.div>
@@ -411,9 +421,9 @@ export default function ProfilePage() {
           {user.roles === "ADMIN" || user.roles === "SUPER_ADMIN" ? (
             // Already an admin — show portal link
             <Link href="/admin">
-              <div className="bg-gradient-to-r from-teal-500 to-emerald-500 rounded-2xl px-5 py-5 flex items-center justify-between shadow-lg shadow-teal-200/50">
+              <div className="bg-linear-to-r from-slate-700 to-slate-800 rounded-2xl px-5 py-5 flex items-center justify-between shadow-lg">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center">
                     <ShieldCheck className="w-6 h-6 text-white" />
                   </div>
                   <div>
@@ -422,7 +432,7 @@ export default function ProfilePage() {
                         ? "Super Admin Portal"
                         : "Service Provider Portal"}
                     </span>
-                    <span className="text-sm text-teal-100">
+                    <span className="text-sm text-slate-300">
                       {user.serviceType
                         ? user.serviceType
                             .replace("_", " ")
@@ -468,8 +478,8 @@ export default function ProfilePage() {
               </div>
               <Link href="/provider/apply">
                 <div className="bg-white rounded-2xl px-5 py-4 flex items-center justify-center gap-2 shadow-sm border border-gray-200 active:bg-gray-50">
-                  <Briefcase className="w-5 h-5 text-teal-600" />
-                  <span className="text-sm font-bold text-teal-600">
+                  <Briefcase className="w-5 h-5 text-gray-700" />
+                  <span className="text-sm font-bold text-gray-700">
                     Apply Again
                   </span>
                 </div>
@@ -478,7 +488,7 @@ export default function ProfilePage() {
           ) : (
             // No application yet — show CTA
             <Link href="/provider/apply">
-              <div className="bg-gradient-to-r from-violet-500 to-purple-600 rounded-2xl px-5 py-5 shadow-lg shadow-violet-200/50">
+              <div className="bg-linear-to-r from-violet-500 to-purple-600 rounded-2xl px-5 py-5 shadow-lg shadow-violet-200/50">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
                     <Briefcase className="w-6 h-6 text-white" />
@@ -503,45 +513,49 @@ export default function ProfilePage() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="mx-4 mt-8 space-y-3"
+          className="mx-4 mt-8"
         >
           <h3 className="text-base font-bold text-gray-900 mb-4">Account</h3>
-          
-          {menuItems.map((item) => (
-            <Link key={item.label} href={item.href}>
-              <div className="bg-white rounded-2xl px-4 py-4 flex items-center justify-between shadow-sm border border-gray-100 active:bg-gray-50 transition-colors">
-                <div className="flex items-center gap-3.5">
-                  <div className={`w-10 h-10 rounded-xl ${item.iconBg} flex items-center justify-center`}>
-                    <item.icon className={`w-5 h-5 ${item.iconColor}`} />
-                  </div>
-                  <span className="text-sm font-semibold text-gray-900">
-                    {item.label}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {item.badge !== null && (
-                    <span className="min-w-5 h-5 flex items-center justify-center bg-teal-500 text-white text-xs font-bold rounded-full px-1.5">
-                      {item.badge}
-                    </span>
-                  )}
-                  <ChevronRight className="w-5 h-5 text-gray-300" />
-                </div>
-              </div>
-            </Link>
-          ))}
 
-          {/* Log Out */}
-          <button
-            onClick={handleLogout}
-            className="w-full bg-white rounded-2xl px-4 py-4 flex items-center gap-3.5 border border-red-100 active:bg-red-50 transition-colors mt-6"
-          >
-            <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center">
+          <div className="space-y-2">
+            {menuItems.map((item) => (
+              <Link key={item.label} href={item.href}>
+                <div className="bg-white rounded-2xl px-4 py-4 flex items-center justify-between shadow-sm border border-gray-100 active:bg-gray-50 transition-colors">
+                  <div className="flex items-center gap-3.5">
+                    <div
+                      className={`w-10 h-10 rounded-xl ${item.iconBg} flex items-center justify-center`}
+                    >
+                      <item.icon className={`w-5 h-5 ${item.iconColor}`} />
+                    </div>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {item.label}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {item.badge !== null && (
+                      <span className="min-w-5 h-5 flex items-center justify-center bg-amber-500 text-white text-xs font-bold rounded-full px-1.5">
+                        {item.badge}
+                      </span>
+                    )}
+                    <ChevronRight className="w-5 h-5 text-gray-300" />
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          {/* Log Out - with visual separation */}
+          <div className="mt-6 pt-4 border-t border-gray-100">
+            <button
+              onClick={handleLogout}
+              className="w-full bg-white rounded-2xl px-4 py-4 flex items-center justify-center gap-3 border border-gray-200 hover:border-red-200 hover:bg-red-50/50 active:bg-red-50 transition-all"
+            >
               <LogOut className="w-5 h-5 text-red-500" />
-            </div>
-            <span className="text-sm font-semibold text-red-600">
-              Log Out
-            </span>
-          </button>
+              <span className="text-sm font-semibold text-red-600">
+                Log Out
+              </span>
+            </button>
+          </div>
         </motion.div>
 
         {/* Version info */}

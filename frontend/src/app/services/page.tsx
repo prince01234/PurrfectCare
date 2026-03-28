@@ -28,12 +28,12 @@ import type { MapMarker } from "@/components/ui/DynamicMapModal";
 import { useGeolocation, getDistanceKm } from "@/lib/hooks/useGeolocation";
 
 const SERVICE_FILTERS = [
-  { value: "all", label: "All", emoji: "🔍" },
-  { value: "veterinary", label: "Vet", emoji: "🩺" },
-  { value: "grooming", label: "Grooming", emoji: "✂️" },
-  { value: "training", label: "Training", emoji: "🎓" },
-  { value: "pet_sitting", label: "Sitting", emoji: "🏠" },
-  { value: "other", label: "Other", emoji: "📦" },
+  { value: "all", label: "All" },
+  { value: "veterinary", label: "Vet" },
+  { value: "grooming", label: "Grooming" },
+  { value: "training", label: "Training" },
+  { value: "pet_sitting", label: "Sitting" },
+  { value: "other", label: "Other" },
 ];
 
 const SERVICE_LABELS: Record<string, string> = {
@@ -61,6 +61,7 @@ function ServicesPageContent() {
   const [selectedType, setSelectedType] = useState("all");
   const [showMap, setShowMap] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [mapMarkers, setMapMarkers] = useState<MapMarker[]>([]);
   const [focusProviderId, setFocusProviderId] = useState<string | undefined>();
@@ -168,7 +169,7 @@ function ServicesPageContent() {
                 <Search className="w-5 h-5 text-gray-600" />
               </button>
               <button
-                onClick={() => handleOpenMap()}
+                onClick={() => setShowFilters(!showFilters)}
                 className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
               >
                 <SlidersHorizontal className="w-5 h-5 text-gray-600" />
@@ -205,23 +206,28 @@ function ServicesPageContent() {
             </motion.div>
           )}
 
-          {/* Service type filter */}
-          <div className="px-4 pb-3 flex gap-2 overflow-x-auto hide-scrollbar">
-            {SERVICE_FILTERS.map((f) => (
-              <button
-                key={f.value}
-                onClick={() => setSelectedType(f.value)}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-                  selectedType === f.value
-                    ? "bg-teal-500 text-white"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
-              >
-                <span className="text-sm">{f.emoji}</span>
-                {f.label}
-              </button>
-            ))}
-          </div>
+          {/* Service type filter (collapsible) */}
+          {showFilters && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="px-4 pb-3 flex gap-2 overflow-x-auto hide-scrollbar"
+            >
+              {SERVICE_FILTERS.map((f) => (
+                <button
+                  key={f.value}
+                  onClick={() => setSelectedType(f.value)}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                    selectedType === f.value
+                      ? "bg-teal-500 text-white"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </motion.div>
+          )}
         </div>
 
         {/* Content */}
@@ -257,7 +263,7 @@ function ServicesPageContent() {
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2">
               <p className="text-xs text-gray-400 mb-2">
                 {visibleProviders.length} provider
                 {visibleProviders.length !== 1 ? "s" : ""} found
