@@ -1,4 +1,5 @@
 export type UserIntent = "pet_owner" | "looking_to_adopt" | "exploring" | null;
+export type UserRole = "USER" | "PET_OWNER" | "ADMIN" | "SUPER_ADMIN";
 
 export function normalizeUserIntent(
   intent: string | null | undefined,
@@ -23,4 +24,12 @@ export function getOnboardingRedirectPath(intent: UserIntent): string {
     default:
       return "/dashboard";
   }
+}
+
+export function getPostLoginRedirectPath(role?: UserRole): string {
+  if (role === "ADMIN" || role === "SUPER_ADMIN") {
+    return "/admin";
+  }
+
+  return "/dashboard";
 }

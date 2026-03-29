@@ -32,7 +32,7 @@ import DynamicLocationPicker from "@/components/ui/DynamicLocationPicker";
 export default function AdminDashboardPage() {
   const { user, updateUser: updateAuthUser } = useAuth();
   const isSuperAdmin = user?.roles === "SUPER_ADMIN";
-  const isAdoptionAdmin = user?.serviceType === "pet_adoption" || isSuperAdmin;
+  const isAdoptionAdmin = user?.serviceType === "pet_adoption";
   const isBookableService = [
     "veterinary",
     "grooming",
@@ -91,38 +91,35 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const promises: Promise<unknown>[] = [];
-
-        // Super admin: fetch pending provider application count
         if (isSuperAdmin) {
-          promises.push(
-            adminApi.getAllApplications({ status: "pending", limit: 1 }),
-          );
-        } else {
-          promises.push(Promise.resolve(null));
+          const providerResult = await adminApi.getAllApplications({
+            status: "pending",
+            limit: 1,
+          });
+
+          if (providerResult.error) {
+            toast.error(providerResult.error);
+          } else if (providerResult.data) {
+            const pendingTotal =
+              providerResult.data.pagination?.total ??
+              providerResult.data.applications?.length ??
+              0;
+            setProviderPending(pendingTotal);
+          }
         }
 
-        // Adoption admin: fetch adoption stats
         if (isAdoptionAdmin) {
-          promises.push(adoptionApplicationApi.getAdoptionStats());
-        } else {
-          promises.push(Promise.resolve(null));
-        }
-
-        const [providerResult, adoptionResult] = await promises;
-
-        setProviderPending(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (providerResult as any)?.data?.pagination?.total || 0,
-        );
-
-        if (adoptionResult) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const data = (adoptionResult as any)?.data as AdoptionStatsResponse;
-          if (data) setAdoptionStats(data);
+          const adoptionResult =
+            await adoptionApplicationApi.getAdoptionStats();
+          if (adoptionResult.error) {
+            toast.error(adoptionResult.error);
+          } else if (adoptionResult.data) {
+            setAdoptionStats(adoptionResult.data as AdoptionStatsResponse);
+          }
         }
       } catch (err) {
         console.error("Dashboard fetch error:", err);
+        toast.error("Failed to load dashboard statistics");
       } finally {
         setIsLoading(false);
       }
@@ -221,7 +218,7 @@ export default function AdminDashboardPage() {
           },
         ]
       : []),
-    ...(user?.serviceType === "marketplace" || isSuperAdmin
+    ...(user?.serviceType === "marketplace"
       ? [
           {
             label: "Products",

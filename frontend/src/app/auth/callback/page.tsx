@@ -1,11 +1,11 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import toast from "react-hot-toast";
 import { apiRequest } from "@/lib/api";
-import { getOnboardingRedirectPath } from "@/lib/onboarding";
+import { getPostLoginRedirectPath } from "@/lib/onboarding";
 
 interface User {
   _id: string;
@@ -23,8 +23,14 @@ function AuthCallbackContent() {
   const searchParams = useSearchParams();
   const { login } = useAuth();
   const [isProcessing, setIsProcessing] = useState(true);
+  const hasProcessedRef = useRef(false);
 
   useEffect(() => {
+    if (hasProcessedRef.current) {
+      return;
+    }
+    hasProcessedRef.current = true;
+
     const processOAuthToken = async () => {
       try {
         const provider = searchParams.get("provider");
@@ -57,7 +63,7 @@ function AuthCallbackContent() {
         if (!userData.hasCompletedOnboarding) {
           router.push("/onboarding");
         } else {
-          router.push(getOnboardingRedirectPath(userData.userIntent ?? null));
+          router.push(getPostLoginRedirectPath(userData.roles));
         }
       } catch (err) {
         console.error("OAuth callback error:", err);

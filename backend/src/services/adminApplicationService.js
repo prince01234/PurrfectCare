@@ -1,6 +1,6 @@
 import AdminApplication from "../models/AdminApplication.js";
 import User from "../models/User.js";
-import { ADMIN } from "../constants/roles.js";
+import { ADMIN, SUPER_ADMIN } from "../constants/roles.js";
 import mongoose from "mongoose";
 import inAppNotificationService from "./inAppNotificationService.js";
 
@@ -46,6 +46,31 @@ const applyAsAdmin = async (userId, data) => {
       status: application.status,
     },
   });
+
+  const [applicant, superAdmins] = await Promise.all([
+    User.findById(userId).select("name"),
+    User.find({ roles: SUPER_ADMIN, isActive: true }).select("_id"),
+  ]);
+
+  if (superAdmins.length > 0) {
+    await inAppNotificationService.createManyNotifications(
+      superAdmins.map((admin) => ({
+        userId: admin._id.toString(),
+        type: "application",
+        title: "New service provider application",
+        body: `${applicant?.name || "A user"} submitted an application for ${application.serviceType.replace("_", " ")}.`,
+        entityId: application._id.toString(),
+        entityType: "admin_application",
+        data: {
+          applicationId: application._id.toString(),
+          applicantId: userId.toString(),
+          applicantName: applicant?.name || "Unknown user",
+          serviceType: application.serviceType,
+          status: application.status,
+        },
+      })),
+    );
+  }
 
   return application;
 };

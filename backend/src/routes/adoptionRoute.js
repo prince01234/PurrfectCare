@@ -2,7 +2,7 @@ import express from "express";
 import adoptionListingController from "../controllers/adoptionListingController.js";
 import adoptionApplicationController from "../controllers/adoptionApplicationController.js";
 import { auth, requireVerified, requireRole } from "../middlewares/auth.js";
-import { ADMIN, SUPER_ADMIN } from "../constants/roles.js";
+import { ADMIN } from "../constants/roles.js";
 import multer from "multer";
 
 // Multer config for adoption listing photos
@@ -28,7 +28,7 @@ listingRouter.get("/", adoptionListingController.getListings);
 listingRouter.get(
   "/admin/list",
   auth,
-  requireRole(ADMIN, SUPER_ADMIN),
+  requireRole(ADMIN),
   adoptionListingController.getMyListings,
 );
 
@@ -40,7 +40,7 @@ listingRouter.post(
   "/admin",
   auth,
   requireVerified,
-  requireRole(ADMIN, SUPER_ADMIN),
+  requireRole(ADMIN),
   uploadAdoptionPhotos.array("photos", 5),
   adoptionListingController.createListing,
 );
@@ -50,7 +50,7 @@ listingRouter.put(
   "/admin/:id",
   auth,
   requireVerified,
-  requireRole(ADMIN, SUPER_ADMIN),
+  requireRole(ADMIN),
   uploadAdoptionPhotos.array("photos", 5),
   adoptionListingController.updateListing,
 );
@@ -60,7 +60,7 @@ listingRouter.delete(
   "/admin/:id",
   auth,
   requireVerified,
-  requireRole(ADMIN, SUPER_ADMIN),
+  requireRole(ADMIN),
   adoptionListingController.deleteListing,
 );
 
@@ -72,7 +72,7 @@ const applicationRouter = express.Router();
 applicationRouter.get(
   "/admin/all",
   auth,
-  requireRole(ADMIN, SUPER_ADMIN),
+  requireRole(ADMIN),
   adoptionApplicationController.getAllApplications,
 );
 
@@ -80,7 +80,7 @@ applicationRouter.get(
 applicationRouter.get(
   "/admin/stats",
   auth,
-  requireRole(ADMIN, SUPER_ADMIN),
+  requireRole(ADMIN),
   adoptionApplicationController.getAdoptionStats,
 );
 
@@ -112,7 +112,7 @@ applicationRouter.post(
 applicationRouter.get(
   "/listing/:listingId",
   auth,
-  requireRole(ADMIN, SUPER_ADMIN),
+  requireRole(ADMIN),
   adoptionApplicationController.getApplicationsByListing,
 );
 
@@ -121,7 +121,7 @@ applicationRouter.patch(
   "/:id/approve",
   auth,
   requireVerified,
-  requireRole(ADMIN, SUPER_ADMIN),
+  requireRole(ADMIN),
   adoptionApplicationController.approveApplication,
 );
 
@@ -130,7 +130,7 @@ applicationRouter.patch(
   "/:id/reject",
   auth,
   requireVerified,
-  requireRole(ADMIN, SUPER_ADMIN),
+  requireRole(ADMIN),
   adoptionApplicationController.rejectApplication,
 );
 

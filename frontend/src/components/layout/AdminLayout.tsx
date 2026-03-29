@@ -66,9 +66,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             icon: ClipboardList,
             href: "/admin/applications",
           },
+          {
+            label: "Analytics",
+            icon: BarChart3,
+            href: "/admin/analytics",
+          },
         ]
       : []),
-    ...(user?.serviceType === "pet_adoption" || isSuperAdmin
+    ...(user?.serviceType === "pet_adoption"
       ? [
           { label: "Adoption", icon: Heart, href: "/admin/adoption" },
           {
@@ -78,7 +83,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           },
         ]
       : []),
-    ...(user?.serviceType === "marketplace" || isSuperAdmin
+    ...(user?.serviceType === "marketplace"
       ? [{ label: "Products", icon: Package, href: "/admin/products" }]
       : []),
     ...(user?.serviceType === "marketplace"
@@ -107,15 +112,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             label: "Analytics",
             icon: BarChart3,
             href: "/provider/analytics",
-          },
-        ]
-      : []),
-    ...(isSuperAdmin
-      ? [
-          {
-            label: "Analytics",
-            icon: BarChart3,
-            href: "/admin/analytics",
           },
         ]
       : []),

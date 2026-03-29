@@ -54,19 +54,14 @@ const getNotificationHref = (
         : `/messages/${conversationId}`;
     }
     case "booking":
-      return roles === "ADMIN" || roles === "SUPER_ADMIN"
-        ? "/admin/bookings"
-        : "/bookings";
+      return roles === "ADMIN" ? "/admin/bookings" : "/bookings";
     case "order":
-      if (
-        (roles === "ADMIN" || roles === "SUPER_ADMIN") &&
-        (serviceType === "marketplace" || roles === "SUPER_ADMIN")
-      ) {
+      if (roles === "ADMIN" && serviceType === "marketplace") {
         return "/admin/orders";
       }
       return "/marketplace/orders";
     case "adoption":
-      return roles === "ADMIN" || roles === "SUPER_ADMIN"
+      return roles === "ADMIN"
         ? "/admin/adoption-requests"
         : "/adoption-requests";
     case "application":

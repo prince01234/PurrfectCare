@@ -9,7 +9,10 @@ import toast from "react-hot-toast";
 import Button from "@/components/ui/Button";
 import { userApi } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { getOnboardingRedirectPath } from "@/lib/onboarding";
+import {
+  getOnboardingRedirectPath,
+  getPostLoginRedirectPath,
+} from "@/lib/onboarding";
 
 type UserIntent = "pet_owner" | "looking_to_adopt" | "exploring";
 
@@ -65,7 +68,7 @@ export default function OnboardingPage() {
 
     // Avoid overriding the intent redirect while completion request is in progress.
     if (!isLoading && user.hasCompletedOnboarding) {
-      router.replace(getOnboardingRedirectPath(user.userIntent ?? null));
+      router.replace(getPostLoginRedirectPath(user.roles));
     }
   }, [user, authLoading, isLoading, router]);
 

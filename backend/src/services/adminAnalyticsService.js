@@ -5,6 +5,7 @@ import ServiceProvider from "../models/ServiceProvider.js";
 import Pet from "../models/Pet.js";
 import Product from "../models/Product.js";
 import Order from "../models/Order.js";
+import { USER, PET_OWNER } from "../constants/roles.js";
 
 const adminAnalyticsService = {
   /**
@@ -20,7 +21,7 @@ const adminAnalyticsService = {
       totalBookings,
       totalOrders,
     ] = await Promise.all([
-      User.countDocuments({ role: "USER" }),
+      User.countDocuments({ roles: { $in: [USER, PET_OWNER] } }),
       ServiceProvider.countDocuments(),
       Pet.countDocuments(),
       Product.countDocuments(),
