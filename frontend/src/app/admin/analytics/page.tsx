@@ -162,17 +162,20 @@ export default function AdminAnalyticsPage() {
           <div className="bg-linear-to-br from-teal-500 to-teal-600 rounded-2xl p-4 text-white">
             <div className="flex items-center gap-2 mb-1">
               <DollarSign className="w-4 h-4 text-teal-200" />
-              <span className="text-xs text-teal-100">Total Revenue</span>
+              <span className="text-xs text-teal-100">
+                Super Admin Commission
+              </span>
             </div>
             <p className="text-2xl font-bold">
-              Rs. {overview.totalRevenue.toLocaleString()}
+              Rs. {overview.totalPlatformCommission.toLocaleString()}
             </p>
             <div className="flex items-center gap-3 mt-2 text-xs text-teal-100">
               <span>
-                Bookings: Rs. {overview.totalBookingRevenue.toLocaleString()}
+                Gross Sales: Rs. {overview.totalRevenue.toLocaleString()}
               </span>
               <span>
-                Orders: Rs. {overview.totalOrderRevenue.toLocaleString()}
+                Merchant Net: Rs.{" "}
+                {overview.totalMerchantNetRevenue.toLocaleString()}
               </span>
             </div>
           </div>
@@ -181,10 +184,12 @@ export default function AdminAnalyticsPage() {
             <div className="bg-white rounded-2xl p-4 border border-gray-100">
               <div className="flex items-center gap-2 mb-1">
                 <TrendingUp className="w-4 h-4 text-emerald-500" />
-                <span className="text-xs text-gray-500">This Month</span>
+                <span className="text-xs text-gray-500">
+                  This Month Commission
+                </span>
               </div>
               <p className="text-lg font-bold text-gray-900">
-                Rs. {overview.thisMonthRevenue.toLocaleString()}
+                Rs. {overview.thisMonthPlatformCommission.toLocaleString()}
               </p>
             </div>
             <div className="bg-white rounded-2xl p-4 border border-gray-100">

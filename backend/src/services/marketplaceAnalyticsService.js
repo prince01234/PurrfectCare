@@ -1,6 +1,10 @@
 import Order from "../models/Order.js";
 import Product from "../models/Product.js";
 import mongoose from "mongoose";
+import {
+  getCommissionBreakdown,
+  PLATFORM_COMMISSION_RATE,
+} from "../utils/commission.js";
 
 const marketplaceAnalyticsService = {
   /**
@@ -55,11 +59,21 @@ const marketplaceAnalyticsService = {
     );
     const pendingOrders = allOrders.filter((o) => o.status === "pending");
 
-    // Total revenue from confirmed orders (this admin's items only)
-    const totalRevenue = confirmedOrders.reduce(
+    // Total revenue from confirmed orders (net after 10% platform fee)
+    const totalGrossRevenue = confirmedOrders.reduce(
       (sum, o) => sum + getAdminRevenue(o),
       0,
     );
+
+    const totalRevenue = confirmedOrders.reduce((sum, o) => {
+      const gross = getAdminRevenue(o);
+      return sum + getCommissionBreakdown(gross).merchantNet;
+    }, 0);
+
+    const totalPlatformCommission = confirmedOrders.reduce((sum, o) => {
+      const gross = getAdminRevenue(o);
+      return sum + getCommissionBreakdown(gross).platformCommission;
+    }, 0);
 
     // Total items sold
     const totalItemsSold = confirmedOrders.reduce(
@@ -70,7 +84,9 @@ const marketplaceAnalyticsService = {
     // Revenue by payment method
     const revenueByMethod = confirmedOrders.reduce(
       (acc, order) => {
-        const amount = getAdminRevenue(order);
+        const amount = getCommissionBreakdown(
+          getAdminRevenue(order),
+        ).merchantNet;
         const method = order.paymentMethod || "cod";
         if (method === "khalti") {
           acc.khalti += amount;
@@ -103,11 +119,11 @@ const marketplaceAnalyticsService = {
     });
 
     const thisMonthRevenue = thisMonthOrders.reduce(
-      (sum, o) => sum + getAdminRevenue(o),
+      (sum, o) => sum + getCommissionBreakdown(getAdminRevenue(o)).merchantNet,
       0,
     );
     const lastMonthRevenue = lastMonthOrders.reduce(
-      (sum, o) => sum + getAdminRevenue(o),
+      (sum, o) => sum + getCommissionBreakdown(getAdminRevenue(o)).merchantNet,
       0,
     );
 
@@ -137,7 +153,9 @@ const marketplaceAnalyticsService = {
             itemsSold: 0,
           };
         }
-        monthlyMap[key].revenue += getAdminRevenue(o);
+        monthlyMap[key].revenue += getCommissionBreakdown(
+          getAdminRevenue(o),
+        ).merchantNet;
         monthlyMap[key].orders += 1;
         monthlyMap[key].itemsSold += getAdminItemCount(o);
       });
@@ -161,10 +179,14 @@ const marketplaceAnalyticsService = {
               productId: pid,
               name: item.nameSnapshot,
               revenue: 0,
+              grossRevenue: 0,
               quantitySold: 0,
             };
           }
-          productRevenueMap[pid].revenue += item.priceSnapshot * item.quantity;
+          const gross = item.priceSnapshot * item.quantity;
+          const commission = getCommissionBreakdown(gross);
+          productRevenueMap[pid].revenue += commission.merchantNet;
+          productRevenueMap[pid].grossRevenue += commission.gross;
           productRevenueMap[pid].quantitySold += item.quantity;
         });
     });
@@ -188,7 +210,8 @@ const marketplaceAnalyticsService = {
             productCategoryMap[item.productId.toString()] || "other";
           revenueByCategory[category] =
             (revenueByCategory[category] || 0) +
-            item.priceSnapshot * item.quantity;
+            getCommissionBreakdown(item.priceSnapshot * item.quantity)
+              .merchantNet;
         });
     });
 
@@ -204,6 +227,8 @@ const marketplaceAnalyticsService = {
     return {
       overview: {
         totalRevenue,
+        totalGrossRevenue,
+        totalPlatformCommission,
         totalOrders: confirmedOrders.length,
         pendingOrders: pendingOrders.length,
         totalProducts: allProducts.length,
@@ -225,14 +250,26 @@ const marketplaceAnalyticsService = {
           productIdSet.has(item.productId.toString()),
         );
         const orderRevenue = adminItems.reduce(
+          (sum, item) =>
+            sum +
+            getCommissionBreakdown(item.priceSnapshot * item.quantity)
+              .merchantNet,
+          0,
+        );
+        const orderGrossRevenue = adminItems.reduce(
           (sum, item) => sum + item.priceSnapshot * item.quantity,
           0,
         );
+        const orderPlatformCommission =
+          getCommissionBreakdown(orderGrossRevenue).platformCommission;
         return {
           id: o._id,
           status: o.status,
           paymentMethod: o.paymentMethod,
           totalAmount: orderRevenue,
+          grossTotalAmount: orderGrossRevenue,
+          platformCommission: orderPlatformCommission,
+          commissionRate: PLATFORM_COMMISSION_RATE,
           itemCount: adminItems.reduce((sum, item) => sum + item.quantity, 0),
           items: adminItems.map((item) => ({
             name: item.nameSnapshot,

@@ -17,6 +17,8 @@ import {
   BarChart3,
   ShoppingBag,
   Bell,
+  LogOut,
+  User,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useNotifications } from "@/context/NotificationCenterContext";
@@ -26,7 +28,7 @@ interface AdminLayoutProps {
 }
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, logout } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const { unreadCount, openSheet } = useNotifications();
@@ -55,6 +57,19 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     "pet_sitting",
     "other",
   ].includes(user?.serviceType || "");
+
+  const handleLogout = async () => {
+    await logout();
+    router.push("/");
+  };
+
+  const serviceTypeLabel = user?.serviceType
+    ? user.serviceType
+        .replace("_", " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase())
+    : isSuperAdmin
+      ? "Super Admin"
+      : "Admin";
 
   // Build nav items based on role
   const navItems = [
@@ -116,6 +131,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         ]
       : []),
     { label: "Messages", icon: MessageCircle, href: "/admin/messages" },
+    { label: "My Profile", icon: User, href: "/profile" },
   ];
 
   return (
@@ -130,11 +146,16 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             >
               <ArrowLeft className="w-5 h-5 text-gray-600" />
             </button>
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-teal-600" />
-              <h1 className="text-lg font-bold text-gray-800">
-                {isSuperAdmin ? "Admin Portal" : "Service Portal"}
-              </h1>
+            <div>
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-teal-600" />
+                <h1 className="text-lg font-bold text-gray-800">
+                  {isSuperAdmin ? "Admin Portal" : "Service Portal"}
+                </h1>
+              </div>
+              <p className="text-[11px] text-teal-600 font-medium mt-0.5">
+                {serviceTypeLabel}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -150,15 +171,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 </span>
               ) : null}
             </button>
-            <span className="text-xs font-medium text-teal-600 bg-teal-50 px-2.5 py-1 rounded-full">
-              {user?.serviceType
-                ? user.serviceType
-                    .replace("_", " ")
-                    .replace(/\b\w/g, (c) => c.toUpperCase())
-                : isSuperAdmin
-                  ? "Super Admin"
-                  : "Admin"}
-            </span>
+            <button
+              onClick={handleLogout}
+              className="inline-flex items-center gap-1.5 px-2.5 py-2 rounded-lg border border-red-100 bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+              title="Logout"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="text-xs font-semibold">Logout</span>
+            </button>
           </div>
         </div>
       </div>
