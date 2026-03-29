@@ -16,6 +16,7 @@ import SocialButton from "@/components/ui/SocialButton";
 import { loginSchema, LoginFormData } from "@/lib/validations";
 import { authApi, API_URL } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { getOnboardingRedirectPath } from "@/lib/onboarding";
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -67,7 +68,7 @@ export default function LoginPage() {
       if (!response.data.hasCompletedOnboarding) {
         router.push("/onboarding");
       } else {
-        router.push("/dashboard");
+        router.push(getOnboardingRedirectPath(response.data.userIntent));
       }
     }
 

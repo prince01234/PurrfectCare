@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import toast from "react-hot-toast";
 import { apiRequest } from "@/lib/api";
+import { getOnboardingRedirectPath } from "@/lib/onboarding";
 
 interface User {
   _id: string;
@@ -13,6 +14,7 @@ interface User {
   roles?: "USER" | "PET_OWNER" | "ADMIN" | "SUPER_ADMIN";
   isVerified?: boolean;
   hasCompletedOnboarding?: boolean;
+  userIntent?: "pet_owner" | "looking_to_adopt" | "exploring" | null;
   authToken?: string;
 }
 
@@ -55,7 +57,7 @@ function AuthCallbackContent() {
         if (!userData.hasCompletedOnboarding) {
           router.push("/onboarding");
         } else {
-          router.push("/dashboard");
+          router.push(getOnboardingRedirectPath(userData.userIntent ?? null));
         }
       } catch (err) {
         console.error("OAuth callback error:", err);

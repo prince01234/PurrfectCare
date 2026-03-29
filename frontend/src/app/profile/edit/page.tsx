@@ -165,7 +165,7 @@ export default function EditProfilePage() {
                     className="object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
+                  <div className="w-full h-full bg-linear-to-br from-slate-100 to-slate-200 flex items-center justify-center">
                     <User className="w-12 h-12 text-slate-500" />
                   </div>
                 )}
