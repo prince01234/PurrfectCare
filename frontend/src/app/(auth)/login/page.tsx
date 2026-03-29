@@ -16,7 +16,10 @@ import SocialButton from "@/components/ui/SocialButton";
 import { loginSchema, LoginFormData } from "@/lib/validations";
 import { authApi, API_URL } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { getOnboardingRedirectPath } from "@/lib/onboarding";
+import {
+  getOnboardingRedirectPath,
+  normalizeUserIntent,
+} from "@/lib/onboarding";
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -47,6 +50,8 @@ export default function LoginPage() {
     }
 
     if (response.data) {
+      const normalizedIntent = normalizeUserIntent(response.data.userIntent);
+
       login(
         {
           _id: response.data._id,
@@ -54,11 +59,7 @@ export default function LoginPage() {
           email: response.data.email,
           isVerified: response.data.isVerified,
           hasCompletedOnboarding: response.data.hasCompletedOnboarding,
-          userIntent: response.data.userIntent as
-            | "pet_owner"
-            | "looking_to_adopt"
-            | "exploring"
-            | null,
+          userIntent: normalizedIntent,
         },
         response.data.authToken,
       );
@@ -68,7 +69,7 @@ export default function LoginPage() {
       if (!response.data.hasCompletedOnboarding) {
         router.push("/onboarding");
       } else {
-        router.push(getOnboardingRedirectPath(response.data.userIntent));
+        router.push(getOnboardingRedirectPath(normalizedIntent));
       }
     }
 
