@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Camera, Loader, User } from "lucide-react";
+import { ArrowLeft, Camera, Loader, Lock, User } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
 import { userApi } from "@/lib/api";
@@ -17,28 +17,32 @@ export default function EditProfilePage() {
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
+    phoneNumber: "",
+    profileAddress: "",
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize form data when user loads
   useEffect(() => {
-    if (user) {
-      setFormData({ name: user.name || "" });
-    }
-  }, [user]);
-
-  // Fetch current profile picture
-  useEffect(() => {
     if (!user?._id) return;
-    
+
     const fetchProfile = async () => {
       const res = await userApi.getUserById(user._id);
-      if (res.data?.profileImage) {
+      if (!res.data) return;
+
+      if (res.data.profileImage) {
         setProfilePicture(res.data.profileImage);
       }
+
+      setFormData({
+        name: res.data.name || user.name || "",
+        phoneNumber: res.data.phoneNumber || "",
+        profileAddress: res.data.contactAddress || "",
+      });
     };
+
     fetchProfile();
-  }, [user?._id]);
+  }, [user]);
 
   if (authLoading || !user) {
     return (
@@ -114,7 +118,9 @@ export default function EditProfilePage() {
     try {
       setIsLoading(true);
       const result = await userApi.updateUser(user._id, {
-        name: formData.name,
+        name: formData.name.trim(),
+        phoneNumber: formData.phoneNumber.trim(),
+        contactAddress: formData.profileAddress.trim(),
       });
 
       if (result.error) {
@@ -123,7 +129,9 @@ export default function EditProfilePage() {
       }
 
       updateUser({
-        name: formData.name,
+        name: formData.name.trim(),
+        phoneNumber: formData.phoneNumber.trim(),
+        contactAddress: formData.profileAddress.trim(),
       });
       toast.success("Profile updated successfully");
       router.back();
@@ -210,6 +218,36 @@ export default function EditProfilePage() {
             />
           </div>
 
+          {/* Phone Number */}
+          <div className="mb-6">
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
+              Phone Number
+            </label>
+            <input
+              type="tel"
+              name="phoneNumber"
+              value={formData.phoneNumber}
+              onChange={handleChange}
+              className="w-full px-4 py-3.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent text-gray-900 placeholder-gray-400 bg-white"
+              placeholder="Enter your phone number"
+            />
+          </div>
+
+          {/* Profile Address */}
+          <div className="mb-6">
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
+              Profile Address
+            </label>
+            <input
+              type="text"
+              name="profileAddress"
+              value={formData.profileAddress}
+              onChange={handleChange}
+              className="w-full px-4 py-3.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent text-gray-900 placeholder-gray-400 bg-white"
+              placeholder="Enter your profile address"
+            />
+          </div>
+
           {/* Email (Read-only) */}
           <div className="mb-8">
             <label className="block text-sm font-semibold text-gray-900 mb-2">
@@ -224,6 +262,14 @@ export default function EditProfilePage() {
             <p className="text-xs text-gray-400 mt-2">
               Email cannot be changed. Contact support for assistance.
             </p>
+            <button
+              type="button"
+              onClick={() => router.push("/profile/change-password")}
+              className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              Change Password
+            </button>
           </div>
 
           {/* Submit Button */}

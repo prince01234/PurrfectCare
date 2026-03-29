@@ -7,9 +7,11 @@ import Link from "next/link";
 import Image from "next/image";
 import toast from "react-hot-toast";
 import {
+  AlertTriangle,
   Camera,
   Edit2,
   LogOut,
+  Lock,
   Package,
   Heart,
   CreditCard,
@@ -29,7 +31,7 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "@/context/AuthContext";
-import { petApi, orderApi, userApi, adminApi } from "@/lib/api";
+import { petApi, orderApi, userApi, adminApi, authApi } from "@/lib/api";
 import type { Pet } from "@/lib/api";
 import type { AdminApplication } from "@/lib/api/admin";
 import MobileLayout from "@/components/layout/MobileLayout";
@@ -41,6 +43,7 @@ export default function ProfilePage() {
   const [pendingOrderCount, setPendingOrderCount] = useState(0);
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [isUploadingPicture, setIsUploadingPicture] = useState(false);
+  const [isResendingVerification, setIsResendingVerification] = useState(false);
   const [application, setApplication] = useState<AdminApplication | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -151,6 +154,28 @@ export default function ProfilePage() {
     logout();
     toast.success("Logged out successfully");
     router.push("/login");
+  };
+
+  const handleResendVerification = async () => {
+    if (!user?.email) {
+      toast.error("Email not found. Please login again.");
+      return;
+    }
+
+    try {
+      setIsResendingVerification(true);
+      const response = await authApi.resendVerification(user.email);
+      if (response.error) {
+        toast.error(response.error);
+        return;
+      }
+      toast.success("Verification email sent. Check your inbox.");
+    } catch (error) {
+      console.error("Resend verification error:", error);
+      toast.error("Failed to resend verification email");
+    } finally {
+      setIsResendingVerification(false);
+    }
   };
 
   if (authLoading) {
@@ -307,11 +332,13 @@ export default function ProfilePage() {
 
           {/* Profile Info */}
           <div className="pt-14 pb-6 px-5 text-center">
-            <div className="flex items-center justify-center gap-2 mb-1">
+            {/* Name - centered with edit button positioned absolutely */}
+            <div className="relative mb-1">
               <h2 className="text-xl font-bold text-gray-900">{user.name}</h2>
               <button
                 onClick={() => router.push("/profile/edit")}
-                className="p-1.5 text-gray-400 hover:text-teal-500 hover:bg-teal-50 rounded-lg transition-colors"
+                className="absolute top-1/2 -translate-y-1/2 -right-1 sm:right-auto sm:left-[calc(50%+60px)] p-1.5 text-gray-400 hover:text-teal-500 hover:bg-teal-50 rounded-lg transition-colors"
+                aria-label="Edit profile"
               >
                 <Edit2 className="w-4 h-4" />
               </button>
@@ -320,6 +347,43 @@ export default function ProfilePage() {
               <Mail className="w-3.5 h-3.5" />
               <span className="text-sm">{user.email}</span>
             </div>
+
+            {!user.isVerified && (
+              <div className="mt-4 mx-4 sm:mx-auto sm:max-w-sm">
+                <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200">
+                  <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                    <AlertTriangle className="w-4 h-4 text-amber-600" />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className="text-sm font-medium text-amber-800">
+                      Email not verified
+                    </p>
+                    <p className="text-xs text-amber-600 mt-0.5">
+                      Verify to unlock all features
+                    </p>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-1.5 shrink-0">
+                    <button
+                      onClick={() =>
+                        router.push(
+                          `/verify-email?email=${encodeURIComponent(user.email)}`,
+                        )
+                      }
+                      className="text-xs px-3 py-1.5 rounded-lg bg-amber-600 text-white font-medium hover:bg-amber-700 transition-colors"
+                    >
+                      Verify
+                    </button>
+                    <button
+                      onClick={handleResendVerification}
+                      disabled={isResendingVerification}
+                      className="text-xs px-2 py-1.5 text-amber-700 hover:text-amber-800 font-medium disabled:opacity-60 transition-colors"
+                    >
+                      {isResendingVerification ? "..." : "Resend"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
             {user.latitude && user.longitude && (
               <div className="flex items-center justify-center gap-1.5 text-gray-400 mt-1">
                 <MapPin className="w-3.5 h-3.5" />

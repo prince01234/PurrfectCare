@@ -248,6 +248,36 @@ const resetPassword = async ({ userId, token, email, otp, newPassword }) => {
   return { message: "Password reset successfully." };
 };
 
+const changePassword = async (userId, currentPassword, newPassword) => {
+  const user = await User.findById(userId).select("+password");
+
+  if (!user) {
+    throw { statusCode: 404, message: "User not found" };
+  }
+
+  if (!user.password) {
+    throw {
+      statusCode: 400,
+      message:
+        "Password is not set for this account. Use reset password to set one.",
+    };
+  }
+
+  const isCurrentPasswordValid = bcrypt.compareSync(
+    currentPassword,
+    user.password,
+  );
+
+  if (!isCurrentPasswordValid) {
+    throw { statusCode: 400, message: "Current password is incorrect." };
+  }
+
+  const hashedPassword = bcrypt.hashSync(newPassword, 10);
+  await User.findByIdAndUpdate(userId, { password: hashedPassword });
+
+  return { message: "Password changed successfully." };
+};
+
 const verifyResetOtp = async (email, otp) => {
   const user = await User.findOne({ email });
 
@@ -385,6 +415,7 @@ export default {
   login,
   forgotPassword,
   resetPassword,
+  changePassword,
   verifyResetOtp,
   verifyAccount,
   resendVerification,

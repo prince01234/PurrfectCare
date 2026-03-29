@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
@@ -21,7 +21,14 @@ import { getPostLoginRedirectPath } from "@/lib/onboarding";
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, user, loading: authLoading } = useAuth();
+
+  // Redirect authenticated users away from login page
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.replace(getPostLoginRedirectPath(user.roles));
+    }
+  }, [user, authLoading, router]);
 
   const handleSocialLogin = (provider: "google" | "facebook" | "github") => {
     window.location.href = `${API_URL}/api/auth/${provider}`;

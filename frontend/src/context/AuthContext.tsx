@@ -18,6 +18,11 @@ interface User {
   _id: string;
   name: string;
   email: string;
+  phoneNumber?: string | null;
+  mygc?: string | null;
+  organizationName?: string | null;
+  contactPhone?: string | null;
+  contactAddress?: string | null;
   roles?: "USER" | "PET_OWNER" | "ADMIN" | "SUPER_ADMIN";
   serviceType?: string;
   isVerified?: boolean;
