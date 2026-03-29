@@ -3,31 +3,45 @@ import User from "../models/User.js";
 
 // Authentication middleware
 const auth = async (req, res, next) => {
-  let authToken;
-
-  // Try Bearer token first (Authorization header)
+  const cookieToken = req.cookies?.authToken;
   const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith("Bearer ")) {
-    authToken = authHeader.split(" ")[1];
-  }
-  // Try cookies second (from cookieParser middleware)
-  else if (req.cookies && req.cookies.authToken) {
-    authToken = req.cookies.authToken;
-  }
-  // If no token found
-  else {
+  const bearerToken =
+    authHeader && authHeader.startsWith("Bearer ")
+      ? authHeader.split(" ")[1]
+      : null;
+
+  if (!cookieToken && !bearerToken) {
     return res
       .status(401)
       .send({ error: "User not authenticated. Please login first." });
   }
 
   try {
-    const data = await verifyJWT(authToken);
+    if (cookieToken) {
+      const data = await verifyJWT(cookieToken);
+      req.user = data;
+      return next();
+    }
+
+    const data = await verifyJWT(bearerToken);
     req.user = data;
-    next();
+    return next();
   } catch (error) {
+    if (cookieToken && bearerToken && cookieToken !== bearerToken) {
+      try {
+        const data = await verifyJWT(bearerToken);
+        req.user = data;
+        return next();
+      } catch (bearerError) {
+        console.error("Auth error:", bearerError.message);
+        return res
+          .status(401)
+          .send({ error: "Invalid or expired token. Please login again." });
+      }
+    }
+
     console.error("Auth error:", error.message);
-    res
+    return res
       .status(401)
       .send({ error: "Invalid or expired token. Please login again." });
   }
@@ -35,22 +49,31 @@ const auth = async (req, res, next) => {
 
 // Optional authentication middleware
 const optionalAuth = async (req, res, next) => {
-  let authToken;
-
+  const cookieToken = req.cookies?.authToken;
   const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith("Bearer ")) {
-    authToken = authHeader.split(" ")[1];
-  } else if (req.cookies && req.cookies.authToken) {
-    authToken = req.cookies.authToken;
-  }
+  const bearerToken =
+    authHeader && authHeader.startsWith("Bearer ")
+      ? authHeader.split(" ")[1]
+      : null;
 
-  if (authToken) {
+  if (cookieToken || bearerToken) {
     try {
-      const data = await verifyJWT(authToken);
+      const primaryToken = cookieToken || bearerToken;
+      const data = await verifyJWT(primaryToken);
       req.user = data;
     } catch (error) {
-      // Token invalid but that's okay for optional auth
-      req.user = null;
+      if (cookieToken && bearerToken && cookieToken !== bearerToken) {
+        try {
+          const data = await verifyJWT(bearerToken);
+          req.user = data;
+          return next();
+        } catch {
+          req.user = null;
+        }
+      } else {
+        // Token invalid but that's okay for optional auth
+        req.user = null;
+      }
     }
   } else {
     req.user = null;
@@ -74,6 +97,17 @@ const requireVerified = async (req, res, next) => {
       return res.status(404).send({ error: "User not found." });
     }
 
+    const hasOAuthProvider =
+      Array.isArray(user.authProviders) &&
+      user.authProviders.some((provider) =>
+        ["google", "facebook", "github"].includes(provider),
+      );
+
+    if (hasOAuthProvider && !user.isVerified) {
+      user.isVerified = true;
+      await user.save();
+    }
+
     if (!user.isVerified) {
       return res.status(403).send({
         error:
@@ -91,7 +125,7 @@ const requireVerified = async (req, res, next) => {
   }
 };
 
- //Role-based authorization middleware
+//Role-based authorization middleware
 const requireRole = (...allowedRoles) => {
   return async (req, res, next) => {
     if (!req.user) {

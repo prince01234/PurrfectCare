@@ -233,10 +233,10 @@ export default function EditProfilePage() {
             />
           </div>
 
-          {/* Profile Address */}
+          {/* Address */}
           <div className="mb-6">
             <label className="block text-sm font-semibold text-gray-900 mb-2">
-              Profile Address
+              Address
             </label>
             <input
               type="text"
@@ -244,7 +244,7 @@ export default function EditProfilePage() {
               value={formData.profileAddress}
               onChange={handleChange}
               className="w-full px-4 py-3.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent text-gray-900 placeholder-gray-400 bg-white"
-              placeholder="Enter your profile address"
+              placeholder="Enter your address"
             />
           </div>
 

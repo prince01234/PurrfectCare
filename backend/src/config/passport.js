@@ -38,6 +38,7 @@ passport.use(
               profilePicture,
               provider: "google",
             };
+            user.isVerified = true;
             await user.save();
           } else {
             // Create new user
@@ -64,6 +65,10 @@ passport.use(
             profilePicture,
             provider: "google",
           };
+          user.isVerified = true;
+          await user.save();
+        } else if (user && !user.isVerified) {
+          user.isVerified = true;
           await user.save();
         }
 
@@ -109,6 +114,7 @@ passport.use(
               profilePicture,
               provider: "facebook",
             };
+            user.isVerified = true;
             await user.save();
           } else {
             // Create new user
@@ -118,7 +124,7 @@ passport.use(
               name: displayName || "Facebook User",
               profileImage: profilePicture,
               authProviders: ["facebook"],
-              isVerified: email ? true : false,
+              isVerified: true,
               socialProfile: {
                 displayName,
                 profilePicture,
@@ -135,6 +141,10 @@ passport.use(
             profilePicture,
             provider: "facebook",
           };
+          user.isVerified = true;
+          await user.save();
+        } else if (user && !user.isVerified) {
+          user.isVerified = true;
           await user.save();
         }
 
@@ -179,6 +189,7 @@ passport.use(
               profilePicture,
               provider: "github",
             };
+            user.isVerified = true;
             await user.save();
           } else {
             // Create new user
@@ -188,7 +199,7 @@ passport.use(
               name: displayName || username || "GitHub User",
               profileImage: profilePicture,
               authProviders: ["github"],
-              isVerified: email ? true : false,
+              isVerified: true,
               socialProfile: {
                 displayName: displayName || username,
                 profilePicture,
@@ -205,6 +216,10 @@ passport.use(
             profilePicture,
             provider: "github",
           };
+          user.isVerified = true;
+          await user.save();
+        } else if (user && !user.isVerified) {
+          user.isVerified = true;
           await user.save();
         }
 
