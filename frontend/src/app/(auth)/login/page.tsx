@@ -21,7 +21,7 @@ import { getPostLoginRedirectPath } from "@/lib/onboarding";
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { login, user, loading: authLoading } = useAuth();
+  const { login, user, isLoading: authLoading } = useAuth();
 
   // Redirect authenticated users away from login page
   useEffect(() => {

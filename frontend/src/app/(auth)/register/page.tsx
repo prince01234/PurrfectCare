@@ -21,7 +21,7 @@ import { getPostLoginRedirectPath } from "@/lib/onboarding";
 export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
 
   // Redirect authenticated users away from register page
   useEffect(() => {
