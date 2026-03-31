@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, ShoppingCart, Plus, Star, Search } from "lucide-react";
+import { ArrowLeft, ShoppingCart, Plus, Star, Search, Grid, List, SlidersHorizontal, X } from "lucide-react";
 import toast from "react-hot-toast";
 
 import MobileLayout from "@/components/layout/MobileLayout";
@@ -15,6 +15,14 @@ import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 
 const CATEGORIES = ["All", "Food", "Toys", "Accessories", "Health"];
+const PRICE_RANGES = [
+  { label: "All Prices", min: 0, max: Infinity },
+  { label: "Under NPR 500", min: 0, max: 500 },
+  { label: "NPR 500 - 1000", min: 500, max: 1000 },
+  { label: "NPR 1000 - 2500", min: 1000, max: 2500 },
+  { label: "Over NPR 2500", min: 2500, max: Infinity },
+];
+const RATING_FILTERS = ["All Ratings", "4+ Stars", "3+ Stars"];
 
 export default function MarketplacePage() {
   const router = useRouter();
@@ -27,7 +35,22 @@ export default function MarketplacePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [addingProductId, setAddingProductId] = useState<string | null>(null);
-  const hasFilters = activeCategory !== "All" || Boolean(searchQuery.trim());
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [showFilters, setShowFilters] = useState(false);
+  const [priceRange, setPriceRange] = useState(0); // index into PRICE_RANGES
+  const [ratingFilter, setRatingFilter] = useState("All Ratings");
+  
+  const hasFilters = 
+    activeCategory !== "All" || 
+    Boolean(searchQuery.trim()) || 
+    priceRange !== 0 || 
+    ratingFilter !== "All Ratings";
+
+  const activeFilterCount = 
+    (activeCategory !== "All" ? 1 : 0) +
+    (searchQuery.trim() ? 1 : 0) +
+    (priceRange !== 0 ? 1 : 0) +
+    (ratingFilter !== "All Ratings" ? 1 : 0);
 
   const fetchProducts = useCallback(async () => {
     setIsLoading(true);
@@ -72,6 +95,8 @@ export default function MarketplacePage() {
   const handleResetFilters = () => {
     setActiveCategory("All");
     setSearchQuery("");
+    setPriceRange(0);
+    setRatingFilter("All Ratings");
   };
 
   return (
@@ -100,6 +125,19 @@ export default function MarketplacePage() {
               aria-label="Toggle search"
             >
               <Search className="w-5 h-5 text-gray-600" />
+            </button>
+            <button
+              onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")}
+              className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ${
+                viewMode === "list" ? "bg-teal-50 text-teal-600" : "hover:bg-gray-100 text-gray-600"
+              }`}
+              aria-label="Toggle view mode"
+            >
+              {viewMode === "grid" ? (
+                <List className="w-5 h-5" />
+              ) : (
+                <Grid className="w-5 h-5" />
+              )}
             </button>
             <Link
               href="/marketplace/cart"
@@ -168,22 +206,36 @@ export default function MarketplacePage() {
         </div>
       </div>
 
-      {/* Products grid */}
+      {/* Products grid/list */}
       <div className="px-5 pb-8 mt-2">
         {isLoading ? (
-          <div className="grid grid-cols-2 gap-3">
+          <div className={viewMode === "grid" ? "grid grid-cols-2 gap-3" : "space-y-3"}>
             {[...Array(4)].map((_, i) => (
               <div
                 key={i}
                 className="bg-gray-50 rounded-2xl overflow-hidden animate-pulse"
               >
-                <div className="aspect-square bg-gray-200" />
-                <div className="p-3 space-y-2">
-                  <div className="h-3 bg-gray-200 rounded w-12" />
-                  <div className="h-4 bg-gray-200 rounded w-full" />
-                  <div className="h-3 bg-gray-200 rounded w-16" />
-                  <div className="h-4 bg-gray-200 rounded w-14" />
-                </div>
+                {viewMode === "grid" ? (
+                  <>
+                    <div className="aspect-square bg-gray-200" />
+                    <div className="p-3 space-y-2">
+                      <div className="h-3 bg-gray-200 rounded w-12" />
+                      <div className="h-4 bg-gray-200 rounded w-full" />
+                      <div className="h-3 bg-gray-200 rounded w-16" />
+                      <div className="h-4 bg-gray-200 rounded w-14" />
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex gap-3 p-3">
+                    <div className="w-24 h-24 bg-gray-200 rounded-xl" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3 bg-gray-200 rounded w-12" />
+                      <div className="h-4 bg-gray-200 rounded w-full" />
+                      <div className="h-3 bg-gray-200 rounded w-16" />
+                      <div className="h-4 bg-gray-200 rounded w-14" />
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -199,13 +251,14 @@ export default function MarketplacePage() {
               </button>
             )}
           </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
+        ) : viewMode === "grid" ? (
+          // Grid View
+          <div className="grid grid-cols-2 gap-4">
             {products.map((product) => (
-              <Link key={product._id} href={`/marketplace/${product._id}`}>
+              <Link key={product._id} href={`/marketplace/${product._id}`} className="block">
                 <motion.div
                   whileTap={{ scale: 0.98 }}
-                  className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm transition-transform hover:-translate-y-0.5"
+                  className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all"
                 >
                   {/* Image */}
                   <div className="relative aspect-square bg-gray-50">
@@ -227,29 +280,91 @@ export default function MarketplacePage() {
                     <button
                       onClick={(e) => handleAddToCart(e, product)}
                       disabled={addingProductId === product._id}
-                      className="absolute bottom-2 right-2 w-8 h-8 bg-white rounded-full shadow-md flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-all disabled:opacity-50"
+                      className="absolute bottom-2 right-2 w-9 h-9 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-all disabled:opacity-50"
                     >
-                      <Plus className="w-4 h-4 text-gray-700" />
+                      <Plus className="w-4.5 h-4.5 text-gray-700" />
                     </button>
                   </div>
 
                   {/* Info */}
-                  <div className="p-3">
-                    <div className="flex items-center gap-1 mb-0.5">
-                      <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
-                      <span className="text-xs text-gray-500">
+                  <div className="p-3.5">
+                    <div className="flex items-center gap-1 mb-1">
+                      <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                      <span className="text-xs font-medium text-gray-600">
                         {(4 + Math.random()).toFixed(1)}
                       </span>
                     </div>
-                    <h3 className="text-sm font-semibold text-gray-900 leading-tight line-clamp-1">
+                    <h3 className="text-sm font-bold text-gray-900 leading-tight line-clamp-2 mb-1">
                       {product.name}
                     </h3>
-                    <p className="text-xs text-gray-400 capitalize mt-0.5">
+                    <p className="text-xs text-gray-400 capitalize mb-2">
                       {product.category}
                     </p>
-                    <p className="text-base font-bold text-orange-500 mt-1">
+                    <p className="text-base font-bold text-orange-500">
                       NPR {product.price.toFixed(2)}
                     </p>
+                  </div>
+                </motion.div>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          // List View
+          <div className="space-y-3">
+            {products.map((product) => (
+              <Link key={product._id} href={`/marketplace/${product._id}`} className="block">
+                <motion.div
+                  whileTap={{ scale: 0.99 }}
+                  className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all"
+                >
+                  <div className="flex gap-4 p-4">
+                    {/* Image */}
+                    <div className="relative w-28 h-28 bg-gray-50 rounded-xl overflow-hidden flex-shrink-0">
+                      {product.images[0] ? (
+                        <Image
+                          src={product.images[0]}
+                          alt={product.name}
+                          fill
+                          className="object-cover"
+                          sizes="112px"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-300">
+                          <ShoppingCart className="w-8 h-8" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 flex flex-col justify-between min-w-0">
+                      <div>
+                        <div className="flex items-center gap-1 mb-1">
+                          <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                          <span className="text-xs font-medium text-gray-600">
+                            {(4 + Math.random()).toFixed(1)}
+                          </span>
+                        </div>
+                        <h3 className="text-base font-bold text-gray-900 leading-tight line-clamp-2 mb-1">
+                          {product.name}
+                        </h3>
+                        <p className="text-xs text-gray-400 capitalize">
+                          {product.category}
+                        </p>
+                      </div>
+                      
+                      <div className="flex items-center justify-between mt-2">
+                        <p className="text-lg font-bold text-orange-500">
+                          NPR {product.price.toFixed(2)}
+                        </p>
+                        <button
+                          onClick={(e) => handleAddToCart(e, product)}
+                          disabled={addingProductId === product._id}
+                          className="w-10 h-10 bg-teal-500 text-white rounded-xl shadow-md flex items-center justify-center hover:bg-teal-600 active:scale-95 transition-all disabled:opacity-50"
+                        >
+                          <Plus className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </motion.div>
               </Link>

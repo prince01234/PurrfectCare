@@ -295,7 +295,7 @@ export default function AdoptPage() {
           ) : (
             <>
               {listings.map((listing, index) => (
-                <Link key={listing._id} href={`/adopt/${listing._id}`}>
+                <Link key={listing._id} href={`/adopt/${listing._id}`} className="block">
                   <motion.div
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}

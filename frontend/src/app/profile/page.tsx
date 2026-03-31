@@ -282,7 +282,7 @@ export default function ProfilePage() {
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mx-4 mt-6 bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100"
+          className="mx-4 mt-6 bg-white rounded-2xl shadow-sm overflow-hidden"
         >
           <div className="relative">
             {/* Cover - subtle gradient */}
@@ -393,24 +393,24 @@ export default function ProfilePage() {
           </div>
 
           {/* Stats row */}
-          <div className="border-t border-gray-100">
-            <div className="grid grid-cols-3 divide-x divide-gray-100">
+          <div className="pt-4">
+            <div className="grid grid-cols-3 gap-2 px-2">
               <Link
                 href="/pets"
-                className="py-4 text-center hover:bg-gray-50 transition-colors"
+                className="py-4 text-center hover:bg-gray-50 rounded-xl transition-colors"
               >
-                <p className="text-xl font-bold text-gray-900">{pets.length}</p>
-                <p className="text-xs text-gray-500 mt-0.5 font-medium">Pets</p>
+                <p className="text-xl font-bold text-gray-700">{pets.length}</p>
+                <p className="text-xs text-gray-400 mt-0.5 font-medium">Pets</p>
               </Link>
               <div className="py-4 text-center">
-                <p className="text-xl font-bold text-gray-900">0</p>
-                <p className="text-xs text-gray-500 mt-0.5 font-medium">
+                <p className="text-xl font-bold text-gray-700">0</p>
+                <p className="text-xs text-gray-400 mt-0.5 font-medium">
                   Reviews
                 </p>
               </div>
               <div className="py-4 text-center">
-                <p className="text-xl font-bold text-gray-900">0</p>
-                <p className="text-xs text-gray-500 mt-0.5 font-medium">
+                <p className="text-xl font-bold text-gray-700">0</p>
+                <p className="text-xs text-gray-400 mt-0.5 font-medium">
                   Bookings
                 </p>
               </div>
@@ -581,9 +581,9 @@ export default function ProfilePage() {
         >
           <h3 className="text-base font-bold text-gray-900 mb-4">Account</h3>
 
-          <div className="space-y-2">
+          <div className="space-y-3">
             {menuItems.map((item) => (
-              <Link key={item.label} href={item.href}>
+              <Link key={item.label} href={item.href} className="block">
                 <div className="bg-white rounded-2xl px-4 py-4 flex items-center justify-between shadow-sm border border-gray-100 active:bg-gray-50 transition-colors">
                   <div className="flex items-center gap-3.5">
                     <div

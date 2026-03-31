@@ -492,8 +492,8 @@ export default function AdoptDetailPage() {
           transition={{ delay: 0.1 }}
           className="mx-4 mt-4"
         >
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-4">
-            <h2 className="text-base font-bold text-gray-900">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-5">
+            <h2 className="text-lg font-bold text-gray-900">
               About {listing.name}
             </h2>
             <RichText
@@ -503,19 +503,14 @@ export default function AdoptDetailPage() {
 
             {/* Health info */}
             {listing.healthInfo && (
-              <div className="pt-3 border-t border-gray-100">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-7 h-7 rounded-full bg-green-50 flex items-center justify-center">
-                    <Shield className="w-4 h-4 text-green-500" />
-                  </div>
-                  <h3 className="text-sm font-semibold text-gray-800">
-                    Health Information
-                  </h3>
-                </div>
-                <div className="pl-9">
+              <div className="pt-4 border-t border-gray-50">
+                <h3 className="text-base font-bold text-gray-900 mb-3">
+                  Health Information
+                </h3>
+                <div className="bg-gray-50 rounded-xl p-4">
                   <RichText
                     content={listing.healthInfo}
-                    className="text-sm text-gray-600"
+                    className="text-sm text-gray-600 leading-relaxed"
                   />
                 </div>
               </div>
@@ -523,19 +518,14 @@ export default function AdoptDetailPage() {
 
             {/* Temperament */}
             {listing.temperament && (
-              <div className="pt-3 border-t border-gray-100">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-7 h-7 rounded-full bg-amber-50 flex items-center justify-center">
-                    <Smile className="w-4 h-4 text-amber-500" />
-                  </div>
-                  <h3 className="text-sm font-semibold text-gray-800">
-                    Temperament
-                  </h3>
-                </div>
-                <div className="pl-9">
+              <div className="pt-4 border-t border-gray-50">
+                <h3 className="text-base font-bold text-gray-900 mb-3">
+                  Temperament
+                </h3>
+                <div className="bg-gray-50 rounded-xl p-4">
                   <RichText
                     content={listing.temperament}
-                    className="text-sm text-gray-600"
+                    className="text-sm text-gray-600 leading-relaxed"
                   />
                 </div>
               </div>
@@ -543,19 +533,14 @@ export default function AdoptDetailPage() {
 
             {/* Special Needs */}
             {listing.specialNeeds && (
-              <div className="pt-3 border-t border-gray-100">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-7 h-7 rounded-full bg-orange-50 flex items-center justify-center">
-                    <AlertTriangle className="w-4 h-4 text-orange-500" />
-                  </div>
-                  <h3 className="text-sm font-semibold text-gray-800">
-                    Special Needs
-                  </h3>
-                </div>
-                <div className="pl-9">
+              <div className="pt-4 border-t border-gray-50">
+                <h3 className="text-base font-bold text-gray-900 mb-3">
+                  Special Needs
+                </h3>
+                <div className="bg-gray-50 rounded-xl p-4">
                   <RichText
                     content={listing.specialNeeds}
-                    className="text-sm text-gray-600"
+                    className="text-sm text-gray-600 leading-relaxed"
                   />
                 </div>
               </div>
