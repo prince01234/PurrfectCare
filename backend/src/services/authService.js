@@ -8,6 +8,12 @@ import config from "../config/config.js";
 
 const generateOtp = () => String(crypto.randomInt(100000, 1000000));
 
+const createHttpError = (statusCode, message) => {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+};
+
 const buildFrontendUrl = (path, query = {}) => {
   const baseUrl = config.frontendUrl;
   if (!baseUrl) return "";
@@ -60,13 +66,24 @@ const createResetRecord = async (userId) => {
 const login = async (data) => {
   const user = await User.findOne({ email: data.email }).select("+password");
   if (!user) {
-    throw new Error("User not found");
+    throw createHttpError(401, "User not found");
   }
 
   const isPasswordValid = bcrypt.compareSync(data.password, user.password);
 
   if (!isPasswordValid) {
-    throw new Error("Email or password is incorrect");
+    throw createHttpError(401, "Email or password is incorrect");
+  }
+
+  if (!user.isActive) {
+    throw createHttpError(
+      403,
+      "Your account has been blocked. Please contact support.",
+    );
+  }
+
+  if (!user.isVerified) {
+    throw createHttpError(403, "Email verification is required before login.");
   }
 
   return {
@@ -83,7 +100,7 @@ const login = async (data) => {
 const registerUser = async (userData) => {
   const user = await User.findOne({ email: userData.email });
   if (user) {
-    throw new Error("User already exists");
+    throw createHttpError(409, "User already exists");
   }
 
   const hashedPassword = bcrypt.hashSync(userData.password, 10);
@@ -145,7 +162,9 @@ const forgotPassword = async (email) => {
   // Implementation for forgot password functionality
   const user = await User.findOne({ email });
 
-  if (!user) return;
+  if (!user) {
+    return { message: "Reset password link send successfully" };
+  }
 
   const { token, otp } = await createResetRecord(user._id);
 
@@ -251,13 +270,13 @@ const resetPassword = async ({ userId, token, email, otp, newPassword }) => {
   if (!resolvedUserId && email) {
     const user = await User.findOne({ email });
     if (!user) {
-      throw new Error("User not found");
+      throw createHttpError(404, "User not found");
     }
     resolvedUserId = user._id;
   }
 
   if (!resolvedUserId) {
-    throw new Error("User ID or email is required.");
+    throw createHttpError(400, "User ID or email is required.");
   }
 
   const data = await ResetPassword.findOne({
@@ -266,25 +285,25 @@ const resetPassword = async ({ userId, token, email, otp, newPassword }) => {
   }).sort({ expiresAt: -1 });
 
   if (!data) {
-    throw new Error("Invalid or expired reset request.");
+    throw createHttpError(400, "Invalid or expired reset request.");
   }
 
   if (data.isUsed) {
-    throw new Error("This reset request has already been used.");
+    throw createHttpError(400, "This reset request has already been used.");
   }
 
   if (token) {
     if (data.token !== token) {
-      throw new Error("Invalid or expired link.");
+      throw createHttpError(400, "Invalid or expired link.");
     }
   } else if (otp) {
     const otpValue = String(otp);
     const isOtpValid = bcrypt.compareSync(otpValue, data.otpHash || "");
     if (!isOtpValid) {
-      throw new Error("Invalid or expired reset code.");
+      throw createHttpError(400, "Invalid or expired reset code.");
     }
   } else {
-    throw new Error("Reset token or code is required.");
+    throw createHttpError(400, "Reset token or code is required.");
   }
 
   const hashedPassword = bcrypt.hashSync(newPassword, 10);
@@ -329,7 +348,7 @@ const verifyResetOtp = async (email, otp) => {
   const user = await User.findOne({ email });
 
   if (!user) {
-    throw new Error("User not found");
+    throw createHttpError(404, "User not found");
   }
 
   const data = await ResetPassword.findOne({
@@ -338,17 +357,17 @@ const verifyResetOtp = async (email, otp) => {
   }).sort({ expiresAt: -1 });
 
   if (!data) {
-    throw new Error("Invalid or expired reset request.");
+    throw createHttpError(400, "Invalid or expired reset request.");
   }
 
   if (data.isUsed) {
-    throw new Error("This reset request has already been used.");
+    throw createHttpError(400, "This reset request has already been used.");
   }
 
   const otpValue = String(otp);
   const isOtpValid = bcrypt.compareSync(otpValue, data.otpHash || "");
   if (!isOtpValid) {
-    throw new Error("Invalid or expired reset code.");
+    throw createHttpError(400, "Invalid or expired reset code.");
   }
 
   return {
@@ -363,13 +382,13 @@ const verifyAccount = async ({ userId, token, email, otp }) => {
   if (!resolvedUserId && email) {
     const user = await User.findOne({ email });
     if (!user) {
-      throw new Error("User not found");
+      throw createHttpError(404, "User not found");
     }
     resolvedUserId = user._id;
   }
 
   if (!resolvedUserId) {
-    throw new Error("User ID or email is required.");
+    throw createHttpError(400, "User ID or email is required.");
   }
 
   const data = await AccountVerification.findOne({
@@ -378,35 +397,38 @@ const verifyAccount = async ({ userId, token, email, otp }) => {
   }).sort({ expiresAt: -1 });
 
   if (!data) {
-    throw new Error("Invalid or expired verification request.");
+    throw createHttpError(400, "Invalid or expired verification request.");
   }
 
   if (data.isUsed) {
-    throw new Error("This verification request has already been used.");
+    throw createHttpError(
+      400,
+      "This verification request has already been used.",
+    );
   }
 
   if (token) {
     if (data.token !== token) {
-      throw new Error("Invalid or expired verification link.");
+      throw createHttpError(400, "Invalid or expired verification link.");
     }
   } else if (otp) {
     const otpValue = String(otp);
     const isOtpValid = bcrypt.compareSync(otpValue, data.otpHash || "");
     if (!isOtpValid) {
-      throw new Error("Invalid or expired verification code.");
+      throw createHttpError(400, "Invalid or expired verification code.");
     }
   } else {
-    throw new Error("Verification token or code is required.");
+    throw createHttpError(400, "Verification token or code is required.");
   }
 
   const user = await User.findById(resolvedUserId);
 
   if (!user) {
-    throw new Error("User not found");
+    throw createHttpError(404, "User not found");
   }
 
   if (user.isVerified) {
-    throw new Error("Account already verified");
+    throw createHttpError(400, "Account already verified");
   }
 
   await User.findByIdAndUpdate(resolvedUserId, { isVerified: true });
@@ -419,11 +441,11 @@ const resendVerification = async (email) => {
   const user = await User.findOne({ email });
 
   if (!user) {
-    throw new Error("User not found");
+    throw createHttpError(404, "User not found");
   }
 
   if (user.isVerified) {
-    throw new Error("Account already verified");
+    throw createHttpError(400, "Account already verified");
   }
 
   const { verificationToken, otp } = await createVerificationRecord(user._id);

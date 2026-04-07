@@ -35,7 +35,7 @@ const loginUser = async (req, res) => {
 
     res.json({ ...user, authToken });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(error.statusCode || 400).json({ message: error.message });
   }
 };
 
@@ -62,7 +62,7 @@ const registerUser = async (req, res) => {
 
     res.status(201).json(response);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(error.statusCode || 400).json({ message: error.message });
   }
 };
 
@@ -78,7 +78,7 @@ const forgotPassword = async (req, res) => {
 
     res.json(data);
   } catch (error) {
-    res.status(error.statusCode || 500).send(error.message);
+    res.status(error.statusCode || 400).send(error.message);
   }
 };
 
@@ -118,7 +118,7 @@ const resetPassword = async (req, res) => {
 
     res.status(201).json(data);
   } catch (error) {
-    res.status(error.statusCode || 500).send(error.message);
+    res.status(error.statusCode || 400).send(error.message);
   }
 };
 
@@ -174,7 +174,7 @@ const verifyResetOtp = async (req, res) => {
 
     res.status(200).json(data);
   } catch (error) {
-    res.status(error.statusCode || 500).send(error.message);
+    res.status(error.statusCode || 400).send(error.message);
   }
 };
 
@@ -200,9 +200,9 @@ const verifyAccount = async (req, res) => {
       otp,
     });
 
-    res.status(201).json(data);
+    res.status(200).json(data);
   } catch (error) {
-    res.status(error.statusCode || 500).send(error.message);
+    res.status(error.statusCode || 400).send(error.message);
   }
 };
 
@@ -218,7 +218,7 @@ const resendVerification = async (req, res) => {
 
     res.json(data);
   } catch (error) {
-    res.status(error.statusCode || 500).send(error.message);
+    res.status(error.statusCode || 400).send(error.message);
   }
 };
 

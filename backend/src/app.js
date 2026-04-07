@@ -1,16 +1,10 @@
 import express from "express";
-import { createServer } from "http";
 import bodyParser from "body-parser";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import passport from "passport";
 
 import config from "./config/config.js";
-import connectDB from "./config/dbConnection.js";
-import initializeSocket from "./config/socket.js";
-import sessionConfig from "./config/session.js";
-import "./config/firebase.js";
-import passport from "./config/passport.js";
-
 import userRoutes from "./routes/userRoute.js";
 import authRoutes from "./routes/authRoute.js";
 import socialAuthRoutes from "./routes/socialAuthRoute.js";
@@ -33,149 +27,155 @@ import {
 } from "./routes/serviceRoute.js";
 import lostFoundRoutes from "./routes/lostFoundRoute.js";
 import notificationRoutes from "./routes/notificationRoute.js";
-
 import logger from "./middlewares/logger.js";
-import connectCloudinary from "./config/cloudinary.js";
-import reminderScheduler from "./jobs/reminderScheduler.js";
-import { setIO } from "./config/realtime.js";
-
-const app = express();
-const httpServer = createServer(app);
 
 const normalizeOrigin = (value) =>
   value?.trim().replace(/\/$/, "").toLowerCase();
 
-const configuredOrigins = [
-  process.env.FRONTEND_URL,
-  process.env.CORS_ALLOWED_ORIGINS,
-]
-  .filter(Boolean)
-  .flatMap((value) => value.split(","))
-  .map(normalizeOrigin)
-  .filter(Boolean);
+const getAllowedOrigins = () => {
+  const configuredOrigins = [
+    process.env.FRONTEND_URL,
+    process.env.CORS_ALLOWED_ORIGINS,
+  ]
+    .filter(Boolean)
+    .flatMap((value) => value.split(","))
+    .map(normalizeOrigin)
+    .filter(Boolean);
 
-const allowedOrigins = new Set(
-  [
-    "http://localhost:3000",
-    "https://prince-shrestha.me",
-    "https://www.prince-shrestha.me",
-    "https://purrfect-care-sigma.vercel.app",
-    ...configuredOrigins,
-  ].map(normalizeOrigin),
-);
+  return new Set(
+    [
+      "http://localhost:3000",
+      "https://prince-shrestha.me",
+      "https://www.prince-shrestha.me",
+      "https://purrfect-care-sigma.vercel.app",
+      ...configuredOrigins,
+    ].map(normalizeOrigin),
+  );
+};
 
-// Log allowed origins at startup for debugging
-console.log("CORS allowed origins:", [...allowedOrigins]);
-
-const corsOptions = {
+const buildCorsOptions = ({ allowedOrigins, enableDebugLogs = false }) => ({
   origin: (origin, callback) => {
-    // Log CORS requests in production for debugging
-    if (process.env.NODE_ENV === "production") {
-      console.log(`CORS check: origin=${origin}, allowed=${!origin || allowedOrigins.has(normalizeOrigin(origin))}`);
+    const isAllowed = !origin || allowedOrigins.has(normalizeOrigin(origin));
+
+    if (enableDebugLogs && process.env.NODE_ENV === "production") {
+      console.log(`CORS check: origin=${origin}, allowed=${isAllowed}`);
     }
 
-    if (!origin || allowedOrigins.has(normalizeOrigin(origin))) {
+    if (isAllowed) {
       return callback(null, true);
     }
 
-    console.warn(`CORS blocked origin: ${origin}`);
+    if (enableDebugLogs) {
+      console.warn(`CORS blocked origin: ${origin}`);
+    }
+
     return callback(null, false);
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   optionsSuccessStatus: 204,
+});
+
+const createApp = ({
+  sessionMiddleware = null,
+  passportEnabled = false,
+  loggerEnabled = true,
+  corsDebugLogs = false,
+} = {}) => {
+  const app = express();
+  const allowedOrigins = getAllowedOrigins();
+
+  if (corsDebugLogs) {
+    console.log("CORS allowed origins:", [...allowedOrigins]);
+  }
+
+  app.use(
+    cors(buildCorsOptions({ allowedOrigins, enableDebugLogs: corsDebugLogs })),
+  );
+  app.use(cookieParser());
+
+  // Trust proxy for deployments behind a reverse proxy.
+  app.set("trust proxy", 1);
+
+  if (sessionMiddleware) {
+    app.use(sessionMiddleware);
+  }
+
+  if (passportEnabled) {
+    app.use(passport.initialize());
+
+    if (sessionMiddleware) {
+      app.use(passport.session());
+    }
+  }
+
+  app.use(bodyParser.json());
+  app.use(bodyParser.urlencoded({ extended: true }));
+
+  if (loggerEnabled) {
+    app.use(logger);
+  }
+
+  app.get("/", (req, res) => {
+    res.json({
+      name: config.name,
+      port: config.port,
+      version: config.version,
+    });
+  });
+
+  app.get("/healthz", (req, res) => {
+    res.status(200).json({ ok: true });
+  });
+
+  // User Routes
+  app.use("/api/users", userRoutes);
+
+  // Auth Routes
+  app.use("/api/auth", authRoutes);
+
+  // Social Auth Routes (OAuth)
+  app.use("/api/auth", socialAuthRoutes);
+
+  // Pet Routes
+  app.use("/api/pets", petRoutes);
+
+  // Health Routes (global health overview)
+  app.use("/api/health", healthRoutes);
+
+  // Reminder Routes (user-level reminders)
+  app.use("/api/reminders", userReminderRouter);
+
+  // Marketplace Routes
+  app.use("/api/products", productRoutes);
+  app.use("/api/cart", cartRoutes);
+  app.use("/api/orders", orderRoutes);
+
+  app.use("/api/admin", adminApplicationRoutes);
+
+  // Adoption Routes
+  app.use("/api/adoption/listings", adoptionListingRoutes);
+  app.use("/api/adoption/applications", adoptionApplicationRoutes);
+
+  // Messaging Routes
+  app.use("/api/conversations", messagingRoutes);
+
+  // Map Routes
+  app.use("/api/map", mapRoutes);
+
+  // Service Booking Routes
+  app.use("/api/service-providers", serviceProviderRoutes);
+  app.use("/api/bookings", bookingRoutes);
+
+  // Lost & Found Routes
+  app.use("/api/lost-found", lostFoundRoutes);
+
+  // Notification Routes
+  app.use("/api/notifications", notificationRoutes);
+
+  return app;
 };
 
-app.use(cors(corsOptions));
-
-app.use(cookieParser());
-
-// Trust proxy for Render deployment (behind reverse proxy)
-app.set("trust proxy", 1);
-
-// MongoDB Session Store (configured in config/session.js)
-app.use(sessionConfig);
-app.use(passport.initialize());
-app.use(passport.session());
-
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-
-connectDB();
-connectCloudinary();
-
-app.use(logger);
-
-app.get("/", (req, res) => {
-  res.json({
-    name: config.name,
-    port: config.port,
-    version: config.version,
-  });
-});
-
-app.get("/healthz", (req, res) => {
-  res.status(200).json({ ok: true });
-});
-
-// User Routes
-app.use("/api/users", userRoutes);
-
-// Auth Routes
-app.use("/api/auth", authRoutes);
-
-// Social Auth Routes (OAuth)
-app.use("/api/auth", socialAuthRoutes);
-
-// Pet Routes
-app.use("/api/pets", petRoutes);
-
-// Health Routes (global health overview)
-app.use("/api/health", healthRoutes);
-
-// Reminder Routes (user-level reminders)
-app.use("/api/reminders", userReminderRouter);
-
-// Marketplace Routes
-app.use("/api/products", productRoutes);
-app.use("/api/cart", cartRoutes);
-app.use("/api/orders", orderRoutes);
-
-app.use("/api/admin", adminApplicationRoutes);
-
-// Adoption Routes
-app.use("/api/adoption/listings", adoptionListingRoutes);
-app.use("/api/adoption/applications", adoptionApplicationRoutes);
-
-// Messaging Routes
-app.use("/api/conversations", messagingRoutes);
-
-// Map Routes
-app.use("/api/map", mapRoutes);
-
-// Service Booking Routes
-app.use("/api/service-providers", serviceProviderRoutes);
-app.use("/api/bookings", bookingRoutes);
-
-// Lost & Found Routes
-app.use("/api/lost-found", lostFoundRoutes);
-
-// Initialize Socket.IO
-const io = initializeSocket(httpServer);
-app.set("io", io);
-setIO(io);
-
-// Notification Routes
-app.use("/api/notifications", notificationRoutes);
-
-// Start reminder scheduler
-reminderScheduler.startScheduler();
-
-httpServer.listen(config.port, () => {
-  console.log(
-    `Server running at ${
-      process.env.APP_URL || `http://localhost:${config.port}`
-    }`,
-  );
-});
+export { createApp };
+export default createApp;
