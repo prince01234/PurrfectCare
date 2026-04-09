@@ -14,14 +14,13 @@ import {
   CreditCard,
   Truck,
   Star,
-  AlertCircle,
   RotateCcw,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
 import MobileLayout from "@/components/layout/MobileLayout";
 import { orderApi, productApi } from "@/lib/api";
-import type { Order, Product } from "@/lib/api";
+import type { Order } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import StartChatButton from "@/components/chat/StartChatButton";
 
@@ -112,7 +111,7 @@ export default function OrderDetailPage() {
       setIsLoading(false);
     };
     if (orderId) fetchOrder();
-  }, [orderId, user, router]);
+  }, [orderId, user, router, authLoading]);
 
   const handleCancel = async () => {
     if (!order) return;
@@ -295,6 +294,7 @@ export default function OrderDetailPage() {
             {[0, 1, 2, 3, 4].map((step) => {
               const statusKey = Object.entries(statusConfig).find(
                 ([key, config]) =>
+                  "step" in config &&
                   config.step === step &&
                   key !== "cancelled" &&
                   !key.includes("colour"),
@@ -302,19 +302,25 @@ export default function OrderDetailPage() {
               const stepConfig =
                 statusKey &&
                 statusConfig[statusKey as keyof typeof statusConfig]
-                  ? (statusConfig[
-                      statusKey as keyof typeof statusConfig
-                    ] as any)
+                  ? (statusConfig[statusKey as keyof typeof statusConfig] as {
+                      step?: number;
+                      icon: React.ElementType;
+                      label: string;
+                    })
                   : null;
 
               if (!stepConfig) return null;
 
               const isCompleted =
                 !isCancelled &&
-                (statusConfig[order.status] as any).step >= step;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (statusConfig[order.status as keyof typeof statusConfig] as any)
+                  .step >= step;
               const isCurrent =
                 !isCancelled &&
-                (statusConfig[order.status] as any).step === step;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (statusConfig[order.status as keyof typeof statusConfig] as any)
+                  .step === step;
               const StepIcon = stepConfig.icon;
 
               return (
