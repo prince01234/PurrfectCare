@@ -42,24 +42,53 @@ import { setIO } from "./config/realtime.js";
 const app = express();
 const httpServer = createServer(app);
 
-const allowedOrigins = [
-  "http://localhost:3000",
+const normalizeOrigin = (value) =>
+  value?.trim().replace(/\/$/, "").toLowerCase();
+
+const configuredOrigins = [
   process.env.FRONTEND_URL,
-].filter(Boolean);
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin))
-        return callback(null, true);
-      callback(null, false);
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  }),
+  process.env.CORS_ALLOWED_ORIGINS,
+]
+  .filter(Boolean)
+  .flatMap((value) => value.split(","))
+  .map(normalizeOrigin)
+  .filter(Boolean);
+
+const allowedOrigins = new Set(
+  [
+    "http://localhost:3000",
+    "https://prince-shrestha.me",
+    "https://www.prince-shrestha.me",
+    "https://purrfect-care-sigma.vercel.app",
+    ...configuredOrigins,
+  ].map(normalizeOrigin),
 );
 
-//app.use(cors({ origin: true, credentials: true }));
+// Log allowed origins at startup for debugging
+console.log("CORS allowed origins:", [...allowedOrigins]);
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Log CORS requests in production for debugging
+    if (process.env.NODE_ENV === "production") {
+      console.log(`CORS check: origin=${origin}, allowed=${!origin || allowedOrigins.has(normalizeOrigin(origin))}`);
+    }
+
+    if (!origin || allowedOrigins.has(normalizeOrigin(origin))) {
+      return callback(null, true);
+    }
+
+    console.warn(`CORS blocked origin: ${origin}`);
+    return callback(null, false);
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  optionsSuccessStatus: 204,
+};
+
+app.use(cors(corsOptions));
+
 app.use(cookieParser());
 
 // Trust proxy for Render deployment (behind reverse proxy)

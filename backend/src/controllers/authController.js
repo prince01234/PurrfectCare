@@ -122,6 +122,42 @@ const resetPassword = async (req, res) => {
   }
 };
 
+const changePassword = async (req, res) => {
+  const input = req.body;
+
+  try {
+    if (!req.user?._id) {
+      return res.status(401).send("User not authenticated.");
+    }
+
+    if (!input.currentPassword) {
+      return res.status(400).send("Current password is required.");
+    }
+
+    if (!input.password) {
+      return res.status(400).send("New password is required.");
+    }
+
+    if (!input.confirmPassword) {
+      return res.status(400).send("Confirm password is required.");
+    }
+
+    if (input.password !== input.confirmPassword) {
+      return res.status(400).send("Passwords do not match.");
+    }
+
+    const data = await authService.changePassword(
+      req.user._id,
+      input.currentPassword,
+      input.password,
+    );
+
+    res.status(200).json(data);
+  } catch (error) {
+    res.status(error.statusCode || 500).send(error.message);
+  }
+};
+
 const verifyResetOtp = async (req, res) => {
   const input = req.body;
 
@@ -211,7 +247,15 @@ const getCurrentUser = async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    res.json(user);
+    // Include token in response for cross-origin scenarios where cookies may not work
+    // This allows frontend to store token in localStorage as fallback
+    const authToken =
+      req.cookies?.authToken || req.headers.authorization?.split(" ")[1];
+
+    res.json({
+      ...user.toObject(),
+      authToken: authToken || undefined,
+    });
   } catch (error) {
     console.error("Get current user error:", error);
     res.status(500).json({ error: "Failed to get user information" });
@@ -223,6 +267,7 @@ export default {
   loginUser,
   forgotPassword,
   resetPassword,
+  changePassword,
   verifyResetOtp,
   verifyAccount,
   resendVerification,

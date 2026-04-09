@@ -5,6 +5,8 @@ import ServiceProvider from "../models/ServiceProvider.js";
 import Pet from "../models/Pet.js";
 import Product from "../models/Product.js";
 import Order from "../models/Order.js";
+import { USER, PET_OWNER } from "../constants/roles.js";
+import { calculatePlatformCommission } from "../utils/commission.js";
 
 const adminAnalyticsService = {
   /**
@@ -20,13 +22,26 @@ const adminAnalyticsService = {
       totalBookings,
       totalOrders,
     ] = await Promise.all([
-      User.countDocuments({ role: "USER" }),
+      User.countDocuments({ roles: { $in: [USER, PET_OWNER] } }),
       ServiceProvider.countDocuments(),
       Pet.countDocuments(),
       Product.countDocuments(),
       Booking.countDocuments(),
       Order.countDocuments(),
     ]);
+
+    const getSettledOrderAmount = (order) => {
+      if (order?.payment?.status === "completed") {
+        return order.payment.amount || order.totalAmount || 0;
+      }
+
+      // COD has no online payment record; treat as settled only when delivered.
+      if (order?.paymentMethod === "cod" && order?.status === "delivered") {
+        return order.totalAmount || 0;
+      }
+
+      return 0;
+    };
 
     // Get booking revenue stats
     const completedBookings = await Booking.find({
@@ -40,14 +55,18 @@ const adminAnalyticsService = {
 
     // Get order revenue stats
     const completedOrders = await Order.find({
-      status: "delivered",
+      status: { $in: ["confirmed", "processing", "delivered"] },
     }).populate("payment");
 
     const totalOrderRevenue = completedOrders.reduce((sum, order) => {
-      return sum + (order.payment?.amount || 0);
+      return sum + getSettledOrderAmount(order);
     }, 0);
 
-    const totalRevenue = totalBookingRevenue + totalOrderRevenue;
+    const totalRevenue = totalBookingRevenue + totalOrderRevenue; // Gross sales (100%)
+    const totalPlatformCommission =
+      calculatePlatformCommission(totalBookingRevenue) +
+      calculatePlatformCommission(totalOrderRevenue); // Super Admin gets 10% of gross
+    const totalMerchantNetRevenue = totalRevenue - totalPlatformCommission; // Providers get 90% of gross
 
     // Revenue by payment method (bookings)
     const bookingRevenueByMethod = completedBookings.reduce(
@@ -129,41 +148,40 @@ const adminAnalyticsService = {
     ]);
 
     // Monthly revenue (last 6 months) - Orders
-    const monthlyOrderRevenue = await Order.aggregate([
-      {
-        $match: {
-          status: "delivered",
-          createdAt: { $gte: sixMonthsAgo },
+    const monthlySettledOrders = await Order.find({
+      status: { $in: ["confirmed", "processing", "delivered"] },
+      createdAt: { $gte: sixMonthsAgo },
+    }).populate("payment");
+
+    const monthlyOrderRevenueMap = new Map();
+    monthlySettledOrders.forEach((order) => {
+      const settledAmount = getSettledOrderAmount(order);
+      if (settledAmount <= 0) {
+        return;
+      }
+
+      const orderDate = new Date(order.createdAt);
+      const key = `${orderDate.getFullYear()}-${orderDate.getMonth() + 1}`;
+      const existing = monthlyOrderRevenueMap.get(key) || {
+        _id: {
+          year: orderDate.getFullYear(),
+          month: orderDate.getMonth() + 1,
         },
-      },
-      {
-        $lookup: {
-          from: "payments",
-          localField: "payment",
-          foreignField: "_id",
-          as: "paymentDetails",
-        },
-      },
-      {
-        $unwind: {
-          path: "$paymentDetails",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $group: {
-          _id: {
-            year: { $year: "$createdAt" },
-            month: { $month: "$createdAt" },
-          },
-          orderRevenue: { $sum: "$paymentDetails.amount" },
-          orders: { $sum: 1 },
-        },
-      },
-      {
-        $sort: { "_id.year": 1, "_id.month": 1 },
-      },
-    ]);
+        orderRevenue: 0,
+        orders: 0,
+      };
+
+      existing.orderRevenue += settledAmount;
+      existing.orders += 1;
+      monthlyOrderRevenueMap.set(key, existing);
+    });
+
+    const monthlyOrderRevenue = Array.from(
+      monthlyOrderRevenueMap.values(),
+    ).sort((a, b) => {
+      if (a._id.year !== b._id.year) return a._id.year - b._id.year;
+      return a._id.month - b._id.month;
+    });
 
     // Combine monthly revenue
     const monthlyRevenueMap = new Map();
@@ -220,7 +238,7 @@ const adminAnalyticsService = {
         createdAt: { $gte: thisMonthStart },
       }).populate("payment"),
       Order.find({
-        status: "delivered",
+        status: { $in: ["confirmed", "processing", "delivered"] },
         createdAt: { $gte: thisMonthStart },
       }).populate("payment"),
     ]);
@@ -230,10 +248,13 @@ const adminAnalyticsService = {
     }, 0);
 
     const thisMonthOrderRevenue = thisMonthOrders.reduce((sum, order) => {
-      return sum + (order.payment?.amount || 0);
+      return sum + getSettledOrderAmount(order);
     }, 0);
 
     const thisMonthRevenue = thisMonthBookingRevenue + thisMonthOrderRevenue;
+    const thisMonthPlatformCommission =
+      calculatePlatformCommission(thisMonthBookingRevenue) +
+      calculatePlatformCommission(thisMonthOrderRevenue);
 
     // Pending bookings and orders
     const pendingBookings = await Booking.countDocuments({ status: "pending" });
@@ -324,6 +345,8 @@ const adminAnalyticsService = {
     return {
       overview: {
         totalRevenue,
+        totalMerchantNetRevenue,
+        totalPlatformCommission,
         totalBookingRevenue,
         totalOrderRevenue,
         totalBookings,
@@ -334,6 +357,7 @@ const adminAnalyticsService = {
         totalPets,
         totalProducts,
         thisMonthRevenue,
+        thisMonthPlatformCommission,
         pendingBookings,
         pendingOrders,
       },

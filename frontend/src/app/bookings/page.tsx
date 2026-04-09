@@ -124,10 +124,8 @@ export default function BookingsPage() {
   return (
     <MobileLayout>
       <div className="min-h-screen bg-gray-50 pb-24">
-        <div className="h-1 bg-linear-to-r from-violet-500 to-purple-500" />
-
-        {/* Header */}
-        <div className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-100">
+        {/* Header with filters */}
+        <div className="sticky top-0 z-40 bg-white border-b border-gray-100">
           <div className="max-w-lg mx-auto px-4 py-4 flex items-center gap-3">
             <button
               onClick={() => router.back()}
@@ -137,33 +135,27 @@ export default function BookingsPage() {
             </button>
             <h1 className="text-lg font-bold text-gray-800">My Bookings</h1>
           </div>
-        </div>
 
-        {/* Tabs */}
-        <div className="max-w-lg mx-auto px-4 pt-4">
-          <div className="flex gap-2 overflow-x-auto no-scrollbar">
-            {TABS.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-                  activeTab === tab.key
-                    ? "bg-violet-500 text-white"
-                    : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
-                }`}
-              >
-                {tab.label}
-                {tab.key !== "all" && (
-                  <span className="ml-1.5 text-xs opacity-70">
-                    {
-                      bookings.filter((b) =>
-                        tab.key === "all" ? true : b.status === tab.key,
-                      ).length
-                    }
-                  </span>
-                )}
-              </button>
-            ))}
+          {/* Filter Pills inside header */}
+          <div className="max-w-lg mx-auto px-4 pb-3 flex flex-wrap gap-2">
+            {TABS.map((tab) => {
+              const count = bookings.filter((b) =>
+                tab.key === "all" ? true : b.status === tab.key
+              ).length;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+                    activeTab === tab.key
+                      ? "bg-slate-800 text-white shadow-sm"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
         </div>
 

@@ -68,8 +68,7 @@ const LIVING_LABELS: Record<string, string> = {
 
 export default function AdminAdoptionRequestsPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const isAdoptionAdmin =
-    user?.roles === "SUPER_ADMIN" || user?.serviceType === "pet_adoption";
+  const isAdoptionAdmin = user?.serviceType === "pet_adoption";
 
   const [applications, setApplications] = useState<AdoptionApplication[]>([]);
   const [isLoading, setIsLoading] = useState(true);

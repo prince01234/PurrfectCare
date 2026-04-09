@@ -18,6 +18,11 @@ interface User {
   _id: string;
   name: string;
   email: string;
+  phoneNumber?: string | null;
+  mygc?: string | null;
+  organizationName?: string | null;
+  contactPhone?: string | null;
+  contactAddress?: string | null;
   roles?: "USER" | "PET_OWNER" | "ADMIN" | "SUPER_ADMIN";
   serviceType?: string;
   isVerified?: boolean;
@@ -25,6 +30,7 @@ interface User {
   userIntent?: "pet_owner" | "looking_to_adopt" | "exploring" | null;
   latitude?: number | null;
   longitude?: number | null;
+  authToken?: string;
 }
 
 interface AuthContextType {
@@ -59,7 +65,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // The httpOnly cookie is sent automatically; bearer token fallback is used when needed.
     const verifyAuth = async () => {
       try {
-        const response = await apiRequest<User>("/api/auth/me", {}, true);
+        let response = await apiRequest<User>("/api/auth/me");
+
+        if (response.error && getAuthToken()) {
+          // Fallback for environments where cookies are unavailable but token exists.
+          response = await apiRequest<User>("/api/auth/me", {}, true);
+        }
 
         if (response.error) {
           const errorMessage = response.error.toLowerCase();
@@ -79,7 +90,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (isUser(response.data)) {
           setUser(response.data);
-          setToken(getAuthToken() ?? "authenticated");
+          // Store authToken if returned (for cross-origin cookie fallback)
+          if (response.data.authToken) {
+            setAuthToken(response.data.authToken);
+            setToken(response.data.authToken);
+          } else {
+            setToken(getAuthToken() ?? "authenticated");
+          }
         } else {
           clearAuthToken();
         }

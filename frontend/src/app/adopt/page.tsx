@@ -5,13 +5,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import {
-  ArrowLeft,
-  Search,
-  MapPin,
-  SlidersHorizontal,
-  X,
-} from "lucide-react";
+import { ArrowLeft, Search, MapPin, SlidersHorizontal, X } from "lucide-react";
 
 import MobileLayout from "@/components/layout/MobileLayout";
 import { adoptionListingApi } from "@/lib/api/adoption";
@@ -253,7 +247,7 @@ export default function AdoptPage() {
         </div>
 
         {/* Listings */}
-        <div className="space-y-3 px-5 pt-4">
+        <div className="space-y-2 px-5 pt-4">
           {error ? (
             <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
               <p>{error}</p>
@@ -301,7 +295,7 @@ export default function AdoptPage() {
           ) : (
             <>
               {listings.map((listing, index) => (
-                <Link key={listing._id} href={`/adopt/${listing._id}`}>
+                <Link key={listing._id} href={`/adopt/${listing._id}`} className="block">
                   <motion.div
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -367,7 +361,8 @@ export default function AdoptPage() {
                                 userCoords.lng,
                                 listing.postedBy.latitude,
                                 listing.postedBy.longitude,
-                              ).toFixed(1)} km
+                              ).toFixed(1)}{" "}
+                              km
                             </span>
                           )}
                       </div>

@@ -123,6 +123,8 @@ export const adminApi = {
 export interface PlatformAnalytics {
   overview: {
     totalRevenue: number;
+    totalMerchantNetRevenue: number;
+    totalPlatformCommission: number;
     totalBookingRevenue: number;
     totalOrderRevenue: number;
     totalBookings: number;
@@ -133,6 +135,7 @@ export interface PlatformAnalytics {
     totalPets: number;
     totalProducts: number;
     thisMonthRevenue: number;
+    thisMonthPlatformCommission: number;
     pendingBookings: number;
     pendingOrders: number;
   };

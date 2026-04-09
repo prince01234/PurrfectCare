@@ -9,6 +9,10 @@ import toast from "react-hot-toast";
 import Button from "@/components/ui/Button";
 import { userApi } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import {
+  getOnboardingRedirectPath,
+  getPostLoginRedirectPath,
+} from "@/lib/onboarding";
 
 type UserIntent = "pet_owner" | "looking_to_adopt" | "exploring";
 
@@ -55,27 +59,18 @@ export default function OnboardingPage() {
   const { user, updateUser, isLoading: authLoading } = useAuth();
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push("/login");
-    }
-    // If already completed onboarding, redirect to dashboard
-    if (!authLoading && user?.hasCompletedOnboarding) {
-      router.push("/dashboard");
-    }
-  }, [user, authLoading, router]);
+    if (authLoading) return;
 
-  const getRedirectPath = (intent: UserIntent | null): string => {
-    switch (intent) {
-      case "pet_owner":
-        return "/pets";
-      case "looking_to_adopt":
-        return "/adopt";
-      case "exploring":
-        return "/dashboard";
-      default:
-        return "/dashboard";
+    if (!user) {
+      router.replace("/login");
+      return;
     }
-  };
+
+    // Avoid overriding the intent redirect while completion request is in progress.
+    if (!isLoading && user.hasCompletedOnboarding) {
+      router.replace(getPostLoginRedirectPath(user.roles));
+    }
+  }, [user, authLoading, isLoading, router]);
 
   const handleContinue = async () => {
     if (!selectedIntent || !user) return;
@@ -101,8 +96,7 @@ export default function OnboardingPage() {
         toast.success("Welcome to PurrfectCare!");
 
         // Route to appropriate page based on intent
-        const redirectPath = getRedirectPath(selectedIntent);
-        router.push(redirectPath);
+        router.replace(getOnboardingRedirectPath(selectedIntent));
       }
     } catch (error) {
       console.error("Error completing onboarding:", error);
@@ -132,7 +126,7 @@ export default function OnboardingPage() {
         toast.success("Let's explore!");
 
         // Explorers go to dashboard
-        router.push("/dashboard");
+        router.replace(getOnboardingRedirectPath(null));
       }
     } catch (error) {
       console.error("Error skipping onboarding:", error);

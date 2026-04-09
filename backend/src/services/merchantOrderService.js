@@ -1,6 +1,7 @@
 import Order, { isValidObjectId } from "../models/Order.js";
 import Product from "../models/Product.js";
 import inAppNotificationService from "./inAppNotificationService.js";
+import { getCommissionBreakdown } from "../utils/commission.js";
 
 const formatOrderStatus = (status) =>
   status ? status.charAt(0).toUpperCase() + status.slice(1) : "Updated";
@@ -51,10 +52,11 @@ const merchantOrderService = {
       const merchantItems = order.items.filter((item) =>
         productIdSet.has(item.productId.toString()),
       );
-      const merchantTotal = merchantItems.reduce(
+      const merchantGrossTotal = merchantItems.reduce(
         (sum, item) => sum + item.priceSnapshot * item.quantity,
         0,
       );
+      const commission = getCommissionBreakdown(merchantGrossTotal);
 
       return {
         _id: order._id,
@@ -66,7 +68,10 @@ const merchantOrderService = {
           phone: order.userId?.phone,
         },
         items: merchantItems,
-        merchantTotal,
+        merchantTotal: commission.merchantNet,
+        merchantGrossTotal: commission.gross,
+        platformCommission: commission.platformCommission,
+        commissionRate: commission.commissionRate,
         fullTotal: order.totalAmount,
         status: order.status,
         paymentMethod: order.paymentMethod,

@@ -5,7 +5,7 @@ import serviceProviderAnalyticsController from "../controllers/serviceProviderAn
 import marketplaceAnalyticsController from "../controllers/marketplaceAnalyticsController.js";
 import merchantOrderController from "../controllers/merchantOrderController.js";
 import { auth, requireVerified, requireRole } from "../middlewares/auth.js";
-import { ADMIN, SUPER_ADMIN } from "../constants/roles.js";
+import { ADMIN } from "../constants/roles.js";
 import { uploadProfileImage } from "../utils/file.js";
 
 const providerRouter = express.Router();
@@ -25,7 +25,7 @@ providerRouter.get("/", serviceProviderController.getProviders);
 providerRouter.get(
   "/me",
   auth,
-  requireRole(ADMIN, SUPER_ADMIN),
+  requireRole(ADMIN),
   serviceProviderController.getMyProvider,
 );
 
@@ -33,7 +33,7 @@ providerRouter.get(
 providerRouter.get(
   "/me/analytics",
   auth,
-  requireRole(ADMIN, SUPER_ADMIN),
+  requireRole(ADMIN),
   serviceProviderAnalyticsController.getMyAnalytics,
 );
 
@@ -41,7 +41,7 @@ providerRouter.get(
 providerRouter.get(
   "/me/marketplace-analytics",
   auth,
-  requireRole(ADMIN, SUPER_ADMIN),
+  requireRole(ADMIN),
   marketplaceAnalyticsController.getMarketplaceAnalytics,
 );
 
@@ -49,7 +49,7 @@ providerRouter.get(
 providerRouter.get(
   "/me/orders",
   auth,
-  requireRole(ADMIN, SUPER_ADMIN),
+  requireRole(ADMIN),
   merchantOrderController.getMerchantOrders,
 );
 
@@ -58,7 +58,7 @@ providerRouter.put(
   "/me/orders/:orderId/status",
   auth,
   requireVerified,
-  requireRole(ADMIN, SUPER_ADMIN),
+  requireRole(ADMIN),
   merchantOrderController.updateOrderStatus,
 );
 
@@ -70,7 +70,7 @@ providerRouter.post(
   "/",
   auth,
   requireVerified,
-  requireRole(ADMIN, SUPER_ADMIN),
+  requireRole(ADMIN),
   providerUpload,
   serviceProviderController.createProvider,
 );
@@ -80,7 +80,7 @@ providerRouter.put(
   "/me",
   auth,
   requireVerified,
-  requireRole(ADMIN, SUPER_ADMIN),
+  requireRole(ADMIN),
   providerUpload,
   serviceProviderController.updateProvider,
 );
@@ -90,7 +90,7 @@ providerRouter.delete(
   "/me",
   auth,
   requireVerified,
-  requireRole(ADMIN, SUPER_ADMIN),
+  requireRole(ADMIN),
   serviceProviderController.deleteProvider,
 );
 
@@ -99,7 +99,7 @@ providerRouter.put(
   "/me/services/:optionId/image",
   auth,
   requireVerified,
-  requireRole(ADMIN, SUPER_ADMIN),
+  requireRole(ADMIN),
   uploadProfileImage.single("image"),
   serviceProviderController.uploadServiceOptionImage,
 );
@@ -116,7 +116,7 @@ bookingRouter.get("/my", auth, bookingController.getUserBookings);
 bookingRouter.get(
   "/provider",
   auth,
-  requireRole(ADMIN, SUPER_ADMIN),
+  requireRole(ADMIN),
   bookingController.getProviderBookings,
 );
 
@@ -130,7 +130,7 @@ bookingRouter.get("/:id", auth, bookingController.getBookingById);
 bookingRouter.put(
   "/:id/confirm",
   auth,
-  requireRole(ADMIN, SUPER_ADMIN),
+  requireRole(ADMIN),
   bookingController.confirmBooking,
 );
 
@@ -138,7 +138,7 @@ bookingRouter.put(
 bookingRouter.put(
   "/:id/reject",
   auth,
-  requireRole(ADMIN, SUPER_ADMIN),
+  requireRole(ADMIN),
   bookingController.rejectBooking,
 );
 
@@ -149,7 +149,7 @@ bookingRouter.put("/:id/cancel", auth, bookingController.cancelBooking);
 bookingRouter.put(
   "/:id/complete",
   auth,
-  requireRole(ADMIN, SUPER_ADMIN),
+  requireRole(ADMIN),
   bookingController.completeBooking,
 );
 

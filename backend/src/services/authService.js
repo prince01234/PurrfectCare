@@ -8,6 +8,27 @@ import config from "../config/config.js";
 
 const generateOtp = () => String(crypto.randomInt(100000, 1000000));
 
+const buildFrontendUrl = (path, query = {}) => {
+  const baseUrl = config.frontendUrl;
+  if (!baseUrl) return "";
+
+  const queryString = new URLSearchParams(
+    Object.entries(query).reduce((acc, [key, value]) => {
+      if (value !== undefined && value !== null && value !== "") {
+        acc[key] = String(value);
+      }
+      return acc;
+    }, {}),
+  ).toString();
+
+  const normalizedBase = baseUrl.replace(/\/$/, "");
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+
+  return queryString
+    ? `${normalizedBase}${normalizedPath}?${queryString}`
+    : `${normalizedBase}${normalizedPath}`;
+};
+
 const createVerificationRecord = async (userId) => {
   const verificationToken = crypto.randomUUID();
   const otp = generateOtp();
@@ -52,6 +73,7 @@ const login = async (data) => {
     _id: user._id,
     name: user.name,
     email: user.email,
+    roles: user.roles,
     isVerified: user.isVerified,
     hasCompletedOnboarding: user.hasCompletedOnboarding,
     userIntent: user.userIntent,
@@ -76,6 +98,11 @@ const registerUser = async (userData) => {
     registeredUser._id,
   );
 
+  const verificationUrl = buildFrontendUrl("/verify-email", {
+    userId: registeredUser._id,
+    token: verificationToken,
+  });
+
   await sendEmail(registeredUser.email, {
     subject: "Verify your account",
     body: `
@@ -88,13 +115,20 @@ const registerUser = async (userData) => {
       </head>
       <body>
         <p>Hello ${registeredUser.name},</p>
-        <p>Please verify your account using the OTP below or click the link:</p>
+        <p>Please verify your account using the OTP below.</p>
         <p style="font-size: 20px; font-weight: bold; letter-spacing: 2px;">${otp}</p>
+        ${
+          verificationUrl
+            ? `<p>Or click the link below:</p>
         <p>
-          <a href="${config.appUrl}/verify-email?userId=${registeredUser._id}&token=${verificationToken}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+          <a href="${verificationUrl}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
             Verify Account
           </a>
         </p>
+        <p>If the button does not work, copy and paste this URL into your browser:</p>
+        <p>${verificationUrl}</p>`
+            : ""
+        }
         <p>This link will expire in 1 hour.</p>
         <p>If you did not create this account, you can ignore this email.</p>
       </body>
@@ -114,6 +148,11 @@ const forgotPassword = async (email) => {
   if (!user) return;
 
   const { token, otp } = await createResetRecord(user._id);
+
+  const resetUrl = buildFrontendUrl("/reset-password", {
+    userId: user._id,
+    token,
+  });
 
   await sendEmail(email, {
     subject: "Reset your password",
@@ -177,15 +216,24 @@ const forgotPassword = async (email) => {
           </div>
           <div class="content">
             <p>Hello ${user.name},</p>
-            <p>We received a request to reset your password for your PurrfectCare account. Use the OTP below or click the button to reset your password:</p>
+            <p>We received a request to reset your password for your PurrfectCare account. Use the OTP below.</p>
             <p style="font-size: 20px; font-weight: bold; letter-spacing: 2px;">${otp}</p>
-            <a href="${config.appUrl}/reset-password?userId=${user._id}&token=${token}" class="button">Reset Password</a>
+            ${
+              resetUrl
+                ? `<p>Or click the button to reset your password:</p>
+            <a href="${resetUrl}" class="button">Reset Password</a>`
+                : ""
+            }
             <p>If you did not request a password reset, please ignore this email. Your password will remain unchanged.</p>
             <p>This link will expire in a hour for security reasons.</p>
           </div>
           <div class="footer">
-            <p>If you're having trouble clicking the button, copy and paste the URL below into your web browser:</p>
-            <p>${config.appUrl}/reset-password?userId=${user._id}&token=${token}</p>
+            ${
+              resetUrl
+                ? `<p>If you're having trouble clicking the button, copy and paste the URL below into your web browser:</p>
+            <p>${resetUrl}</p>`
+                : ""
+            }
             <p>&copy; 2026 PurrfectCare. All rights reserved.</p>
           </div>
         </div>
@@ -245,6 +293,36 @@ const resetPassword = async ({ userId, token, email, otp, newPassword }) => {
   await ResetPassword.findByIdAndUpdate(data._id, { isUsed: true });
 
   return { message: "Password reset successfully." };
+};
+
+const changePassword = async (userId, currentPassword, newPassword) => {
+  const user = await User.findById(userId).select("+password");
+
+  if (!user) {
+    throw { statusCode: 404, message: "User not found" };
+  }
+
+  if (!user.password) {
+    throw {
+      statusCode: 400,
+      message:
+        "Password is not set for this account. Use reset password to set one.",
+    };
+  }
+
+  const isCurrentPasswordValid = bcrypt.compareSync(
+    currentPassword,
+    user.password,
+  );
+
+  if (!isCurrentPasswordValid) {
+    throw { statusCode: 400, message: "Current password is incorrect." };
+  }
+
+  const hashedPassword = bcrypt.hashSync(newPassword, 10);
+  await User.findByIdAndUpdate(userId, { password: hashedPassword });
+
+  return { message: "Password changed successfully." };
 };
 
 const verifyResetOtp = async (email, otp) => {
@@ -350,6 +428,11 @@ const resendVerification = async (email) => {
 
   const { verificationToken, otp } = await createVerificationRecord(user._id);
 
+  const verificationUrl = buildFrontendUrl("/verify-email", {
+    userId: user._id,
+    token: verificationToken,
+  });
+
   await sendEmail(user.email, {
     subject: "Verify your account",
     body: `
@@ -362,13 +445,20 @@ const resendVerification = async (email) => {
       </head>
       <body>
         <p>Hello ${user.name},</p>
-        <p>Please verify your account using the OTP below or click the link:</p>
+        <p>Please verify your account using the OTP below.</p>
         <p style="font-size: 20px; font-weight: bold; letter-spacing: 2px;">${otp}</p>
+        ${
+          verificationUrl
+            ? `<p>Or click the link below:</p>
         <p>
-          <a href="${config.appUrl}/verify-email?userId=${user._id}&token=${verificationToken}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+          <a href="${verificationUrl}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
             Verify Account
           </a>
         </p>
+        <p>If the button does not work, copy and paste this URL into your browser:</p>
+        <p>${verificationUrl}</p>`
+            : ""
+        }
         <p>This link will expire in 1 hour.</p>
         <p>If you did not create this account, you can ignore this email.</p>
       </body>
@@ -384,6 +474,7 @@ export default {
   login,
   forgotPassword,
   resetPassword,
+  changePassword,
   verifyResetOtp,
   verifyAccount,
   resendVerification,

@@ -1,5 +1,9 @@
 import Booking from "../models/Booking.js";
 import mongoose from "mongoose";
+import {
+  getCommissionBreakdown,
+  PLATFORM_COMMISSION_RATE,
+} from "../utils/commission.js";
 
 const serviceProviderAnalyticsService = {
   /**
@@ -22,16 +26,28 @@ const serviceProviderAnalyticsService = {
       status: { $in: ["completed", "confirmed"] },
     }).populate("payment");
 
-    // Total revenue from completed bookings
-    const totalRevenue = completedBookings.reduce(
+    // Provider revenue is net after 10% platform fee
+    const totalGrossRevenue = completedBookings.reduce(
       (sum, b) => sum + getBookingAmount(b),
       0,
     );
 
+    const totalRevenue = completedBookings.reduce((sum, b) => {
+      const gross = getBookingAmount(b);
+      return sum + getCommissionBreakdown(gross).merchantNet;
+    }, 0);
+
+    const totalPlatformCommission = completedBookings.reduce((sum, b) => {
+      const gross = getBookingAmount(b);
+      return sum + getCommissionBreakdown(gross).platformCommission;
+    }, 0);
+
     // Revenue by payment method
     const revenueByMethod = completedBookings.reduce(
       (acc, booking) => {
-        const amount = getBookingAmount(booking);
+        const amount = getCommissionBreakdown(
+          getBookingAmount(booking),
+        ).merchantNet;
         const method = booking.paymentMethod || "cod";
         if (method === "khalti") {
           acc.khalti += amount;
@@ -46,7 +62,10 @@ const serviceProviderAnalyticsService = {
     // Revenue by service option name
     const revenueByService = completedBookings.reduce((acc, booking) => {
       const name = booking.serviceOption?.name || "General";
-      acc[name] = (acc[name] || 0) + getBookingAmount(booking);
+      const amount = getCommissionBreakdown(
+        getBookingAmount(booking),
+      ).merchantNet;
+      acc[name] = (acc[name] || 0) + amount;
       return acc;
     }, {});
 
@@ -75,7 +94,7 @@ const serviceProviderAnalyticsService = {
       (b) => new Date(b.createdAt) >= thisMonthStart,
     );
     const thisMonthRevenue = thisMonthCompleted.reduce(
-      (sum, b) => sum + getBookingAmount(b),
+      (sum, b) => sum + getCommissionBreakdown(getBookingAmount(b)).merchantNet,
       0,
     );
 
@@ -92,7 +111,7 @@ const serviceProviderAnalyticsService = {
       return d >= lastMonthStart && d <= lastMonthEnd;
     });
     const lastMonthRevenue = lastMonthCompleted.reduce(
-      (sum, b) => sum + getBookingAmount(b),
+      (sum, b) => sum + getCommissionBreakdown(getBookingAmount(b)).merchantNet,
       0,
     );
 
@@ -122,7 +141,9 @@ const serviceProviderAnalyticsService = {
             bookings: 0,
           };
         }
-        monthlyMap[key].revenue += getBookingAmount(b);
+        monthlyMap[key].revenue += getCommissionBreakdown(
+          getBookingAmount(b),
+        ).merchantNet;
         monthlyMap[key].bookings += 1;
       });
 
@@ -150,6 +171,8 @@ const serviceProviderAnalyticsService = {
     return {
       overview: {
         totalRevenue,
+        totalGrossRevenue,
+        totalPlatformCommission,
         totalBookings: completedBookings.length,
         pendingBookings,
         upcomingBookings,
@@ -164,7 +187,11 @@ const serviceProviderAnalyticsService = {
         id: b._id,
         date: b.date || b.startDate,
         serviceName: b.serviceOption?.name || "General",
-        amount: getBookingAmount(b),
+        amount: getCommissionBreakdown(getBookingAmount(b)).merchantNet,
+        grossAmount: getBookingAmount(b),
+        platformCommission: getCommissionBreakdown(getBookingAmount(b))
+          .platformCommission,
+        commissionRate: PLATFORM_COMMISSION_RATE,
         paymentMethod: b.paymentMethod || "cod",
         status: b.status,
         customer: {

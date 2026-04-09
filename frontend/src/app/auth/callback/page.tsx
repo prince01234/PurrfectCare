@@ -1,10 +1,11 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import toast from "react-hot-toast";
 import { apiRequest } from "@/lib/api";
+import { getPostLoginRedirectPath } from "@/lib/onboarding";
 
 interface User {
   _id: string;
@@ -13,6 +14,8 @@ interface User {
   roles?: "USER" | "PET_OWNER" | "ADMIN" | "SUPER_ADMIN";
   isVerified?: boolean;
   hasCompletedOnboarding?: boolean;
+  userIntent?: "pet_owner" | "looking_to_adopt" | "exploring" | null;
+  authToken?: string;
 }
 
 function AuthCallbackContent() {
@@ -20,8 +23,14 @@ function AuthCallbackContent() {
   const searchParams = useSearchParams();
   const { login } = useAuth();
   const [isProcessing, setIsProcessing] = useState(true);
+  const hasProcessedRef = useRef(false);
 
   useEffect(() => {
+    if (hasProcessedRef.current) {
+      return;
+    }
+    hasProcessedRef.current = true;
+
     const processOAuthToken = async () => {
       try {
         const provider = searchParams.get("provider");
@@ -46,15 +55,15 @@ function AuthCallbackContent() {
         const userData = response.data;
 
         // Login user with data from /api/auth/me
-        // Token is stored in httpOnly cookie, no need to handle it here
-        login(userData, null);
+        // Pass authToken if returned (for cross-origin cookie fallback)
+        login(userData, userData.authToken || null);
 
         toast.success(`Welcome ${userData.name}! Logged in via ${provider}`);
 
         if (!userData.hasCompletedOnboarding) {
           router.push("/onboarding");
         } else {
-          router.push("/dashboard");
+          router.push(getPostLoginRedirectPath(userData.roles));
         }
       } catch (err) {
         console.error("OAuth callback error:", err);

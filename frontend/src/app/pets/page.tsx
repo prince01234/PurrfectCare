@@ -182,9 +182,9 @@ export default function PetsPage() {
       )}
 
       {pets.length > 0 && (
-        <div className="px-5 pb-8 space-y-5">
+        <div className="px-5 pb-8 space-y-3">
           {pets.map((pet) => (
-            <Link href={`/pets/${pet._id}`} key={pet._id}>
+            <Link href={`/pets/${pet._id}`} key={pet._id} className="block">
               <motion.div
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}

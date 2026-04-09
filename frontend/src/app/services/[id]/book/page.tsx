@@ -509,75 +509,87 @@ export default function BookAppointmentPage() {
 
             {isPetSitting ? (
               /* Pet sitting: simple date range pickers */
-              <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-3 shadow-sm">
+              <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4 shadow-sm">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                  <label className="flex items-center gap-2 text-xs font-bold text-gray-700 mb-2.5 uppercase tracking-wide">
+                    <Calendar className="w-3.5 h-3.5 text-teal-600" />
                     Start Date
                   </label>
-                  <input
-                    type="date"
-                    value={
-                      selectedDate
-                        ? selectedDate.toISOString().split("T")[0]
-                        : ""
-                    }
-                    onChange={(e) => {
-                      setSelectedDate(
-                        e.target.value ? new Date(e.target.value) : null,
-                      );
-                    }}
-                    min={
-                      new Date(today.getTime() + 86400000)
-                        .toISOString()
-                        .split("T")[0]
-                    }
-                    className="w-full p-3 rounded-xl border border-gray-200 text-sm focus:border-teal-400 focus:outline-none"
-                  />
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={
+                        selectedDate
+                          ? selectedDate.toISOString().split("T")[0]
+                          : ""
+                      }
+                      onChange={(e) => {
+                        setSelectedDate(
+                          e.target.value ? new Date(e.target.value) : null,
+                        );
+                      }}
+                      min={
+                        new Date(today.getTime() + 86400000)
+                          .toISOString()
+                          .split("T")[0]
+                      }
+                      className="w-full p-4 rounded-xl border-2 border-gray-200 text-sm font-semibold text-gray-700 focus:border-teal-500 focus:outline-none focus:ring-4 focus:ring-teal-50 transition-all bg-gradient-to-br from-gray-50 to-white hover:shadow-md"
+                    />
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                  <label className="flex items-center gap-2 text-xs font-bold text-gray-700 mb-2.5 uppercase tracking-wide">
+                    <Calendar className="w-3.5 h-3.5 text-teal-600" />
                     End Date
                   </label>
-                  <input
-                    type="date"
-                    value={selectedEndDate}
-                    onChange={(e) => setSelectedEndDate(e.target.value)}
-                    min={
-                      selectedDate
-                        ? selectedDate.toISOString().split("T")[0]
-                        : new Date(today.getTime() + 86400000)
-                            .toISOString()
-                            .split("T")[0]
-                    }
-                    className="w-full p-3 rounded-xl border border-gray-200 text-sm focus:border-teal-400 focus:outline-none"
-                  />
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={selectedEndDate}
+                      onChange={(e) => setSelectedEndDate(e.target.value)}
+                      min={
+                        selectedDate
+                          ? selectedDate.toISOString().split("T")[0]
+                          : new Date(today.getTime() + 86400000)
+                              .toISOString()
+                              .split("T")[0]
+                      }
+                      className="w-full p-4 rounded-xl border-2 border-gray-200 text-sm font-semibold text-gray-700 focus:border-teal-500 focus:outline-none focus:ring-4 focus:ring-teal-50 transition-all bg-gradient-to-br from-gray-50 to-white hover:shadow-md"
+                    />
+                  </div>
                 </div>
               </div>
             ) : (
               /* Normal: week calendar + time slots */
               <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
                 {/* Calendar header */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
                   <button
                     onClick={() => shiftWeek(-1)}
-                    className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="p-2 hover:bg-white rounded-xl transition-all active:scale-95 shadow-sm border border-gray-100"
+                    aria-label="Previous week"
                   >
-                    <ChevronLeft className="w-4 h-4 text-gray-500" />
+                    <ChevronLeft className="w-4 h-4 text-gray-600" />
                   </button>
-                  <span className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-teal-500" />
-                    {monthLabel}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <div className="bg-teal-50 p-1.5 rounded-lg">
+                      <Calendar className="w-4 h-4 text-teal-600" />
+                    </div>
+                    <span className="text-sm font-bold text-gray-800 tracking-tight">
+                      {monthLabel}
+                    </span>
+                  </div>
                   <button
                     onClick={() => shiftWeek(1)}
-                    className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="p-2 hover:bg-white rounded-xl transition-all active:scale-95 shadow-sm border border-gray-100"
+                    aria-label="Next week"
                   >
-                    <ChevronRight className="w-4 h-4 text-gray-500" />
+                    <ChevronRight className="w-4 h-4 text-gray-600" />
                   </button>
                 </div>
 
                 {/* Day cells */}
-                <div className="grid grid-cols-7 gap-1 px-3 py-3">
+                <div className="grid grid-cols-7 gap-2 px-4 py-5 bg-gray-50/30">
                   {weekDays.map((d, i) => {
                     const isPast = d <= today;
                     const dayName = DAY_NAME_MAP[d.getDay()];
@@ -599,22 +611,30 @@ export default function BookAppointmentPage() {
                           setSelectedDate(d);
                           setSelectedTime(null);
                         }}
-                        className={`flex flex-col items-center py-2.5 rounded-xl transition-all ${
+                        className={`flex flex-col items-center justify-center py-3 px-2 rounded-2xl transition-all duration-200 min-h-[68px] aspect-square ${
                           isSelected
-                            ? "bg-teal-500 text-white shadow-md shadow-teal-500/30"
+                            ? "bg-gradient-to-br from-teal-500 to-teal-600 text-white shadow-lg shadow-teal-500/40 scale-105"
                             : isToday && !disabled
-                              ? "text-teal-600 bg-teal-50 font-bold"
+                              ? "text-teal-600 bg-teal-50 font-bold ring-2 ring-teal-200 shadow-sm"
                               : disabled
-                                ? "text-gray-300 cursor-not-allowed"
-                                : "text-gray-700 hover:bg-gray-50"
-                        }`}
+                                ? "text-gray-300 cursor-not-allowed bg-white opacity-50"
+                                : "text-gray-700 hover:bg-white hover:shadow-md hover:scale-105 bg-white shadow-sm border border-gray-100"
+                        } ${!disabled && "active:scale-95"}`}
                       >
                         <span
-                          className={`text-[10px] font-semibold uppercase mb-0.5 ${isSelected ? "text-white/80" : ""}`}
+                          className={`text-[9px] font-bold uppercase tracking-wide mb-1 text-center leading-tight ${
+                            isSelected 
+                              ? "text-white/90" 
+                              : isToday && !disabled 
+                                ? "text-teal-600" 
+                                : "text-gray-500"
+                          }`}
                         >
                           {SHORT_DAY[i]}
                         </span>
-                        <span className="text-sm font-bold">{d.getDate()}</span>
+                        <span className={`text-base font-bold text-center leading-none ${isSelected ? "text-white" : ""}`}>
+                          {d.getDate()}
+                        </span>
                       </button>
                     );
                   })}
@@ -625,31 +645,45 @@ export default function BookAppointmentPage() {
                   <motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
-                    className="border-t border-gray-100 px-4 py-3"
+                    transition={{ duration: 0.3, ease: "easeOut" }}
+                    className="border-t border-gray-100 px-4 py-5 bg-white"
                   >
-                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                      Available Times
-                    </p>
-                    {timeSlots.length === 0 ? (
-                      <p className="text-xs text-gray-400 text-center py-3">
-                        No available slots this day
+                    <div className="flex items-center gap-2 mb-4">
+                      <Clock className="w-4 h-4 text-teal-600" />
+                      <p className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        Available Times
                       </p>
+                    </div>
+                    {timeSlots.length === 0 ? (
+                      <div className="text-center py-6">
+                        <div className="inline-flex items-center justify-center w-12 h-12 bg-gray-100 rounded-full mb-2">
+                          <Clock className="w-5 h-5 text-gray-400" />
+                        </div>
+                        <p className="text-sm text-gray-500 font-medium">
+                          No available slots this day
+                        </p>
+                      </div>
                     ) : (
-                      <div className="flex flex-wrap gap-2">
+                      <div className="grid grid-cols-2 gap-3">
                         {timeSlots.map((slot) => (
                           <button
                             key={slot.time}
                             disabled={!slot.available}
                             onClick={() => setSelectedTime(slot.time)}
-                            className={`py-2 px-3.5 rounded-xl text-xs font-semibold transition-all ${
+                            className={`flex items-center justify-center py-4 px-4 rounded-xl text-sm font-bold transition-all duration-200 min-h-[52px] ${
                               selectedTime === slot.time
-                                ? "bg-teal-500 text-white shadow-md shadow-teal-500/30"
+                                ? "bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-lg shadow-teal-500/40 scale-105"
                                 : slot.available
-                                  ? "bg-gray-50 text-gray-700 hover:bg-teal-50 hover:text-teal-700 border border-gray-100"
-                                  : "bg-gray-50 text-gray-300 cursor-not-allowed line-through"
+                                  ? "bg-gradient-to-br from-gray-50 to-white text-gray-700 hover:from-teal-50 hover:to-teal-50/50 hover:text-teal-700 hover:shadow-md hover:scale-105 border border-gray-200 active:scale-95"
+                                  : "bg-gray-50 text-gray-400 cursor-not-allowed opacity-60 line-through"
                             }`}
                           >
-                            {slot.label}
+                            <div className="flex items-center justify-center gap-1.5">
+                              {selectedTime === slot.time && (
+                                <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+                              )}
+                              <span className="text-center leading-none">{slot.label}</span>
+                            </div>
                           </button>
                         ))}
                       </div>

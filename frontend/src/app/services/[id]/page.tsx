@@ -1,12 +1,17 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import Image from "next/image";
-import { motion } from "framer-motion";
+import { motion, PanInfo } from "framer-motion";
 import { useRouter, useParams } from "next/navigation";
 import {
   ArrowLeft,
-  Heart,
   MapPin,
   Phone,
   Star,
@@ -16,6 +21,8 @@ import {
   ChevronRight,
   ChevronLeft,
   Calendar,
+  Share2,
+  Check,
 } from "lucide-react";
 import MobileLayout from "@/components/layout/MobileLayout";
 import { serviceProviderApi, bookingApi } from "@/lib/api/service";
@@ -120,6 +127,9 @@ export default function ProviderDetailPage() {
 
   const [provider, setProvider] = useState<ServiceProvider | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [activePhoto, setActivePhoto] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [justCopied, setJustCopied] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("services");
   const [isStartingChat, setIsStartingChat] = useState(false);
@@ -136,6 +146,7 @@ export default function ProviderDetailPage() {
   const [selectedPetIds, setSelectedPetIds] = useState<string[]>([]);
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const userCoords = useGeolocation();
 
   const selectedOption =
@@ -159,6 +170,85 @@ export default function ProviderDetailPage() {
           provider.longitude,
         )
       : null;
+
+  const galleryImages = useMemo(() => {
+    if (!provider) return [];
+
+    const images = [
+      provider.coverImage,
+      provider.image,
+      ...(provider.serviceOptions || []).map((option) => option.image || null),
+    ].filter((img): img is string => Boolean(img));
+
+    return [...new Set(images)];
+  }, [provider]);
+
+  useEffect(() => {
+    setActivePhoto(0);
+  }, [provider?._id, galleryImages.length]);
+
+  const nextPhoto = useCallback(() => {
+    if (galleryImages.length > 0) {
+      setActivePhoto((p) => (p + 1) % galleryImages.length);
+    }
+  }, [galleryImages.length]);
+
+  const prevPhoto = useCallback(() => {
+    if (galleryImages.length > 0) {
+      setActivePhoto(
+        (p) => (p - 1 + galleryImages.length) % galleryImages.length,
+      );
+    }
+  }, [galleryImages.length]);
+
+  const handleDragEnd = useCallback(
+    (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+      if (galleryImages.length <= 1) return;
+
+      const threshold = 50;
+      const velocity = info.velocity.x;
+      const offset = info.offset.x;
+
+      if (offset < -threshold || velocity < -500) {
+        nextPhoto();
+      } else if (offset > threshold || velocity > 500) {
+        prevPhoto();
+      }
+
+      setIsDragging(false);
+    },
+    [galleryImages.length, nextPhoto, prevPhoto],
+  );
+
+  const handleShare = async () => {
+    const shareData = {
+      title: provider?.name || "Pet Service",
+      text: `Check out ${provider?.name || "this provider"} on PurrfectCare`,
+      url: window.location.href,
+    };
+
+    try {
+      if (navigator.share && navigator.canShare?.(shareData)) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(window.location.href);
+        setJustCopied(true);
+        toast.success("Link copied to clipboard!");
+        setTimeout(() => setJustCopied(false), 2000);
+      }
+    } catch (err) {
+      if ((err as Error).name !== "AbortError") {
+        try {
+          await navigator.clipboard.writeText(window.location.href);
+          setJustCopied(true);
+          toast.success("Link copied to clipboard!");
+          setTimeout(() => setJustCopied(false), 2000);
+        } catch {
+          toast.error("Failed to share");
+        }
+      }
+    }
+  };
 
   useEffect(() => {
     const fetchProvider = async () => {
@@ -476,21 +566,29 @@ export default function ProviderDetailPage() {
     <MobileLayout showBottomNav={false}>
       <div className="min-h-screen bg-gray-50 pb-6">
         {/* Cover Image / Hero */}
-        <div className="relative h-[45vh] min-h-64 bg-gray-200">
-          {provider.coverImage ? (
-            <Image
-              src={provider.coverImage}
-              alt={provider.name}
-              fill
-              className="object-cover"
-            />
-          ) : provider.image ? (
-            <Image
-              src={provider.image}
-              alt={provider.name}
-              fill
-              className="object-cover"
-            />
+        <div
+          className="relative h-[45vh] min-h-64 bg-gray-200 overflow-hidden"
+          ref={containerRef}
+        >
+          {galleryImages.length > 0 ? (
+            <motion.div
+              className="relative w-full h-full cursor-grab active:cursor-grabbing"
+              drag={galleryImages.length > 1 ? "x" : false}
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.2}
+              onDragStart={() => setIsDragging(true)}
+              onDragEnd={handleDragEnd}
+            >
+              <Image
+                src={galleryImages[activePhoto]}
+                alt={provider.name}
+                fill
+                className="object-cover pointer-events-none select-none"
+                sizes="(max-width: 32rem) 100vw, 32rem"
+                priority
+                draggable={false}
+              />
+            </motion.div>
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-teal-100 to-emerald-100">
               <span className="text-8xl opacity-40">
@@ -510,6 +608,9 @@ export default function ProviderDetailPage() {
           {/* Top gradient */}
           <div className="absolute inset-x-0 top-0 h-24 bg-linear-to-b from-black/30 to-transparent pointer-events-none" />
 
+          {/* Bottom gradient for photo indicators */}
+          <div className="absolute inset-x-0 bottom-0 h-20 bg-linear-to-t from-black/30 to-transparent pointer-events-none" />
+
           {/* Back button */}
           <button
             onClick={() => router.back()}
@@ -518,12 +619,24 @@ export default function ProviderDetailPage() {
             <ArrowLeft className="w-5 h-5 text-gray-700" />
           </button>
 
-          {/* Right actions */}
-          <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
-            <button className="w-10 h-10 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm">
-              <Heart className="w-5 h-5 text-pink-400" />
-            </button>
-          </div>
+          {/* Photo indicators */}
+          {galleryImages.length > 1 && (
+            <div className="absolute bottom-4 left-0 right-0 z-20">
+              <div className="flex justify-center items-center gap-2">
+                {galleryImages.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActivePhoto(i)}
+                    className={`rounded-full transition-all duration-300 ${
+                      i === activePhoto
+                        ? "w-7 h-2 bg-white shadow-lg"
+                        : "w-2 h-2 bg-white/70 hover:bg-white"
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Provider Info Card — overlaps the cover */}
@@ -593,9 +706,6 @@ export default function ProviderDetailPage() {
                 <MessageCircle className="w-4 h-4" />
                 Chat
               </button>
-              <button className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center">
-                <Heart className="w-4.5 h-4.5 text-amber-500" />
-              </button>
               {provider.phone && (
                 <a
                   href={`tel:${provider.phone}`}
@@ -604,6 +714,16 @@ export default function ProviderDetailPage() {
                   <Phone className="w-4.5 h-4.5 text-blue-500" />
                 </a>
               )}
+              <button
+                onClick={handleShare}
+                className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center"
+              >
+                {justCopied ? (
+                  <Check className="w-4.5 h-4.5 text-green-600" />
+                ) : (
+                  <Share2 className="w-4.5 h-4.5 text-slate-600" />
+                )}
+              </button>
             </div>
           </div>
         </motion.div>

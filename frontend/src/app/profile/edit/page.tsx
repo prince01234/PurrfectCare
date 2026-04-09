@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Camera, Loader } from "lucide-react";
+import { ArrowLeft, Camera, Loader, Lock, User } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
 import { userApi } from "@/lib/api";
@@ -16,14 +16,38 @@ export default function EditProfilePage() {
   const [isUploadingPicture, setIsUploadingPicture] = useState(false);
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    name: user?.name || "",
+    name: "",
+    phoneNumber: "",
+    profileAddress: "",
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Initialize form data when user loads
+  useEffect(() => {
+    if (!user?._id) return;
+
+    const fetchProfile = async () => {
+      const res = await userApi.getUserById(user._id);
+      if (!res.data) return;
+
+      if (res.data.profileImage) {
+        setProfilePicture(res.data.profileImage);
+      }
+
+      setFormData({
+        name: res.data.name || user.name || "",
+        phoneNumber: res.data.phoneNumber || "",
+        profileAddress: res.data.contactAddress || "",
+      });
+    };
+
+    fetchProfile();
+  }, [user]);
 
   if (authLoading || !user) {
     return (
       <MobileLayout>
-        <div className="flex items-center justify-center h-screen bg-gray-50">
+        <div className="flex items-center justify-center h-screen bg-slate-50">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-teal-500" />
         </div>
       </MobileLayout>
@@ -94,7 +118,9 @@ export default function EditProfilePage() {
     try {
       setIsLoading(true);
       const result = await userApi.updateUser(user._id, {
-        name: formData.name,
+        name: formData.name.trim(),
+        phoneNumber: formData.phoneNumber.trim(),
+        contactAddress: formData.profileAddress.trim(),
       });
 
       if (result.error) {
@@ -103,7 +129,9 @@ export default function EditProfilePage() {
       }
 
       updateUser({
-        name: formData.name,
+        name: formData.name.trim(),
+        phoneNumber: formData.phoneNumber.trim(),
+        contactAddress: formData.profileAddress.trim(),
       });
       toast.success("Profile updated successfully");
       router.back();
@@ -117,15 +145,15 @@ export default function EditProfilePage() {
 
   return (
     <MobileLayout>
-      <div className="min-h-screen bg-gray-50 pb-20">
+      <div className="min-h-screen bg-slate-50 pb-20">
         {/* Header */}
-        <div className="sticky top-0 z-40 bg-white border-b border-gray-100">
+        <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-gray-100">
           <div className="max-w-lg mx-auto px-4 py-4 flex items-center gap-3">
             <button
               onClick={() => router.back()}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-5 h-5 text-gray-700" />
             </button>
             <h1 className="text-lg font-bold text-gray-900">Edit Profile</h1>
           </div>
@@ -136,7 +164,7 @@ export default function EditProfilePage() {
           {/* Profile Picture */}
           <div className="mb-8 flex flex-col items-center">
             <div className="relative mb-4">
-              <div className="w-24 h-24 rounded-full bg-gray-200 border-4 border-white shadow-md flex items-center justify-center overflow-hidden">
+              <div className="w-28 h-28 rounded-full bg-white border-4 border-white shadow-lg flex items-center justify-center overflow-hidden">
                 {profilePicture ? (
                   <Image
                     src={profilePicture}
@@ -145,21 +173,21 @@ export default function EditProfilePage() {
                     className="object-cover"
                   />
                 ) : (
-                  <span className="text-4xl font-bold text-gray-400">
-                    {user.name?.charAt(0).toUpperCase() || "U"}
-                  </span>
+                  <div className="w-full h-full bg-linear-to-br from-slate-100 to-slate-200 flex items-center justify-center">
+                    <User className="w-12 h-12 text-slate-500" />
+                  </div>
                 )}
               </div>
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploadingPicture}
-                className="absolute -bottom-1 -right-1 w-7 h-7 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 rounded-full border-2 border-white flex items-center justify-center shadow-sm transition-colors"
+                className="absolute -bottom-1 -right-1 w-9 h-9 bg-slate-700 hover:bg-slate-800 disabled:bg-gray-400 rounded-full border-3 border-white flex items-center justify-center shadow-md transition-colors"
               >
                 {isUploadingPicture ? (
-                  <Loader className="w-3.5 h-3.5 text-white animate-spin" />
+                  <Loader className="w-4 h-4 text-white animate-spin" />
                 ) : (
-                  <Camera className="w-3.5 h-3.5 text-white" />
+                  <Camera className="w-4 h-4 text-white" />
                 )}
               </button>
               <input
@@ -171,13 +199,13 @@ export default function EditProfilePage() {
               />
             </div>
             <p className="text-xs text-gray-500 text-center">
-              Click the camera icon to change your profile picture
+              Tap the camera icon to change your photo
             </p>
           </div>
 
           {/* Name */}
-          <div className="mb-8">
-            <label className="block text-sm font-semibold text-gray-900 mb-3">
+          <div className="mb-6">
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
               Full Name
             </label>
             <input
@@ -185,41 +213,86 @@ export default function EditProfilePage() {
               name="name"
               value={formData.name}
               onChange={handleChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent text-gray-900 placeholder-gray-400"
+              className="w-full px-4 py-3.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent text-gray-900 placeholder-gray-400 bg-white"
               placeholder="Enter your full name"
+            />
+          </div>
+
+          {/* Phone Number */}
+          <div className="mb-6">
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
+              Phone Number
+            </label>
+            <input
+              type="tel"
+              name="phoneNumber"
+              value={formData.phoneNumber}
+              onChange={handleChange}
+              className="w-full px-4 py-3.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent text-gray-900 placeholder-gray-400 bg-white"
+              placeholder="Enter your phone number"
+            />
+          </div>
+
+          {/* Address */}
+          <div className="mb-6">
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
+              Address
+            </label>
+            <input
+              type="text"
+              name="profileAddress"
+              value={formData.profileAddress}
+              onChange={handleChange}
+              className="w-full px-4 py-3.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent text-gray-900 placeholder-gray-400 bg-white"
+              placeholder="Enter your address"
             />
           </div>
 
           {/* Email (Read-only) */}
           <div className="mb-8">
-            <label className="block text-sm font-semibold text-gray-900 mb-3">
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
               Email Address
             </label>
             <input
               type="email"
               value={user.email}
               disabled
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
+              className="w-full px-4 py-3.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-500 cursor-not-allowed"
             />
-            <p className="text-xs text-gray-500 mt-2">
+            <p className="text-xs text-gray-400 mt-2">
               Email cannot be changed. Contact support for assistance.
             </p>
+            <button
+              type="button"
+              onClick={() => router.push("/profile/change-password")}
+              className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              Change Password
+            </button>
           </div>
 
           {/* Submit Button */}
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-teal-500 hover:bg-teal-600 disabled:bg-gray-400 text-white py-3 rounded-lg font-semibold transition-colors mb-3"
+            className="w-full bg-slate-800 hover:bg-slate-900 disabled:bg-gray-300 text-white py-3.5 rounded-xl font-semibold transition-colors shadow-sm mb-3"
           >
-            {isLoading ? "Saving..." : "Save Changes"}
+            {isLoading ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader className="w-4 h-4 animate-spin" />
+                Saving...
+              </span>
+            ) : (
+              "Save Changes"
+            )}
           </button>
 
           {/* Cancel Button */}
           <button
             type="button"
             onClick={() => router.back()}
-            className="w-full bg-gray-200 hover:bg-gray-300 text-gray-900 py-3 rounded-lg font-semibold transition-colors"
+            className="w-full bg-white hover:bg-gray-50 text-gray-700 py-3.5 rounded-xl font-semibold transition-colors border border-gray-200"
           >
             Cancel
           </button>

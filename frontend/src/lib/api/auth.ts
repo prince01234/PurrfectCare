@@ -6,6 +6,7 @@ export const authApi = {
       _id: string;
       name: string;
       email: string;
+      roles: "USER" | "PET_OWNER" | "ADMIN" | "SUPER_ADMIN";
       authToken: string;
       isVerified: boolean;
       hasCompletedOnboarding: boolean;
@@ -85,4 +86,18 @@ export const authApi = {
       method: "POST",
       body: JSON.stringify({ email, otp, password, confirmPassword }),
     }),
+
+  changePassword: (
+    currentPassword: string,
+    password: string,
+    confirmPassword: string,
+  ) =>
+    apiRequest<{ message: string }>(
+      "/api/auth/change-password",
+      {
+        method: "POST",
+        body: JSON.stringify({ currentPassword, password, confirmPassword }),
+      },
+      true,
+    ),
 };

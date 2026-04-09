@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
@@ -16,11 +16,19 @@ import SocialButton from "@/components/ui/SocialButton";
 import { loginSchema, LoginFormData } from "@/lib/validations";
 import { authApi, API_URL } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { getPostLoginRedirectPath } from "@/lib/onboarding";
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, user, isLoading: authLoading } = useAuth();
+
+  // Redirect authenticated users away from login page
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.replace(getPostLoginRedirectPath(user.roles));
+    }
+  }, [user, authLoading, router]);
 
   const handleSocialLogin = (provider: "google" | "facebook" | "github") => {
     window.location.href = `${API_URL}/api/auth/${provider}`;
@@ -51,6 +59,7 @@ export default function LoginPage() {
           _id: response.data._id,
           name: response.data.name,
           email: response.data.email,
+          roles: response.data.roles,
           isVerified: response.data.isVerified,
           hasCompletedOnboarding: response.data.hasCompletedOnboarding,
           userIntent: response.data.userIntent as
@@ -67,7 +76,7 @@ export default function LoginPage() {
       if (!response.data.hasCompletedOnboarding) {
         router.push("/onboarding");
       } else {
-        router.push("/dashboard");
+        router.push(getPostLoginRedirectPath(response.data.roles));
       }
     }
 

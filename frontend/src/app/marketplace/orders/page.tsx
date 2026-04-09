@@ -97,15 +97,15 @@ export default function OrdersListPage() {
           <h1 className="text-xl font-bold text-gray-900">My Orders</h1>
         </div>
 
-        {/* Tabs */}
-        <div className="px-5 pb-3 flex gap-2 overflow-x-auto hide-scrollbar">
+        {/* Filter Pills - wrapped */}
+        <div className="px-5 pb-3 flex flex-wrap gap-2">
           {TABS.map((tab) => (
             <button
               key={tab.value}
               onClick={() => setActiveTab(tab.value)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
                 activeTab === tab.value
-                  ? "bg-teal-500 text-white"
+                  ? "bg-slate-800 text-white shadow-sm"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >

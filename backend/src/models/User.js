@@ -82,6 +82,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    mygc: {
+      type: String,
+      default: null,
+      trim: true,
+    },
 
     //for address
     address: {

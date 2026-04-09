@@ -1,7 +1,7 @@
 import express from "express";
 import productController from "../controllers/productController.js";
 import { auth, requireVerified, requireRole } from "../middlewares/auth.js";
-import { ADMIN, SUPER_ADMIN } from "../constants/roles.js";
+import { ADMIN } from "../constants/roles.js";
 import { uploadProductImages } from "../utils/file.js";
 
 const router = express.Router();
@@ -16,7 +16,7 @@ router.get("/:id", productController.getProductById);
 router.get(
   "/admin/list",
   auth,
-  requireRole(ADMIN, SUPER_ADMIN),
+  requireRole(ADMIN),
   productController.getAdminProducts,
 );
 
@@ -25,7 +25,7 @@ router.post(
   "/admin",
   auth,
   requireVerified,
-  requireRole(ADMIN, SUPER_ADMIN),
+  requireRole(ADMIN),
   uploadProductImages.array("images", 5),
   productController.createProduct,
 );
@@ -35,7 +35,7 @@ router.put(
   "/admin/:id",
   auth,
   requireVerified,
-  requireRole(ADMIN, SUPER_ADMIN),
+  requireRole(ADMIN),
   uploadProductImages.array("images", 5),
   productController.updateProduct,
 );
@@ -45,7 +45,7 @@ router.delete(
   "/admin/:id",
   auth,
   requireVerified,
-  requireRole(ADMIN, SUPER_ADMIN),
+  requireRole(ADMIN),
   productController.deleteProduct,
 );
 
