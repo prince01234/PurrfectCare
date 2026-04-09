@@ -14,8 +14,6 @@ import {
   Lock,
   Package,
   Heart,
-  CreditCard,
-  Bell,
   HelpCircle,
   ChevronRight,
   Plus,
@@ -28,6 +26,7 @@ import {
   MapPin,
   Mail,
   User,
+  Settings,
 } from "lucide-react";
 
 import { useAuth } from "@/context/AuthContext";
@@ -249,20 +248,12 @@ export default function ProfilePage() {
       iconColor: "text-rose-500",
     },
     {
-      label: "Payment Methods",
-      icon: CreditCard,
-      href: "/payment-methods",
+      label: "Manage Account",
+      icon: Settings,
+      href: "/profile/settings",
       badge: null,
       iconBg: "bg-violet-50",
       iconColor: "text-violet-600",
-    },
-    {
-      label: "Notifications",
-      icon: Bell,
-      href: "/notifications",
-      badge: null,
-      iconBg: "bg-amber-50",
-      iconColor: "text-amber-600",
     },
     {
       label: "Help & Support",
@@ -332,16 +323,9 @@ export default function ProfilePage() {
 
           {/* Profile Info */}
           <div className="pt-14 pb-6 px-5 text-center">
-            {/* Name - centered with edit button positioned absolutely */}
+            {/* Name */}
             <div className="relative mb-1">
               <h2 className="text-xl font-bold text-gray-900">{user.name}</h2>
-              <button
-                onClick={() => router.push("/profile/edit")}
-                className="absolute top-1/2 -translate-y-1/2 -right-1 sm:right-auto sm:left-[calc(50%+60px)] p-1.5 text-gray-400 hover:text-teal-500 hover:bg-teal-50 rounded-lg transition-colors"
-                aria-label="Edit profile"
-              >
-                <Edit2 className="w-4 h-4" />
-              </button>
             </div>
             <div className="flex items-center justify-center gap-1.5 text-gray-500">
               <Mail className="w-3.5 h-3.5" />

@@ -102,4 +102,13 @@ export const userApi = {
       };
     }
   },
+
+  deleteUser: (userId: string) =>
+    apiRequest<{ message: string }>(
+      `/api/users/${userId}`,
+      {
+        method: "DELETE",
+      },
+      true,
+    ),
 };
