@@ -33,6 +33,23 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [showFullDescription, setShowFullDescription] = useState(false);
+  const [reviews, setReviews] = useState<
+    Array<{
+      score: number;
+      comment: string | null;
+      buyerName: string;
+      ratedAt: string | null;
+    }>
+  >([]);
+  const [reviewsTotal, setReviewsTotal] = useState(0);
+
+  const formatPrice = (amount: number) => {
+    return `NPR ${amount.toLocaleString("en-NP", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  };
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -40,6 +57,16 @@ export default function ProductDetailPage() {
       const res = await productApi.getProductById(productId);
       if (res.data) {
         setProduct(res.data);
+        setQuantity(1);
+        setActiveImageIndex(0);
+        setShowFullDescription(false);
+
+        // Fetch reviews
+        const reviewRes = await productApi.getProductReviews(productId, 5);
+        if (reviewRes.data) {
+          setReviews(reviewRes.data.reviews);
+          setReviewsTotal(reviewRes.data.total);
+        }
       } else {
         toast.error("Product not found");
         router.back();
@@ -57,12 +84,17 @@ export default function ProductDetailPage() {
     }
     if (!product) return;
 
+    if (product.stockQty !== null && product.stockQty <= 0) {
+      toast.error("This product is out of stock");
+      return;
+    }
+
     setIsAdding(true);
     const success = await addItem(product._id, quantity);
     if (success) {
-      toast.success(`${product.name} added to cart`);
+      toast.success(`${product.name} added to cart`, { duration: 2000 });
     } else {
-      toast.error("Failed to add item");
+      toast.error("Failed to add item", { duration: 2000 });
     }
     setIsAdding(false);
   };
@@ -83,24 +115,34 @@ export default function ProductDetailPage() {
 
   if (!product) return null;
 
+  const isOutOfStock = product.stockQty !== null && product.stockQty <= 0;
+  const canIncreaseQuantity =
+    product.stockQty === null || quantity < product.stockQty;
+  const description = product.description?.trim() || "";
+  const isLongDescription = description.length > 260;
+  const visibleDescription =
+    isLongDescription && !showFullDescription
+      ? `${description.slice(0, 260).trimEnd()}...`
+      : description;
+
   return (
     <MobileLayout showBottomNav={false}>
       {/* Header */}
-      <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-sm">
-        <div className="flex items-center justify-between px-5 py-4">
+      <div className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-gray-100">
+        <div className="flex items-center justify-between px-4 py-3">
           <button
             onClick={() => router.back()}
-            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100"
+            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100"
           >
             <ArrowLeft className="w-5 h-5 text-gray-700" />
           </button>
           <button
             onClick={() => router.push("/marketplace/cart")}
-            className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100"
+            className="relative w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100"
           >
             <ShoppingCart className="w-5 h-5 text-gray-600" />
             {itemCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-4.5 h-4.5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+              <span className="absolute -top-0.5 -right-0.5 min-w-5 h-5 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
                 {itemCount > 9 ? "9+" : itemCount}
               </span>
             )}
@@ -109,7 +151,7 @@ export default function ProductDetailPage() {
       </div>
 
       {/* Product image */}
-      <div className="relative aspect-square bg-gray-50 mx-5 rounded-2xl overflow-hidden">
+      <div className="relative aspect-square bg-gray-50 mx-4 mt-3 rounded-2xl overflow-hidden">
         {product.images.length > 0 ? (
           <Image
             src={product.images[activeImageIndex] || product.images[0]}
@@ -117,22 +159,29 @@ export default function ProductDetailPage() {
             fill
             className="object-cover"
             sizes="(max-width: 768px) 100vw, 400px"
+            loading="eager"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-300">
             <Package className="w-16 h-16" />
           </div>
         )}
+
+        {product.images.length > 1 && (
+          <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[11px] font-medium px-2 py-1 rounded-full">
+            {activeImageIndex + 1}/{product.images.length}
+          </div>
+        )}
       </div>
 
       {/* Image thumbnails */}
       {product.images.length > 1 && (
-        <div className="flex gap-2 px-5 mt-3 overflow-x-auto hide-scrollbar">
+        <div className="flex gap-2 px-4 mt-3 overflow-x-auto hide-scrollbar">
           {product.images.map((img, i) => (
             <button
               key={i}
               onClick={() => setActiveImageIndex(i)}
-              className={`w-14 h-14 rounded-xl overflow-hidden shrink-0 border-2 transition-colors ${
+              className={`w-12 h-12 rounded-xl overflow-hidden shrink-0 border-2 transition-colors ${
                 i === activeImageIndex
                   ? "border-teal-500"
                   : "border-transparent"
@@ -141,8 +190,8 @@ export default function ProductDetailPage() {
               <Image
                 src={img}
                 alt={`${product.name} ${i + 1}`}
-                width={56}
-                height={56}
+                width={48}
+                height={48}
                 className="w-full h-full object-cover"
               />
             </button>
@@ -151,93 +200,182 @@ export default function ProductDetailPage() {
       )}
 
       {/* Product info */}
-      <div className="px-5 mt-5 pb-32">
-        <div className="flex items-center gap-1 mb-1">
-          <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-          <span className="text-sm text-gray-500">
-            {(4 + Math.random()).toFixed(1)}
-          </span>
+      <div className="px-4 mt-4 pb-36 space-y-3.5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Star
+              className={`w-4 h-4 shrink-0 ${(product.ratingCount || 0) > 0 ? "text-amber-400 fill-amber-400" : "text-gray-300"}`}
+            />
+            {(product.ratingCount || 0) > 0 ? (
+              <span className="text-sm text-gray-600 truncate">
+                {(product.ratingAverage || 0).toFixed(1)} ·{" "}
+                {product.ratingCount} rating
+                {(product.ratingCount || 0) > 1 ? "s" : ""}
+              </span>
+            ) : (
+              <span className="text-sm text-gray-400">No ratings yet</span>
+            )}
+          </div>
+
+          {product.stockQty !== null && (
+            <span
+              className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${
+                isOutOfStock
+                  ? "bg-red-50 text-red-600"
+                  : "bg-emerald-50 text-emerald-600"
+              }`}
+            >
+              {isOutOfStock ? "Out of stock" : `${product.stockQty} in stock`}
+            </span>
+          )}
         </div>
 
-        <h1 className="text-2xl font-bold text-gray-900">{product.name}</h1>
-        <p className="text-sm text-gray-400 capitalize mt-0.5">
-          {product.category}
+        <h1 className="text-2xl font-semibold text-gray-900 leading-tight">
+          {product.name}
+        </h1>
+
+        <p className="text-sm text-gray-500 capitalize">
+          {product.category} · {product.petType}
           {product.brand && ` · ${product.brand}`}
         </p>
 
-        <p className="text-2xl font-bold text-orange-500 mt-3">
-          NPR {product.price.toFixed(2)}
-        </p>
-
-        {product.stockQty !== null && (
-          <p
-            className={`text-xs mt-1 ${
-              product.stockQty > 0 ? "text-green-500" : "text-red-500"
-            }`}
-          >
-            {product.stockQty > 0
-              ? `${product.stockQty} in stock`
-              : "Out of stock"}
+        <div className="pt-1">
+          <p className="text-[34px] font-black text-orange-500 leading-none">
+            {formatPrice(product.price)}
           </p>
-        )}
+          <p className="text-xs text-gray-500 mt-1">Price per item</p>
+        </div>
 
-        {product.description && (
-          <div className="mt-5">
-            <h3 className="text-sm font-semibold text-gray-900 mb-1">
-              Description
-            </h3>
-            <p className="text-sm text-gray-500 leading-relaxed">
-              {product.description}
-            </p>
+        <div className="bg-white border border-gray-100 rounded-2xl p-4">
+          <h3 className="text-sm font-semibold text-gray-900 mb-2">
+            Description
+          </h3>
+          {description ? (
+            <>
+              <p className="text-sm text-gray-600 leading-7 whitespace-pre-line">
+                {visibleDescription}
+              </p>
+              {isLongDescription && (
+                <button
+                  onClick={() => setShowFullDescription((prev) => !prev)}
+                  className="mt-2.5 text-sm font-semibold text-teal-600"
+                >
+                  {showFullDescription ? "Show less" : "Read more"}
+                </button>
+              )}
+            </>
+          ) : (
+            <p className="text-sm text-gray-500">No description available.</p>
+          )}
+        </div>
+
+        {/* Customer Reviews */}
+        {reviewsTotal > 0 && (
+          <div className="bg-white border border-gray-100 rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-900">
+                Customer Reviews
+              </h3>
+              <span className="text-xs text-gray-500">
+                {reviewsTotal} review{reviewsTotal > 1 ? "s" : ""}
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              {reviews.map((review, idx) => (
+                <div
+                  key={idx}
+                  className="pb-3 border-b border-gray-100 last:border-0 last:pb-0"
+                >
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <div className="flex gap-0.5">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`w-3.5 h-3.5 ${
+                            i < review.score
+                              ? "text-amber-400 fill-amber-400"
+                              : "text-gray-200"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-xs text-gray-500">
+                      {review.buyerName}
+                    </span>
+                  </div>
+                  {review.comment && (
+                    <p className="text-xs text-gray-600 line-clamp-2">
+                      {review.comment}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
 
       {/* Bottom action bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-5 py-4 z-40">
-        <div className="max-w-lg mx-auto flex items-center gap-4">
-          {/* Quantity selector */}
-          <div className="flex items-center gap-3 bg-gray-100 rounded-xl px-3 py-2">
-            <button
-              onClick={() => setQuantity(Math.max(1, quantity - 1))}
-              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-200"
-            >
-              <Minus className="w-4 h-4 text-gray-600" />
-            </button>
-            <span className="text-sm font-semibold text-gray-900 w-6 text-center">
-              {quantity}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 pt-3 pb-4 z-40">
+        <div className="max-w-lg mx-auto space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-500">Subtotal ({quantity})</span>
+            <span className="text-sm font-bold text-gray-900">
+              {formatPrice(product.price * quantity)}
             </span>
-            <button
-              onClick={() => setQuantity(quantity + 1)}
-              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-200"
-            >
-              <Plus className="w-4 h-4 text-gray-600" />
-            </button>
           </div>
 
-          {/* Message Seller */}
-          {product.createdBy && (
-            <StartChatButton
-              recipientId={product.createdBy}
-              context="marketplace"
-              contextRef={product._id}
-              label=""
-              variant="icon"
-              className="w-12 h-12 bg-gray-100 text-gray-600 hover:bg-gray-200"
-            />
-          )}
+          <div className="flex items-center gap-2.5">
+            {/* Quantity selector */}
+            <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1.5">
+              <button
+                onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
+                disabled={quantity <= 1 || isOutOfStock}
+                className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-200 disabled:opacity-40"
+              >
+                <Minus className="w-4 h-4 text-gray-600" />
+              </button>
+              <span className="text-sm font-semibold text-gray-900 w-8 text-center">
+                {quantity}
+              </span>
+              <button
+                onClick={() =>
+                  setQuantity((prev) => (canIncreaseQuantity ? prev + 1 : prev))
+                }
+                disabled={!canIncreaseQuantity || isOutOfStock}
+                className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-200 disabled:opacity-40"
+              >
+                <Plus className="w-4 h-4 text-gray-600" />
+              </button>
+            </div>
 
-          {/* Add to cart */}
-          <button
-            onClick={handleAddToCart}
-            disabled={
-              isAdding || (product.stockQty !== null && product.stockQty <= 0)
-            }
-            className="flex-1 bg-teal-500 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-teal-600 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <ShoppingCart className="w-5 h-5" />
-            {isAdding ? "Adding..." : "Add to Cart"}
-          </button>
+            {/* Message Seller */}
+            {product.createdBy && (
+              <StartChatButton
+                recipientId={product.createdBy}
+                context="marketplace"
+                contextRef={product._id}
+                label=""
+                variant="icon"
+                className="w-11 h-11 bg-gray-100 text-gray-600 hover:bg-gray-200"
+              />
+            )}
+
+            {/* Add to cart */}
+            <button
+              onClick={handleAddToCart}
+              disabled={isAdding || isOutOfStock}
+              className="flex-1 bg-teal-500 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-teal-600 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ShoppingCart className="w-5 h-5" />
+              {isOutOfStock
+                ? "Out of Stock"
+                : isAdding
+                  ? "Adding..."
+                  : "Add to Cart"}
+            </button>
+          </div>
         </div>
       </div>
     </MobileLayout>

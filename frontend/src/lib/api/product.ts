@@ -19,6 +19,8 @@ export interface Product {
   stockQty: number | null;
   isActive: boolean;
   createdBy: string;
+  ratingAverage?: number;
+  ratingCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -96,6 +98,17 @@ export const productApi = {
   },
 
   getProductById: (id: string) => apiRequest<Product>(`/api/products/${id}`),
+
+  getProductReviews: (id: string, limit: number = 5) =>
+    apiRequest<{
+      reviews: Array<{
+        score: number;
+        comment: string | null;
+        buyerName: string;
+        ratedAt: string | null;
+      }>;
+      total: number;
+    }>(`/api/products/${id}/reviews?limit=${limit}`),
 
   // Admin endpoints
   getAdminProducts: (params?: ProductQueryParams) => {

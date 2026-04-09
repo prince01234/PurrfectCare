@@ -583,6 +583,11 @@ export interface MerchantOrder {
   } | null;
   deliveryAddress: string | null;
   notes: string | null;
+  rating: {
+    score: number;
+    comment: string | null;
+    ratedAt: string;
+  } | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -79,6 +79,7 @@ const merchantOrderService = {
           : null,
         deliveryAddress: order.deliveryAddress,
         notes: order.notes,
+        rating: order.rating || null,
         createdAt: order.createdAt,
         updatedAt: order.updatedAt,
       };

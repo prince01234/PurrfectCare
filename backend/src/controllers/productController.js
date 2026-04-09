@@ -117,6 +117,23 @@ const getAdminProducts = async (req, res) => {
   }
 };
 
+// Get product reviews (Public)
+const getProductReviews = async (req, res) => {
+  try {
+    const { limit = 5 } = req.query;
+    const result = await productService.getProductReviews(
+      req.params.id,
+      Math.min(parseInt(limit), 20),
+    );
+    res.status(200).send(result);
+  } catch (error) {
+    console.error("Error fetching product reviews:", error);
+    const statusCode = error.statusCode || 500;
+    const message = error.message || "Failed to fetch product reviews";
+    res.status(statusCode).send({ error: message });
+  }
+};
+
 export default {
   getProducts,
   getProductById,
@@ -124,4 +141,5 @@ export default {
   updateProduct,
   deleteProduct,
   getAdminProducts,
+  getProductReviews,
 };

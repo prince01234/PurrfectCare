@@ -32,31 +32,41 @@ type OrderStatus = MerchantOrder["status"];
 
 const STATUS_CONFIG: Record<
   OrderStatus,
-  { label: string; color: string; bg: string; icon: typeof Clock }
+  {
+    label: string;
+    color: string;
+    bg: string;
+    icon: typeof Clock;
+    step?: number;
+  }
 > = {
   pending: {
     label: "Pending",
     color: "text-amber-600",
     bg: "bg-amber-50",
     icon: Clock,
+    step: 0,
   },
   confirmed: {
     label: "Confirmed",
     color: "text-blue-600",
     bg: "bg-blue-50",
     icon: CheckCircle2,
+    step: 1,
   },
   processing: {
     label: "Processing",
     color: "text-purple-600",
     bg: "bg-purple-50",
     icon: Package,
+    step: 2,
   },
   delivered: {
     label: "Delivered",
     color: "text-emerald-600",
     bg: "bg-emerald-50",
     icon: Truck,
+    step: 3,
   },
   cancelled: {
     label: "Cancelled",
@@ -160,6 +170,18 @@ export default function MerchantOrdersPage() {
       hour: "numeric",
       minute: "2-digit",
     });
+
+  const getEstimatedDelivery = (createdAt: string) => {
+    const orderDate = new Date(createdAt);
+    const deliveryDate = new Date(
+      orderDate.getTime() + 3 * 24 * 60 * 60 * 1000,
+    );
+    return deliveryDate.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
 
   if (loading && orders.length === 0) {
     return (
@@ -336,70 +358,119 @@ export default function MerchantOrdersPage() {
                           className="overflow-hidden"
                         >
                           <div className="px-4 pb-4 space-y-3 border-t border-gray-50 pt-3">
-                            {/* Status Timeline */}
-                            <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-                              {(
-                                [
-                                  "pending",
-                                  "confirmed",
-                                  "processing",
-                                  "delivered",
-                                ] as OrderStatus[]
-                              ).map((s, i) => {
-                                const stepConfig = STATUS_CONFIG[s];
-                                const StepIcon = stepConfig.icon;
-                                const steps = [
-                                  "pending",
-                                  "confirmed",
-                                  "processing",
-                                  "delivered",
-                                ];
-                                const currentIdx = steps.indexOf(order.status);
-                                const stepIdx = i;
-                                const isCompleted =
-                                  order.status !== "cancelled" &&
-                                  stepIdx <= currentIdx;
-                                const isCancelled =
-                                  order.status === "cancelled";
-
-                                return (
-                                  <div
-                                    key={s}
-                                    className="flex items-center gap-1.5"
-                                  >
-                                    <div
-                                      className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
-                                        isCancelled
-                                          ? "bg-gray-100"
-                                          : isCompleted
-                                            ? "bg-teal-500 text-white"
-                                            : "bg-gray-100 text-gray-400"
-                                      }`}
-                                    >
-                                      <StepIcon className="w-3.5 h-3.5" />
-                                    </div>
-                                    {i < 3 && (
-                                      <div
-                                        className={`w-6 h-0.5 ${
-                                          isCancelled
-                                            ? "bg-gray-200"
-                                            : stepIdx < currentIdx
-                                              ? "bg-teal-500"
-                                              : "bg-gray-200"
-                                        }`}
-                                      />
-                                    )}
-                                  </div>
-                                );
-                              })}
-                              {order.status === "cancelled" && (
-                                <div className="ml-2 flex items-center gap-1">
-                                  <XCircle className="w-4 h-4 text-red-500" />
-                                  <span className="text-xs text-red-500 font-medium">
-                                    Cancelled
-                                  </span>
+                            {/* Estimated Delivery Section */}
+                            {order.status !== "cancelled" && (
+                              <div className="bg-linear-to-r from-teal-50 to-emerald-50 rounded-xl p-3 flex items-center justify-between">
+                                <div>
+                                  <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                                    Estimated Delivery
+                                  </p>
+                                  <p className="text-sm font-bold text-teal-600 mt-0.5">
+                                    {getEstimatedDelivery(order.createdAt)}
+                                  </p>
                                 </div>
-                              )}
+                                <span className="px-2.5 py-1 bg-white text-teal-600 text-xs font-semibold rounded-full border border-teal-200">
+                                  On Track
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Order Timeline */}
+                            <div className="space-y-2">
+                              <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                                Delivery Timeline
+                              </p>
+                              <div className="space-y-2">
+                                {(
+                                  [
+                                    "pending",
+                                    "confirmed",
+                                    "processing",
+                                    "delivered",
+                                  ] as OrderStatus[]
+                                ).map((s, i) => {
+                                  const stepConfig = STATUS_CONFIG[s];
+                                  const StepIcon = stepConfig.icon;
+                                  const steps = [
+                                    "pending",
+                                    "confirmed",
+                                    "processing",
+                                    "delivered",
+                                  ];
+                                  const currentIdx = steps.indexOf(
+                                    order.status,
+                                  );
+                                  const stepIdx = i;
+                                  const isCompleted =
+                                    order.status !== "cancelled" &&
+                                    stepIdx <= currentIdx;
+                                  const isCurrent =
+                                    order.status !== "cancelled" &&
+                                    stepIdx === currentIdx;
+                                  const isCancelled =
+                                    order.status === "cancelled";
+
+                                  return (
+                                    <div
+                                      key={s}
+                                      className="flex items-center gap-3"
+                                    >
+                                      <div
+                                        className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 font-semibold text-xs transition-colors ${
+                                          isCancelled
+                                            ? "bg-gray-100 text-gray-400"
+                                            : isCompleted
+                                              ? "bg-emerald-500 text-white"
+                                              : isCurrent
+                                                ? "bg-teal-100 text-teal-600 ring-2 ring-teal-300"
+                                                : "bg-gray-100 text-gray-400"
+                                        }`}
+                                      >
+                                        <StepIcon className="w-4 h-4" />
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p
+                                          className={`text-sm font-medium ${
+                                            isCancelled
+                                              ? "text-gray-400"
+                                              : isCompleted
+                                                ? "text-emerald-600"
+                                                : isCurrent
+                                                  ? "text-teal-600"
+                                                  : "text-gray-400"
+                                          }`}
+                                        >
+                                          {stepConfig.label}
+                                        </p>
+                                        <p className="text-xs text-gray-400 mt-0.5">
+                                          {stepIdx === 0
+                                            ? "Order placed"
+                                            : stepIdx === 1
+                                              ? "Payment confirmed"
+                                              : stepIdx === 2
+                                                ? "Being prepared"
+                                                : "On its way"}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                                {order.status === "cancelled" && (
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-full flex items-center justify-center bg-red-100 text-red-500 shrink-0">
+                                      <XCircle className="w-4 h-4" />
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-medium text-red-600">
+                                        Cancelled
+                                      </p>
+                                      <p className="text-xs text-gray-400 mt-0.5">
+                                        This order has been cancelled
+                                      </p>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
                             </div>
 
                             {/* Order Items */}
