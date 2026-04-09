@@ -213,7 +213,7 @@ export const petApi = {
   ) => {
     const fd = new FormData();
     Object.entries(data).forEach(([k, v]) => {
-      if (v !== undefined && v !== null && v !== "") fd.append(k, v);
+      if (v !== undefined && v !== null) fd.append(k, v);
     });
     if (replacePhotos) fd.append("replacePhotos", "true");
     if (photos) {
@@ -268,11 +268,57 @@ export const petApi = {
       true,
     ),
 
+  createVaccination: (
+    petId: string,
+    data: {
+      vaccineName: string;
+      dateGiven: string;
+      nextDueDate?: string;
+      veterinarian?: string;
+      clinic?: string;
+      notes?: string;
+    },
+  ) =>
+    apiRequest<Vaccination>(
+      `/api/pets/${petId}/health/vaccinations`,
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers: { "Content-Type": "application/json" },
+      },
+      true,
+    ),
+
   // ---- Medical Records ----
   getMedicalRecords: (petId: string) =>
     apiRequest<MedicalRecord[]>(
       `/api/pets/${petId}/health/medical-records`,
       {},
+      true,
+    ),
+
+  createMedicalRecord: (
+    petId: string,
+    data: {
+      visitDate: string;
+      reasonForVisit: string;
+      vetName?: string;
+      clinic?: string;
+      weight?: number;
+      temperature?: number;
+      symptoms?: string[];
+      treatment?: string;
+      followUpDate?: string;
+      notes?: string;
+    },
+  ) =>
+    apiRequest<MedicalRecord>(
+      `/api/pets/${petId}/health/medical-records`,
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers: { "Content-Type": "application/json" },
+      },
       true,
     ),
 
@@ -354,13 +400,19 @@ export const petApi = {
     ),
 
   // Snooze reminder
-  snoozeReminder: (petId: string, reminderId: string, snoozeDays?: number) =>
+  snoozeReminder: (petId: string, reminderId: string, snoozeMinutes?: number) =>
     apiRequest<Reminder>(
       `/api/pets/${petId}/health/reminders/${reminderId}/snooze`,
       {
         method: "PATCH",
-        body: snoozeDays ? JSON.stringify({ snoozeDays }) : undefined,
-        headers: snoozeDays ? { "Content-Type": "application/json" } : {},
+        body:
+          typeof snoozeMinutes === "number"
+            ? JSON.stringify({ minutes: snoozeMinutes })
+            : undefined,
+        headers:
+          typeof snoozeMinutes === "number"
+            ? { "Content-Type": "application/json" }
+            : {},
       },
       true,
     ),

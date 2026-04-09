@@ -483,7 +483,7 @@ export default function AdminProductsPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4"
+            className="fixed inset-0 z-70 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4"
             onClick={() => {
               setShowCreateModal(false);
               resetForm();
@@ -494,19 +494,23 @@ export default function AdminProductsPage() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 100, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg bg-white rounded-2xl p-6 max-h-[90vh] overflow-y-auto"
+              className="w-full max-w-lg h-dvh sm:h-auto sm:max-h-[90vh] bg-white rounded-none sm:rounded-2xl p-4 sm:p-6 overflow-y-auto"
             >
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-gray-900">Add Product</h2>
-                <button
-                  onClick={() => {
-                    setShowCreateModal(false);
-                    resetForm();
-                  }}
-                  className="p-2 hover:bg-gray-100 rounded-lg"
-                >
-                  <X className="w-5 h-5 text-gray-400" />
-                </button>
+              <div className="sticky top-0 z-10 bg-white pt-1 pb-3 mb-4 border-b border-gray-100">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-bold text-gray-900">
+                    Add Product
+                  </h2>
+                  <button
+                    onClick={() => {
+                      setShowCreateModal(false);
+                      resetForm();
+                    }}
+                    className="p-2 hover:bg-gray-100 rounded-lg"
+                  >
+                    <X className="w-5 h-5 text-gray-400" />
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-4">
@@ -515,6 +519,16 @@ export default function AdminProductsPage() {
                   <label className="text-xs font-semibold text-gray-500 uppercase mb-2 block">
                     Product Images (Max 5)
                   </label>
+                  {imagePreviews.length < 5 && (
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="mb-3 w-full rounded-xl border-2 border-dashed border-gray-300 py-3 flex items-center justify-center gap-2 text-sm text-gray-500 hover:border-teal-400 hover:text-teal-600 transition-colors"
+                    >
+                      <Camera className="w-4 h-4" />
+                      Tap to upload product images
+                    </button>
+                  )}
+
                   <div className="flex gap-3 flex-wrap">
                     {imagePreviews.map((preview, i) => (
                       <div
@@ -535,15 +549,6 @@ export default function AdminProductsPage() {
                         </button>
                       </div>
                     ))}
-                    {imagePreviews.length < 5 && (
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:border-teal-400 hover:text-teal-500"
-                      >
-                        <Camera className="w-5 h-5" />
-                        <span className="text-[10px] mt-1">Add</span>
-                      </button>
-                    )}
                   </div>
                   <input
                     ref={fileInputRef}
@@ -707,7 +712,7 @@ export default function AdminProductsPage() {
                 </div>
               </div>
 
-              <div className="flex gap-3 mt-6">
+              <div className="sticky bottom-0 bg-white border-t border-gray-100 pt-3 mt-6 flex gap-3">
                 <button
                   onClick={() => {
                     setShowCreateModal(false);
@@ -737,7 +742,7 @@ export default function AdminProductsPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4"
+            className="fixed inset-0 z-70 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4"
             onClick={() => {
               setShowEditModal(false);
               resetForm();
@@ -748,21 +753,23 @@ export default function AdminProductsPage() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 100, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg bg-white rounded-2xl p-6 max-h-[90vh] overflow-y-auto"
+              className="w-full max-w-lg h-dvh sm:h-auto sm:max-h-[90vh] bg-white rounded-none sm:rounded-2xl p-4 sm:p-6 overflow-y-auto"
             >
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-gray-900">
-                  Edit Product
-                </h2>
-                <button
-                  onClick={() => {
-                    setShowEditModal(false);
-                    resetForm();
-                  }}
-                  className="p-2 hover:bg-gray-100 rounded-lg"
-                >
-                  <X className="w-5 h-5 text-gray-400" />
-                </button>
+              <div className="sticky top-0 z-10 bg-white pt-1 pb-3 mb-4 border-b border-gray-100">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-bold text-gray-900">
+                    Edit Product
+                  </h2>
+                  <button
+                    onClick={() => {
+                      setShowEditModal(false);
+                      resetForm();
+                    }}
+                    className="p-2 hover:bg-gray-100 rounded-lg"
+                  >
+                    <X className="w-5 h-5 text-gray-400" />
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-4">
@@ -793,6 +800,15 @@ export default function AdminProductsPage() {
                   <label className="text-xs font-semibold text-gray-500 uppercase mb-2 block">
                     Add New Images
                   </label>
+                  {imagePreviews.length < 5 && (
+                    <button
+                      onClick={() => editFileInputRef.current?.click()}
+                      className="mb-3 w-full rounded-xl border-2 border-dashed border-gray-300 py-3 flex items-center justify-center gap-2 text-sm text-gray-500 hover:border-teal-400 hover:text-teal-600 transition-colors"
+                    >
+                      <Camera className="w-4 h-4" />
+                      Tap to add more images
+                    </button>
+                  )}
                   <div className="flex gap-3 flex-wrap">
                     {imagePreviews.map((preview, i) => (
                       <div
@@ -813,15 +829,6 @@ export default function AdminProductsPage() {
                         </button>
                       </div>
                     ))}
-                    {imagePreviews.length < 5 && (
-                      <button
-                        onClick={() => editFileInputRef.current?.click()}
-                        className="w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:border-teal-400 hover:text-teal-500"
-                      >
-                        <Camera className="w-5 h-5" />
-                        <span className="text-[10px] mt-1">Add</span>
-                      </button>
-                    )}
                   </div>
                   <input
                     ref={editFileInputRef}
@@ -977,7 +984,7 @@ export default function AdminProductsPage() {
                 </div>
               </div>
 
-              <div className="flex gap-3 mt-6">
+              <div className="sticky bottom-0 bg-white border-t border-gray-100 pt-3 mt-6 flex gap-3">
                 <button
                   onClick={() => {
                     setShowEditModal(false);

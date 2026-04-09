@@ -3,22 +3,89 @@ import User from "../models/User.js";
 import uploadFile from "../utils/file.js";
 import { PET_OWNER, USER } from "../constants/roles.js";
 
+const normalizePetData = (data = {}, { allowClearing = false } = {}) => {
+  const normalized = { ...data };
+
+  if (typeof normalized.name === "string") {
+    normalized.name = normalized.name.trim();
+  }
+
+  if (typeof normalized.species === "string") {
+    normalized.species = normalized.species.trim().toLowerCase();
+  }
+
+  if (typeof normalized.gender === "string") {
+    normalized.gender = normalized.gender.trim().toLowerCase();
+  }
+
+  if (typeof normalized.breed === "string") {
+    normalized.breed = normalized.breed.trim();
+    if (allowClearing && normalized.breed === "") {
+      normalized.breed = null;
+    }
+  }
+
+  if (typeof normalized.medicalNotes === "string") {
+    normalized.medicalNotes = normalized.medicalNotes.trim();
+    if (allowClearing && normalized.medicalNotes === "") {
+      normalized.medicalNotes = null;
+    }
+  }
+
+  if (normalized.age === "" && allowClearing) {
+    normalized.age = null;
+  } else if (
+    normalized.age !== undefined &&
+    normalized.age !== null &&
+    normalized.age !== ""
+  ) {
+    const age = Number(normalized.age);
+    if (Number.isNaN(age) || age < 0 || age > 100) {
+      throw { statusCode: 400, message: "Age must be between 0 and 100" };
+    }
+    normalized.age = age;
+  }
+
+  if (normalized.dateOfBirth === "" && allowClearing) {
+    normalized.dateOfBirth = null;
+  } else if (normalized.dateOfBirth) {
+    const dob = new Date(normalized.dateOfBirth);
+    if (Number.isNaN(dob.getTime())) {
+      throw { statusCode: 400, message: "Invalid date of birth format" };
+    }
+
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    if (dob > today) {
+      throw {
+        statusCode: 400,
+        message: "Date of birth cannot be in the future",
+      };
+    }
+
+    normalized.dateOfBirth = dob;
+  }
+
+  return normalized;
+};
+
 const createPet = async (userId, data, files) => {
+  const petData = normalizePetData({ ...data }, { allowClearing: true });
   // Remove userId from body if user tries to set it (security)
-  delete data.userId;
+  delete petData.userId;
 
   // Check if user already has a pet with this name
-  if (data.name) {
+  if (petData.name) {
     const existingPet = await Pet.findOne({
       userId,
-      name: data.name,
+      name: petData.name,
       isDeleted: false,
     });
 
     if (existingPet) {
       throw {
         statusCode: 400,
-        message: `You already have a pet named "${data.name}". You cannot add same pet twice.`,
+        message: `You already have a pet named "${petData.name}". You cannot add same pet twice.`,
       };
     }
   }
@@ -32,7 +99,7 @@ const createPet = async (userId, data, files) => {
 
   // Create pet with authenticated userId
   const pet = await Pet.create({
-    ...data,
+    ...petData,
     userId: userId,
     photos: photoUrls,
   });
@@ -136,8 +203,11 @@ const updatePet = async (petId, userId, body, files) => {
     isDeleted,
     deletedAt,
     photos: existingPhotos,
-    ...updateData
+    replacePhotos: _replacePhotos,
+    ...updateDataRaw
   } = body;
+
+  const updateData = normalizePetData(updateDataRaw, { allowClearing: true });
 
   // Check if user is trying to change pet name to one that already exists
   if (updateData.name && updateData.name !== pet.name) {

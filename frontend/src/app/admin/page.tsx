@@ -18,6 +18,7 @@ import {
   Settings,
   CalendarCheck,
   BarChart3,
+  HeartPulse,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -245,6 +246,17 @@ export default function AdminDashboardPage() {
             href: "/admin/services",
             color: "from-teal-500 to-cyan-500",
           },
+          ...(user?.serviceType === "veterinary"
+            ? [
+                {
+                  label: "Vet Records",
+                  description: "Complete visits and process records",
+                  icon: HeartPulse,
+                  href: "/admin/vet-records",
+                  color: "from-emerald-500 to-teal-500",
+                },
+              ]
+            : []),
           {
             label: "Manage Bookings",
             description: "View & respond to bookings",

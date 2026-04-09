@@ -19,6 +19,7 @@ import {
   Bell,
   LogOut,
   User,
+  HeartPulse,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useNotifications } from "@/context/NotificationCenterContext";
@@ -123,6 +124,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             icon: CalendarCheck,
             href: "/admin/bookings",
           },
+          ...(user?.serviceType === "veterinary"
+            ? [
+                {
+                  label: "Vet Records",
+                  icon: HeartPulse,
+                  href: "/admin/vet-records",
+                },
+              ]
+            : []),
           {
             label: "Analytics",
             icon: BarChart3,
@@ -131,7 +141,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         ]
       : []),
     { label: "Messages", icon: MessageCircle, href: "/admin/messages" },
-    { label: "My Profile", icon: User, href: "/profile" },
+    { label: "Profile", icon: User, href: "/admin/profile" },
   ];
 
   return (
@@ -187,9 +197,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       <div className="p-4">{children}</div>
 
       {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-[0_-2px_10px_rgba(0,0,0,0.06)]">
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-t border-gray-200 shadow-[0_-2px_10px_rgba(0,0,0,0.06)]">
         <div className="max-w-2xl mx-auto">
-          <div className="flex items-stretch justify-around px-1 py-1.5">
+          <div
+            className="grid items-stretch gap-1 px-1.5 py-1.5"
+            style={{
+              gridTemplateColumns: `repeat(${navItems.length}, minmax(0, 1fr))`,
+            }}
+          >
             {navItems.map((item) => {
               const isActive =
                 pathname === item.href ||
@@ -199,7 +214,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex flex-col items-center justify-center gap-0.5 min-w-0 px-1.5 py-1.5 rounded-xl transition-all ${
+                  className={`flex min-w-0 flex-col items-center justify-center gap-0.5 px-1 py-1.5 rounded-xl transition-all ${
                     isActive
                       ? "text-teal-600"
                       : "text-gray-400 hover:text-gray-600"
@@ -215,7 +230,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                     />
                   </div>
                   <span
-                    className={`text-[10px] leading-tight truncate max-w-full ${
+                    className={`text-[9px] leading-tight truncate max-w-full ${
                       isActive ? "font-semibold text-teal-600" : "font-medium"
                     }`}
                   >

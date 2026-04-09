@@ -3,6 +3,8 @@ import ServiceProvider from "../models/ServiceProvider.js";
 import Pet from "../models/Pet.js";
 import Payment from "../models/Payment.js";
 import User from "../models/User.js";
+import Vaccination from "../models/Vaccination.js";
+import MedicalRecord from "../models/MedicalRecord.js";
 import payment from "../utils/payment.js";
 import crypto from "crypto";
 import {
@@ -38,6 +40,116 @@ const getBookingLabel = (booking, provider = null) => {
   }
 
   return provider?.name || "your booking";
+};
+
+const getBookingPetIds = (booking) => {
+  if (!Array.isArray(booking?.petIds)) return [];
+
+  return booking.petIds
+    .map((pet) => (pet?._id ? pet._id.toString() : pet?.toString?.() || null))
+    .filter(Boolean);
+};
+
+const getBookingVaccinationDate = (booking) => {
+  const dateSource = booking?.date || booking?.startDate || booking?.createdAt;
+  const parsed = dateSource ? new Date(dateSource) : new Date();
+
+  if (Number.isNaN(parsed.getTime())) {
+    return new Date();
+  }
+
+  return parsed;
+};
+
+const isVaccinationBooking = (booking, provider) => {
+  if (provider?.serviceType !== "veterinary") return false;
+
+  const haystack = `${booking?.serviceOption?.name || ""} ${booking?.notes || ""}`;
+  return /vaccin/i.test(haystack);
+};
+
+const createVaccinationsFromCompletedBooking = async (booking) => {
+  const provider = booking.providerId;
+
+  if (!isVaccinationBooking(booking, provider)) {
+    return 0;
+  }
+
+  const vaccineName = booking.serviceOption?.name?.trim() || "Vaccination";
+  const dateGiven = getBookingVaccinationDate(booking);
+  const dayStart = new Date(dateGiven);
+  dayStart.setHours(0, 0, 0, 0);
+  const dayEnd = new Date(dayStart);
+  dayEnd.setDate(dayEnd.getDate() + 1);
+
+  let createdCount = 0;
+
+  for (const petId of getBookingPetIds(booking)) {
+    const duplicate = await Vaccination.findOne({
+      petId,
+      vaccineName,
+      isDeleted: false,
+      dateGiven: { $gte: dayStart, $lt: dayEnd },
+    }).select("_id");
+
+    if (duplicate) {
+      continue;
+    }
+
+    await Vaccination.create({
+      petId,
+      vaccineName,
+      dateGiven,
+      veterinarian: provider?.name || null,
+      clinic: provider?.name || null,
+      notes: `Auto-created from completed booking ${booking._id}`,
+    });
+
+    createdCount += 1;
+  }
+
+  return createdCount;
+};
+
+const createMedicalRecordsFromCompletedBooking = async (booking) => {
+  const provider = booking.providerId;
+
+  if (provider?.serviceType !== "veterinary") {
+    return 0;
+  }
+
+  const visitDate = getBookingVaccinationDate(booking);
+  const reasonForVisit =
+    booking.serviceOption?.name?.trim() || "Veterinary visit";
+  const autoNote = `Auto-created from completed booking ${booking._id}`;
+
+  let createdCount = 0;
+
+  for (const petId of getBookingPetIds(booking)) {
+    const duplicate = await MedicalRecord.findOne({
+      petId,
+      isDeleted: false,
+      notes: autoNote,
+    }).select("_id");
+
+    if (duplicate) {
+      continue;
+    }
+
+    await MedicalRecord.create({
+      petId,
+      visitDate,
+      reasonForVisit,
+      vetName: provider?.name || null,
+      clinic: provider?.name || null,
+      treatment: booking.notes?.trim() || null,
+      notes: autoNote,
+    });
+
+    createdCount += 1;
+  }
+
+  return createdCount;
 };
 
 // Create a new booking
@@ -360,7 +472,8 @@ const confirmBooking = async (bookingId, userId, providerNotes) => {
   ]);
 
   await inAppNotificationService.createNotification({
-    userId: populatedBooking.userId?._id?.toString() || booking.userId.toString(),
+    userId:
+      populatedBooking.userId?._id?.toString() || booking.userId.toString(),
     type: "booking",
     title: "Booking confirmed",
     body: `${booking.providerId.name || "Your provider"} confirmed ${getBookingLabel(booking, booking.providerId)}.`,
@@ -408,7 +521,8 @@ const rejectBooking = async (bookingId, userId, providerNotes) => {
   ]);
 
   await inAppNotificationService.createNotification({
-    userId: populatedBooking.userId?._id?.toString() || booking.userId.toString(),
+    userId:
+      populatedBooking.userId?._id?.toString() || booking.userId.toString(),
     type: "booking",
     title: "Booking rejected",
     body:
@@ -506,7 +620,8 @@ const completeBooking = async (bookingId, userId) => {
   ]);
 
   await inAppNotificationService.createNotification({
-    userId: populatedBooking.userId?._id?.toString() || booking.userId.toString(),
+    userId:
+      populatedBooking.userId?._id?.toString() || booking.userId.toString(),
     type: "booking",
     title: "Booking completed",
     body: `${booking.providerId.name || "Your provider"} marked ${getBookingLabel(booking, booking.providerId)} as completed.`,
@@ -518,6 +633,24 @@ const completeBooking = async (bookingId, userId) => {
       providerName: booking.providerId.name,
     },
   });
+
+  try {
+    await createVaccinationsFromCompletedBooking(populatedBooking);
+  } catch (error) {
+    console.error(
+      `Failed to auto-create vaccination records for booking ${booking._id}:`,
+      error,
+    );
+  }
+
+  try {
+    await createMedicalRecordsFromCompletedBooking(populatedBooking);
+  } catch (error) {
+    console.error(
+      `Failed to auto-create medical records for booking ${booking._id}:`,
+      error,
+    );
+  }
 
   return populatedBooking;
 };
@@ -699,7 +832,8 @@ const confirmBookingPayment = async (id, status, user) => {
       entityType: "booking",
       data: {
         bookingId: updatedBooking._id.toString(),
-        providerId: provider._id?.toString?.() || booking.providerId._id?.toString?.(),
+        providerId:
+          provider._id?.toString?.() || booking.providerId._id?.toString?.(),
         providerName: provider.name || null,
         paymentStatus: "completed",
       },

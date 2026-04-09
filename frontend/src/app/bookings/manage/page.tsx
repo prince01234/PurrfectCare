@@ -12,6 +12,7 @@ import {
   Loader2,
   MessageCircle,
   Trophy,
+  HeartPulse,
 } from "lucide-react";
 import MobileLayout from "@/components/layout/MobileLayout";
 import { bookingApi, serviceProviderApi } from "@/lib/api/service";
@@ -50,6 +51,9 @@ export default function ProviderDashboardPage() {
     {},
   );
   const [hasProvider, setHasProvider] = useState<boolean | null>(null);
+  const [providerServiceType, setProviderServiceType] = useState<string | null>(
+    null,
+  );
 
   const fetchBookings = useCallback(async () => {
     setIsLoading(true);
@@ -69,10 +73,13 @@ export default function ProviderDashboardPage() {
         return;
       }
       setHasProvider(true);
+      setProviderServiceType(provRes.data?.serviceType || null);
       fetchBookings();
     };
     init();
   }, [fetchBookings]);
+
+  const isVeterinary = providerServiceType === "veterinary";
 
   const handleConfirm = async (bookingId: string) => {
     setActionId(bookingId);
@@ -216,6 +223,14 @@ export default function ProviderDashboardPage() {
               );
             })}
           </div>
+          {isVeterinary && (
+            <button
+              onClick={() => router.push("/admin/vet-records")}
+              className="mt-3 inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs font-semibold text-violet-700"
+            >
+              <HeartPulse className="h-3.5 w-3.5" /> Vet Records
+            </button>
+          )}
         </div>
 
         {/* Bookings */}
@@ -395,18 +410,28 @@ export default function ProviderDashboardPage() {
                     {/* Action buttons for confirmed bookings */}
                     {booking.status === "confirmed" && (
                       <div className="mt-3 pt-3 border-t border-gray-100 flex gap-2">
-                        <button
-                          onClick={() => handleComplete(booking._id)}
-                          disabled={actionId === booking._id}
-                          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-violet-500 text-white text-sm font-medium hover:bg-violet-600 transition-colors disabled:opacity-50"
-                        >
-                          {actionId === booking._id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Trophy className="w-4 h-4" />
-                          )}
-                          Mark Complete
-                        </button>
+                        {isVeterinary ? (
+                          <button
+                            onClick={() => router.push("/admin/vet-records")}
+                            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-violet-50 text-violet-700 text-sm font-medium border border-violet-200 hover:bg-violet-100 transition-colors"
+                          >
+                            <HeartPulse className="w-4 h-4" />
+                            Continue in Vet Records
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleComplete(booking._id)}
+                            disabled={actionId === booking._id}
+                            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-violet-500 text-white text-sm font-medium hover:bg-violet-600 transition-colors disabled:opacity-50"
+                          >
+                            {actionId === booking._id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Trophy className="w-4 h-4" />
+                            )}
+                            Mark Complete
+                          </button>
+                        )}
                         <button
                           onClick={() => handleChatWithUser(userIdStr)}
                           className="p-2.5 rounded-xl border-2 border-gray-200 text-gray-500 hover:border-violet-300 transition-colors"

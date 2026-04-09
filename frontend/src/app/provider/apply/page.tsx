@@ -39,6 +39,11 @@ export default function ProviderApplyPage() {
   useEffect(() => {
     if (!authLoading && !user) {
       router.push("/login");
+    } else if (user && !formData.organizationName) {
+      setFormData((prev) => ({
+        ...prev,
+        organizationName: user.organizationName || user.name || "",
+      }));
     }
   }, [user, authLoading, router]);
 
@@ -140,19 +145,21 @@ export default function ProviderApplyPage() {
           </div>
         </div>
 
-        {/* Hero */}
+        {/* Simple Hero/Header instead of the gradient box */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mx-4 mt-6 bg-linear-to-br from-violet-500 to-purple-600 rounded-2xl p-6 text-white"
+          className="mx-4 mt-6"
         >
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-              <Briefcase className="w-6 h-6" />
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-full bg-violet-100 flex items-center justify-center shrink-0">
+              <Briefcase className="w-6 h-6 text-violet-600" />
             </div>
             <div>
-              <h2 className="text-lg font-bold">Join Our Network</h2>
-              <p className="text-sm text-purple-100">
+              <h2 className="text-xl font-bold text-gray-900">
+                Join Our Network
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">
                 Offer your pet services to thousands of pet owners
               </p>
             </div>

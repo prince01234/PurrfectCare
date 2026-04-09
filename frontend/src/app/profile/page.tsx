@@ -265,6 +265,106 @@ export default function ProfilePage() {
     },
   ];
 
+  const renderProviderAccess = () => {
+    if (user.roles === "ADMIN" || user.roles === "SUPER_ADMIN") {
+      return (
+        <Link href="/admin" className="block">
+          <div className="bg-white rounded-2xl px-4 py-4 flex items-center justify-between shadow-sm border border-gray-100 active:bg-gray-50 transition-colors">
+            <div className="flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
+                <ShieldCheck className="w-5 h-5 text-slate-600" />
+              </div>
+              <div>
+                <span className="text-sm font-semibold text-gray-900 block">
+                  Open Service Portal
+                </span>
+                <span className="text-xs text-gray-500">
+                  {user.serviceType
+                    ? user.serviceType
+                        .replace("_", " ")
+                        .replace(/\b\w/g, (c) => c.toUpperCase())
+                    : "Manage your services"}
+                </span>
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-300" />
+          </div>
+        </Link>
+      );
+    }
+
+    if (application?.status === "pending") {
+      return (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+            <Clock className="w-4.5 h-4.5 text-amber-600" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-amber-800">
+              Provider application pending
+            </p>
+            <p className="text-xs text-amber-700 mt-0.5">
+              Your request is under review
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    if (application?.status === "rejected") {
+      return (
+        <div className="space-y-2">
+          <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+              <XCircle className="w-4.5 h-4.5 text-red-500" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-red-800">
+                Provider application rejected
+              </p>
+              <p className="text-xs text-red-700 mt-0.5">
+                {application.rejectionReason ||
+                  "You can submit a fresh request"}
+              </p>
+            </div>
+          </div>
+          <Link href="/provider/apply" className="block">
+            <div className="bg-white rounded-2xl px-4 py-3 flex items-center justify-between shadow-sm border border-gray-100 active:bg-gray-50 transition-colors">
+              <div className="flex items-center gap-3">
+                <Briefcase className="w-4.5 h-4.5 text-gray-600" />
+                <span className="text-sm font-semibold text-gray-700">
+                  Apply Again
+                </span>
+              </div>
+              <ChevronRight className="w-5 h-5 text-gray-300" />
+            </div>
+          </Link>
+        </div>
+      );
+    }
+
+    return (
+      <Link href="/provider/apply" className="block">
+        <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3 hover:bg-gray-50 active:bg-gray-50 transition-colors">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
+              <Briefcase className="w-4.5 h-4.5 text-gray-600" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-gray-800">
+                Become a Service Provider
+              </p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Optional: apply only if you want to offer services
+              </p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-300" />
+          </div>
+        </div>
+      </Link>
+    );
+  };
+
   return (
     <MobileLayout>
       <div className="min-h-screen bg-slate-50 pb-32">
@@ -459,103 +559,6 @@ export default function ProfilePage() {
           </div>
         </motion.div>
 
-        {/* ── Service Provider Section ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
-          className="mx-4 mt-8"
-        >
-          {user.roles === "ADMIN" || user.roles === "SUPER_ADMIN" ? (
-            // Already an admin — show portal link
-            <Link href="/admin">
-              <div className="bg-linear-to-r from-slate-700 to-slate-800 rounded-2xl px-5 py-5 flex items-center justify-between shadow-lg">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center">
-                    <ShieldCheck className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <span className="text-base font-bold text-white block">
-                      {user.roles === "SUPER_ADMIN"
-                        ? "Super Admin Portal"
-                        : "Service Provider Portal"}
-                    </span>
-                    <span className="text-sm text-slate-300">
-                      {user.serviceType
-                        ? user.serviceType
-                            .replace("_", " ")
-                            .replace(/\b\w/g, (c) => c.toUpperCase())
-                        : "Manage your services"}
-                    </span>
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-white/80" />
-              </div>
-            </Link>
-          ) : application?.status === "pending" ? (
-            // Application pending
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-5 flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center">
-                <Clock className="w-6 h-6 text-amber-600" />
-              </div>
-              <div className="flex-1">
-                <p className="text-base font-bold text-amber-800">
-                  Application Pending
-                </p>
-                <p className="text-sm text-amber-600 mt-0.5">
-                  Your service provider application is under review
-                </p>
-              </div>
-            </div>
-          ) : application?.status === "rejected" ? (
-            // Application rejected
-            <div className="space-y-3">
-              <div className="bg-red-50 border border-red-200 rounded-2xl px-5 py-5 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center">
-                  <XCircle className="w-6 h-6 text-red-500" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-base font-bold text-red-800">
-                    Application Rejected
-                  </p>
-                  <p className="text-sm text-red-600 mt-0.5">
-                    {application.rejectionReason ||
-                      "Your application was not approved"}
-                  </p>
-                </div>
-              </div>
-              <Link href="/provider/apply">
-                <div className="bg-white rounded-2xl px-5 py-4 flex items-center justify-center gap-2 shadow-sm border border-gray-200 active:bg-gray-50">
-                  <Briefcase className="w-5 h-5 text-gray-700" />
-                  <span className="text-sm font-bold text-gray-700">
-                    Apply Again
-                  </span>
-                </div>
-              </Link>
-            </div>
-          ) : (
-            // No application yet — show CTA
-            <Link href="/provider/apply">
-              <div className="bg-linear-to-r from-violet-500 to-purple-600 rounded-2xl px-5 py-5 shadow-lg shadow-violet-200/50">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-                    <Briefcase className="w-6 h-6 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-base font-bold text-white">
-                      Become a Service Provider
-                    </p>
-                    <p className="text-sm text-purple-100 mt-0.5">
-                      Offer adoption, grooming, vet, or training services
-                    </p>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-white/80" />
-                </div>
-              </div>
-            </Link>
-          )}
-        </motion.div>
-
         {/* ── Menu List ── */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -590,6 +593,13 @@ export default function ProfilePage() {
                 </div>
               </Link>
             ))}
+          </div>
+
+          <div className="mt-6 pt-4 border-t border-gray-100">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
+              Partner
+            </p>
+            {renderProviderAccess()}
           </div>
 
           {/* Log Out - with visual separation */}

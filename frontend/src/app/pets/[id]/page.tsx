@@ -92,6 +92,10 @@ function fmtMonth(d: string | null) {
   });
 }
 
+function todayISODate() {
+  return new Date().toISOString().split("T")[0];
+}
+
 function reminderTypeLabel(value: string) {
   const label = value.replace(/_/g, " ");
   return label.charAt(0).toUpperCase() + label.slice(1);
@@ -175,6 +179,31 @@ export default function PetProfilePage({
   const [isDeleting, setIsDeleting] = useState(false);
 
   const [showAddReminder, setShowAddReminder] = useState(false);
+  const [showAddVaccination, setShowAddVaccination] = useState(false);
+  const [showAddMedicalRecord, setShowAddMedicalRecord] = useState(false);
+
+  const [vaccinationForm, setVaccinationForm] = useState({
+    vaccineName: "",
+    dateGiven: todayISODate(),
+    nextDueDate: "",
+    veterinarian: "",
+    clinic: "",
+    notes: "",
+  });
+
+  const [medicalRecordForm, setMedicalRecordForm] = useState({
+    visitDate: todayISODate(),
+    reasonForVisit: "",
+    vetName: "",
+    clinic: "",
+    weight: "",
+    temperature: "",
+    symptoms: "",
+    treatment: "",
+    followUpDate: "",
+    notes: "",
+  });
+
   const [reminderForm, setReminderForm] = useState({
     title: "",
     description: "",
@@ -184,6 +213,26 @@ export default function PetProfilePage({
     frequency: "once",
     priority: "medium",
   });
+
+  const mapPetToForm = useCallback(
+    (petData: Pet) => ({
+      name: petData.name,
+      species: petData.species,
+      breed: petData.breed || "",
+      gender: petData.gender,
+      age: petData.age?.toString() || "",
+      dateOfBirth: petData.dateOfBirth
+        ? new Date(petData.dateOfBirth).toISOString().split("T")[0]
+        : "",
+      medicalNotes: petData.medicalNotes || "",
+    }),
+    [],
+  );
+
+  const resetFormFromPet = useCallback(() => {
+    if (!pet) return;
+    setForm(mapPetToForm(pet));
+  }, [mapPetToForm, pet]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -199,17 +248,7 @@ export default function PetProfilePage({
       const petRes = await petApi.getPetById(id);
       if (!cancelled && petRes.data) {
         setPet(petRes.data);
-        setForm({
-          name: petRes.data.name,
-          species: petRes.data.species,
-          breed: petRes.data.breed || "",
-          gender: petRes.data.gender,
-          age: petRes.data.age?.toString() || "",
-          dateOfBirth: petRes.data.dateOfBirth
-            ? new Date(petRes.data.dateOfBirth).toISOString().split("T")[0]
-            : "",
-          medicalNotes: petRes.data.medicalNotes || "",
-        });
+        setForm(mapPetToForm(petRes.data));
       } else if (!cancelled) {
         toast.error(petRes.error || "Failed to load pet");
       }
@@ -255,7 +294,7 @@ export default function PetProfilePage({
     return () => {
       cancelled = true;
     };
-  }, [user, authLoading, router, id]);
+  }, [user, authLoading, router, id, mapPetToForm]);
 
   const safePhotoIndex = pet?.photos?.length
     ? Math.min(photoIndex, pet.photos.length - 1)
@@ -293,16 +332,36 @@ export default function PetProfilePage({
       return;
     }
 
+    if (form.age && (Number.isNaN(Number(form.age)) || Number(form.age) < 0)) {
+      toast.error("Age must be a valid non-negative number");
+      return;
+    }
+
+    if (form.dateOfBirth) {
+      const dob = new Date(form.dateOfBirth);
+      if (Number.isNaN(dob.getTime())) {
+        toast.error("Date of birth is invalid");
+        return;
+      }
+
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      if (dob > today) {
+        toast.error("Date of birth cannot be in the future");
+        return;
+      }
+    }
+
     setIsSaving(true);
     const data: Record<string, string> = {
       name: form.name.trim(),
       species: form.species,
       gender: form.gender,
+      breed: form.breed.trim(),
+      age: form.age.trim(),
+      dateOfBirth: form.dateOfBirth,
+      medicalNotes: form.medicalNotes.trim(),
     };
-    if (form.breed.trim()) data.breed = form.breed.trim();
-    if (form.age) data.age = form.age;
-    if (form.dateOfBirth) data.dateOfBirth = form.dateOfBirth;
-    if (form.medicalNotes.trim()) data.medicalNotes = form.medicalNotes.trim();
 
     const res = await petApi.updatePet(id, data);
     if (res.error) {
@@ -312,6 +371,7 @@ export default function PetProfilePage({
     }
     if (res.data) {
       setPet(res.data);
+      setForm(mapPetToForm(res.data));
       toast.success("Pet updated");
       setEditMode(false);
     }
@@ -425,6 +485,160 @@ export default function PetProfilePage({
     }
   };
 
+  const addVaccination = async () => {
+    if (!vaccinationForm.vaccineName.trim() || !vaccinationForm.dateGiven) {
+      toast.error("Vaccine name and date given are required");
+      return;
+    }
+
+    const dateGiven = new Date(vaccinationForm.dateGiven);
+    if (Number.isNaN(dateGiven.getTime())) {
+      toast.error("Date given is invalid");
+      return;
+    }
+
+    if (vaccinationForm.nextDueDate) {
+      const nextDueDate = new Date(vaccinationForm.nextDueDate);
+      if (Number.isNaN(nextDueDate.getTime())) {
+        toast.error("Next due date is invalid");
+        return;
+      }
+
+      if (nextDueDate < dateGiven) {
+        toast.error("Next due date cannot be earlier than date given");
+        return;
+      }
+    }
+
+    const payload = {
+      vaccineName: vaccinationForm.vaccineName.trim(),
+      dateGiven: vaccinationForm.dateGiven,
+      nextDueDate: vaccinationForm.nextDueDate || undefined,
+      veterinarian: vaccinationForm.veterinarian.trim() || undefined,
+      clinic: vaccinationForm.clinic.trim() || undefined,
+      notes: vaccinationForm.notes.trim() || undefined,
+    };
+
+    const res = await petApi.createVaccination(id, payload);
+    if (res.error) {
+      toast.error(res.error);
+      return;
+    }
+
+    const createdVaccination =
+      (res.data as unknown as { vaccination?: Vaccination })?.vaccination ??
+      (res.data as Vaccination | undefined);
+
+    if (!createdVaccination) return;
+
+    setVaccinations((prev) => [createdVaccination, ...prev]);
+    setShowAddVaccination(false);
+    setVaccinationForm({
+      vaccineName: "",
+      dateGiven: todayISODate(),
+      nextDueDate: "",
+      veterinarian: "",
+      clinic: "",
+      notes: "",
+    });
+    toast.success("Vaccination record added");
+  };
+
+  const addMedicalRecord = async () => {
+    if (
+      !medicalRecordForm.visitDate ||
+      !medicalRecordForm.reasonForVisit.trim()
+    ) {
+      toast.error("Visit date and reason for visit are required");
+      return;
+    }
+
+    const visitDate = new Date(medicalRecordForm.visitDate);
+    if (Number.isNaN(visitDate.getTime())) {
+      toast.error("Visit date is invalid");
+      return;
+    }
+
+    if (medicalRecordForm.followUpDate) {
+      const followUpDate = new Date(medicalRecordForm.followUpDate);
+      if (Number.isNaN(followUpDate.getTime())) {
+        toast.error("Follow-up date is invalid");
+        return;
+      }
+
+      if (followUpDate < visitDate) {
+        toast.error("Follow-up date cannot be earlier than visit date");
+        return;
+      }
+    }
+
+    const weightValue = medicalRecordForm.weight.trim();
+    let weight: number | undefined;
+    if (weightValue) {
+      weight = Number(weightValue);
+      if (Number.isNaN(weight) || weight < 0) {
+        toast.error("Weight must be a valid non-negative number");
+        return;
+      }
+    }
+
+    const temperatureValue = medicalRecordForm.temperature.trim();
+    let temperature: number | undefined;
+    if (temperatureValue) {
+      temperature = Number(temperatureValue);
+      if (Number.isNaN(temperature)) {
+        toast.error("Temperature must be a valid number");
+        return;
+      }
+    }
+
+    const symptoms = medicalRecordForm.symptoms
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+    const payload = {
+      visitDate: medicalRecordForm.visitDate,
+      reasonForVisit: medicalRecordForm.reasonForVisit.trim(),
+      vetName: medicalRecordForm.vetName.trim() || undefined,
+      clinic: medicalRecordForm.clinic.trim() || undefined,
+      weight,
+      temperature,
+      symptoms: symptoms.length ? symptoms : undefined,
+      treatment: medicalRecordForm.treatment.trim() || undefined,
+      followUpDate: medicalRecordForm.followUpDate || undefined,
+      notes: medicalRecordForm.notes.trim() || undefined,
+    };
+
+    const res = await petApi.createMedicalRecord(id, payload);
+    if (res.error) {
+      toast.error(res.error);
+      return;
+    }
+
+    const createdMedicalRecord =
+      (res.data as unknown as { medicalRecord?: MedicalRecord })
+        ?.medicalRecord ?? (res.data as MedicalRecord | undefined);
+
+    if (!createdMedicalRecord) return;
+
+    setMedicalRecords((prev) => [createdMedicalRecord, ...prev]);
+    setShowAddMedicalRecord(false);
+    setMedicalRecordForm({
+      visitDate: todayISODate(),
+      reasonForVisit: "",
+      vetName: "",
+      clinic: "",
+      weight: "",
+      temperature: "",
+      symptoms: "",
+      treatment: "",
+      followUpDate: "",
+      notes: "",
+    });
+    toast.success("Medical record added");
+  };
+
   const deleteReminder = async (reminderId: string) => {
     const res = await petApi.deleteReminder(id, reminderId);
     if (res.error) {
@@ -473,6 +687,25 @@ export default function PetProfilePage({
     toast.success("Reminder dismissed");
   };
 
+  const snoozeReminder = async (reminderId: string, minutes = 60) => {
+    const res = await petApi.snoozeReminder(id, reminderId, minutes);
+    if (res.error) {
+      toast.error(res.error);
+      return;
+    }
+
+    const updatedReminder =
+      (res.data as unknown as { reminder?: Reminder })?.reminder ??
+      (res.data as Reminder | undefined);
+
+    if (!updatedReminder) return;
+
+    setReminders((prev) =>
+      prev.map((item) => (item._id === reminderId ? updatedReminder : item)),
+    );
+    toast.success("Reminder snoozed");
+  };
+
   if (authLoading || isLoading) {
     return (
       <MobileLayout showBottomNav={false}>
@@ -515,6 +748,13 @@ export default function PetProfilePage({
   const activeReminders = reminders.filter((r) => r.status === "active");
   const completedReminders = reminders.filter((r) => r.status === "completed");
   const dismissedReminders = reminders.filter((r) => r.status === "dismissed");
+  const snoozedReminders = reminders
+    .filter((r) => r.status === "snoozed")
+    .sort(
+      (a, b) =>
+        new Date(a.snoozedUntil ?? a.dueDate).getTime() -
+        new Date(b.snoozedUntil ?? b.dueDate).getTime(),
+    );
   const overdueReminders = activeReminders.filter((r) => r.isOverdue);
   const upcomingReminders = activeReminders
     .filter((r) => !r.isOverdue)
@@ -624,7 +864,14 @@ export default function PetProfilePage({
                 Pet Profile
               </h1>
               <button
-                onClick={() => setEditMode((prev) => !prev)}
+                onClick={() => {
+                  if (editMode) {
+                    resetFormFromPet();
+                    setEditMode(false);
+                    return;
+                  }
+                  setEditMode(true);
+                }}
                 className={`flex h-10 w-10 items-center justify-center rounded-full shadow-sm backdrop-blur-sm transition-colors ${
                   editMode
                     ? "bg-teal-500 text-white"
@@ -882,6 +1129,7 @@ export default function PetProfilePage({
                       </label>
                       <input
                         type="date"
+                        max={new Date().toISOString().split("T")[0]}
                         value={form.dateOfBirth}
                         onChange={(e) =>
                           setForm((prev) => ({
@@ -912,7 +1160,10 @@ export default function PetProfilePage({
 
                     <div className="flex gap-3">
                       <button
-                        onClick={() => setEditMode(false)}
+                        onClick={() => {
+                          resetFormFromPet();
+                          setEditMode(false);
+                        }}
                         className="flex-1 py-2.5 rounded-lg border border-gray-200 text-gray-700 font-medium"
                       >
                         Cancel
@@ -1111,9 +1362,17 @@ export default function PetProfilePage({
                         </p>
                       </div>
                     </div>
-                    <span className="rounded-full border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-600">
-                      {vaccinations.length}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setShowAddVaccination(true)}
+                        className="inline-flex items-center gap-1 rounded-full border border-teal-200 bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-700"
+                      >
+                        <Plus className="h-3.5 w-3.5" /> Add
+                      </button>
+                      <span className="rounded-full border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-600">
+                        {vaccinations.length}
+                      </span>
+                    </div>
                   </div>
 
                   {overdueVaccinations.length > 0 && (
@@ -1162,9 +1421,17 @@ export default function PetProfilePage({
                         </p>
                       </div>
                     </div>
-                    <span className="rounded-full border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-600">
-                      {medicalRecords.length}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setShowAddMedicalRecord(true)}
+                        className="inline-flex items-center gap-1 rounded-full border border-teal-200 bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-700"
+                      >
+                        <Plus className="h-3.5 w-3.5" /> Add
+                      </button>
+                      <span className="rounded-full border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-600">
+                        {medicalRecords.length}
+                      </span>
+                    </div>
                   </div>
 
                   {followUpDueNow.length > 0 && (
@@ -1251,6 +1518,14 @@ export default function PetProfilePage({
                       {completedReminders.length}
                     </p>
                   </div>
+                  <div className="col-span-2 rounded-2xl border border-blue-100 bg-blue-50 px-3 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-blue-600">
+                      Snoozed
+                    </p>
+                    <p className="mt-1 text-xl font-bold text-blue-700">
+                      {snoozedReminders.length}
+                    </p>
+                  </div>
                 </div>
 
                 {overdueReminders.length > 0 && (
@@ -1264,6 +1539,7 @@ export default function PetProfilePage({
                         reminder={r}
                         overdue
                         onComplete={() => markReminderCompleted(r._id)}
+                        onSnooze={() => snoozeReminder(r._id, 60)}
                         onDismiss={() => dismissReminder(r._id)}
                         onDelete={() => deleteReminder(r._id)}
                       />
@@ -1281,7 +1557,24 @@ export default function PetProfilePage({
                         key={r._id}
                         reminder={r}
                         onComplete={() => markReminderCompleted(r._id)}
+                        onSnooze={() => snoozeReminder(r._id, 60)}
                         onDismiss={() => dismissReminder(r._id)}
+                        onDelete={() => deleteReminder(r._id)}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {snoozedReminders.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-blue-500 uppercase mb-2">
+                      Snoozed
+                    </h4>
+                    {snoozedReminders.map((r) => (
+                      <ReminderCard
+                        key={r._id}
+                        reminder={r}
+                        showActions={false}
                         onDelete={() => deleteReminder(r._id)}
                       />
                     ))}
@@ -1508,6 +1801,368 @@ export default function PetProfilePage({
       </AnimatePresence>
 
       <AnimatePresence>
+        {showAddVaccination && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4"
+            onClick={() => setShowAddVaccination(false)}
+          >
+            <motion.div
+              initial={{ y: 80, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 80, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-lg bg-white rounded-2xl p-6 max-h-[80vh] overflow-y-auto"
+            >
+              <h3 className="font-bold text-lg text-gray-900 mb-4">
+                Add Vaccination
+              </h3>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase">
+                    Vaccine Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={vaccinationForm.vaccineName}
+                    onChange={(e) =>
+                      setVaccinationForm((prev) => ({
+                        ...prev,
+                        vaccineName: e.target.value,
+                      }))
+                    }
+                    className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase">
+                    Date Given *
+                  </label>
+                  <input
+                    type="date"
+                    value={vaccinationForm.dateGiven}
+                    onChange={(e) =>
+                      setVaccinationForm((prev) => ({
+                        ...prev,
+                        dateGiven: e.target.value,
+                      }))
+                    }
+                    className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase">
+                    Next Due Date (optional)
+                  </label>
+                  <input
+                    type="date"
+                    min={vaccinationForm.dateGiven || undefined}
+                    value={vaccinationForm.nextDueDate}
+                    onChange={(e) =>
+                      setVaccinationForm((prev) => ({
+                        ...prev,
+                        nextDueDate: e.target.value,
+                      }))
+                    }
+                    className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase">
+                    Veterinarian (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={vaccinationForm.veterinarian}
+                    onChange={(e) =>
+                      setVaccinationForm((prev) => ({
+                        ...prev,
+                        veterinarian: e.target.value,
+                      }))
+                    }
+                    className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase">
+                    Clinic (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={vaccinationForm.clinic}
+                    onChange={(e) =>
+                      setVaccinationForm((prev) => ({
+                        ...prev,
+                        clinic: e.target.value,
+                      }))
+                    }
+                    className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase">
+                    Notes (optional)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={vaccinationForm.notes}
+                    onChange={(e) =>
+                      setVaccinationForm((prev) => ({
+                        ...prev,
+                        notes: e.target.value,
+                      }))
+                    }
+                    className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm resize-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setShowAddVaccination(false)}
+                  className="flex-1 py-2.5 rounded-lg border border-gray-200 text-gray-700 font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={addVaccination}
+                  className="flex-1 py-2.5 rounded-lg bg-teal-600 text-white font-medium"
+                >
+                  Create
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showAddMedicalRecord && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4"
+            onClick={() => setShowAddMedicalRecord(false)}
+          >
+            <motion.div
+              initial={{ y: 80, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 80, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-lg bg-white rounded-2xl p-6 max-h-[80vh] overflow-y-auto"
+            >
+              <h3 className="font-bold text-lg text-gray-900 mb-4">
+                Add Medical Record
+              </h3>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase">
+                    Visit Date *
+                  </label>
+                  <input
+                    type="date"
+                    value={medicalRecordForm.visitDate}
+                    onChange={(e) =>
+                      setMedicalRecordForm((prev) => ({
+                        ...prev,
+                        visitDate: e.target.value,
+                      }))
+                    }
+                    className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase">
+                    Reason for Visit *
+                  </label>
+                  <input
+                    type="text"
+                    value={medicalRecordForm.reasonForVisit}
+                    onChange={(e) =>
+                      setMedicalRecordForm((prev) => ({
+                        ...prev,
+                        reasonForVisit: e.target.value,
+                      }))
+                    }
+                    className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 uppercase">
+                      Vet Name (optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={medicalRecordForm.vetName}
+                      onChange={(e) =>
+                        setMedicalRecordForm((prev) => ({
+                          ...prev,
+                          vetName: e.target.value,
+                        }))
+                      }
+                      className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 uppercase">
+                      Clinic (optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={medicalRecordForm.clinic}
+                      onChange={(e) =>
+                        setMedicalRecordForm((prev) => ({
+                          ...prev,
+                          clinic: e.target.value,
+                        }))
+                      }
+                      className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 uppercase">
+                      Weight (kg)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={medicalRecordForm.weight}
+                      onChange={(e) =>
+                        setMedicalRecordForm((prev) => ({
+                          ...prev,
+                          weight: e.target.value,
+                        }))
+                      }
+                      className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 uppercase">
+                      Temperature
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={medicalRecordForm.temperature}
+                      onChange={(e) =>
+                        setMedicalRecordForm((prev) => ({
+                          ...prev,
+                          temperature: e.target.value,
+                        }))
+                      }
+                      className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase">
+                    Symptoms (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={medicalRecordForm.symptoms}
+                    onChange={(e) =>
+                      setMedicalRecordForm((prev) => ({
+                        ...prev,
+                        symptoms: e.target.value,
+                      }))
+                    }
+                    placeholder="e.g. Loss of appetite, coughing"
+                    className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase">
+                    Treatment (optional)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={medicalRecordForm.treatment}
+                    onChange={(e) =>
+                      setMedicalRecordForm((prev) => ({
+                        ...prev,
+                        treatment: e.target.value,
+                      }))
+                    }
+                    className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm resize-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase">
+                    Follow-up Date (optional)
+                  </label>
+                  <input
+                    type="date"
+                    min={medicalRecordForm.visitDate || undefined}
+                    value={medicalRecordForm.followUpDate}
+                    onChange={(e) =>
+                      setMedicalRecordForm((prev) => ({
+                        ...prev,
+                        followUpDate: e.target.value,
+                      }))
+                    }
+                    className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase">
+                    Notes (optional)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={medicalRecordForm.notes}
+                    onChange={(e) =>
+                      setMedicalRecordForm((prev) => ({
+                        ...prev,
+                        notes: e.target.value,
+                      }))
+                    }
+                    className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm resize-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setShowAddMedicalRecord(false)}
+                  className="flex-1 py-2.5 rounded-lg border border-gray-200 text-gray-700 font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={addMedicalRecord}
+                  className="flex-1 py-2.5 rounded-lg bg-teal-600 text-white font-medium"
+                >
+                  Create
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {showDeleteConfirm && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -1556,6 +2211,7 @@ function ReminderCard({
   overdue = false,
   showActions = true,
   onComplete,
+  onSnooze,
   onDismiss,
   onDelete,
 }: {
@@ -1563,6 +2219,7 @@ function ReminderCard({
   overdue?: boolean;
   showActions?: boolean;
   onComplete?: () => void;
+  onSnooze?: () => void;
   onDismiss?: () => void;
   onDelete: () => void;
 }) {
@@ -1579,6 +2236,15 @@ function ReminderCard({
 
   const isCompleted = reminder.status === "completed";
   const isDismissed = reminder.status === "dismissed";
+  const isSnoozed = reminder.status === "snoozed";
+  const snoozedUntilLabel = reminder.snoozedUntil
+    ? new Date(reminder.snoozedUntil).toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      })
+    : null;
 
   return (
     <div
@@ -1646,10 +2312,16 @@ function ReminderCard({
                 Dismissed
               </span>
             )}
+            {isSnoozed && (
+              <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">
+                Snoozed
+                {snoozedUntilLabel ? ` until ${snoozedUntilLabel}` : ""}
+              </span>
+            )}
           </div>
 
-          {showActions && !isCompleted && !isDismissed && (
-            <div className="mt-3 grid grid-cols-2 gap-2">
+          {showActions && !isCompleted && !isDismissed && !isSnoozed && (
+            <div className="mt-3 grid grid-cols-3 gap-2">
               <button
                 onClick={onComplete}
                 className="flex items-center justify-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700"
@@ -1657,10 +2329,16 @@ function ReminderCard({
                 <CheckCircle2 className="h-3.5 w-3.5" /> Complete
               </button>
               <button
+                onClick={onSnooze}
+                className="flex items-center justify-center gap-1 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700"
+              >
+                <Clock3 className="h-3.5 w-3.5" /> Snooze 1h
+              </button>
+              <button
                 onClick={onDismiss}
                 className="flex items-center justify-center gap-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-600"
               >
-                <Clock3 className="h-3.5 w-3.5" /> Dismiss
+                <X className="h-3.5 w-3.5" /> Dismiss
               </button>
             </div>
           )}

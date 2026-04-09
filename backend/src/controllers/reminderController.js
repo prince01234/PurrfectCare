@@ -197,7 +197,24 @@ const snoozeReminder = async (req, res) => {
   try {
     const userId = req.user._id;
     const { petId, reminderId } = req.params;
-    const { minutes = 60 } = req.body;
+    const rawMinutes = req.body?.minutes;
+    const rawSnoozeDays = req.body?.snoozeDays;
+
+    let minutes = 60;
+
+    if (rawMinutes !== undefined) {
+      minutes = Number(rawMinutes);
+    } else if (rawSnoozeDays !== undefined) {
+      minutes = Number(rawSnoozeDays) * 24 * 60;
+    }
+
+    if (!Number.isFinite(minutes) || minutes <= 0) {
+      return res
+        .status(400)
+        .send({ error: "Snooze duration must be a positive minute value" });
+    }
+
+    minutes = Math.round(minutes);
 
     const snoozedReminder = await reminderService.snoozeReminder(
       reminderId,

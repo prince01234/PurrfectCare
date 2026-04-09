@@ -25,6 +25,7 @@ const SPECIES_OPTIONS = [
   { value: "cat", label: "Cat", icon: Cat },
   { value: "bird", label: "Bird", icon: Bird },
   { value: "rabbit", label: "Rabbit", icon: Rabbit },
+  { value: "hamster", label: "Hamster", icon: PawPrint },
   { value: "fish", label: "Fish", icon: Fish },
   { value: "other", label: "Other", icon: PawPrint },
 ];
@@ -41,7 +42,6 @@ export default function AddPetPage() {
   const [name, setName] = useState("");
   const [breed, setBreed] = useState("");
   const [age, setAge] = useState("");
-  const [weight, setWeight] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [gender, setGender] = useState<"male" | "female" | "unknown">("male");
   const [medicalNotes, setMedicalNotes] = useState("");
@@ -99,10 +99,18 @@ export default function AddPetPage() {
     if (!species) errs.species = "Select a species";
     if (age && (isNaN(Number(age)) || Number(age) < 0))
       errs.age = "Enter a valid age";
-    if (weight && (isNaN(Number(weight)) || Number(weight) <= 0))
-      errs.weight = "Enter a valid weight";
-    if (dateOfBirth && isNaN(new Date(dateOfBirth).getTime()))
-      errs.dateOfBirth = "Enter a valid date";
+    if (dateOfBirth) {
+      const dob = new Date(dateOfBirth);
+      if (isNaN(dob.getTime())) {
+        errs.dateOfBirth = "Enter a valid date";
+      } else {
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
+        if (dob > today) {
+          errs.dateOfBirth = "Date of birth cannot be in the future";
+        }
+      }
+    }
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -119,7 +127,6 @@ export default function AddPetPage() {
     };
     if (breed.trim()) data.breed = breed.trim();
     if (age) data.age = age;
-    if (weight) data.weight = weight;
     if (dateOfBirth) data.dateOfBirth = dateOfBirth;
     if (medicalNotes.trim()) data.medicalNotes = medicalNotes.trim();
 
@@ -300,31 +307,6 @@ export default function AddPetPage() {
           </div>
         </div>
 
-        {/* ---- Weight ---- */}
-        <div>
-          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-            Weight (kg){" "}
-            <span className="text-gray-400 normal-case">(optional)</span>
-          </label>
-          <input
-            type="number"
-            placeholder="e.g. 4.5"
-            min="0"
-            step="0.1"
-            value={weight}
-            onChange={(e) => {
-              setWeight(e.target.value);
-              setErrors((prev) => ({ ...prev, weight: "" }));
-            }}
-            className={`mt-1.5 w-full px-4 py-3 bg-gray-50 border rounded-xl text-sm text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-teal-500/30 ${
-              errors.weight ? "border-red-400" : "border-gray-200"
-            }`}
-          />
-          {errors.weight && (
-            <p className="text-red-500 text-xs mt-1">{errors.weight}</p>
-          )}
-        </div>
-
         {/* ---- Date of Birth ---- */}
         <div>
           <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
@@ -333,6 +315,7 @@ export default function AddPetPage() {
           </label>
           <input
             type="date"
+            max={new Date().toISOString().split("T")[0]}
             value={dateOfBirth}
             onChange={(e) => {
               setDateOfBirth(e.target.value);

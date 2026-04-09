@@ -11,11 +11,13 @@ import {
   Loader2,
   MessageCircle,
   Trophy,
+  HeartPulse,
 } from "lucide-react";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { bookingApi } from "@/lib/api/service";
 import { messagingApi } from "@/lib/api/messaging";
 import type { Booking } from "@/lib/api/service";
+import { useAuth } from "@/context/AuthContext";
 import toast from "react-hot-toast";
 
 const STATUS_CONFIG: Record<
@@ -41,6 +43,7 @@ const TABS = [
 
 export default function AdminBookingsPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("pending");
@@ -48,6 +51,7 @@ export default function AdminBookingsPage() {
   const [providerNotes, setProviderNotes] = useState<Record<string, string>>(
     {},
   );
+  const isVeterinary = user?.serviceType === "veterinary";
 
   const fetchBookings = useCallback(async () => {
     setIsLoading(true);
@@ -145,12 +149,26 @@ export default function AdminBookingsPage() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <h2 className="text-xl font-bold text-gray-900">Manage Bookings</h2>
-          <p className="text-sm text-gray-500 mt-1">
-            {pendingCount > 0
-              ? `You have ${pendingCount} pending booking${pendingCount > 1 ? "s" : ""}`
-              : "View and manage customer bookings"}
-          </p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">
+                Manage Bookings
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">
+                {pendingCount > 0
+                  ? `You have ${pendingCount} pending booking${pendingCount > 1 ? "s" : ""}`
+                  : "View and manage customer bookings"}
+              </p>
+            </div>
+            {isVeterinary && (
+              <button
+                onClick={() => router.push("/admin/vet-records")}
+                className="inline-flex shrink-0 items-center gap-1 rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-700"
+              >
+                <HeartPulse className="h-3.5 w-3.5" /> Vet Records
+              </button>
+            )}
+          </div>
         </motion.div>
 
         {/* Tabs */}
@@ -353,18 +371,28 @@ export default function AdminBookingsPage() {
                   {/* Action buttons for confirmed bookings */}
                   {booking.status === "confirmed" && (
                     <div className="mt-3 pt-3 border-t border-gray-100 flex gap-2">
-                      <button
-                        onClick={() => handleComplete(booking._id)}
-                        disabled={actionId === booking._id}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-teal-500 text-white text-sm font-medium hover:bg-teal-600 transition-colors disabled:opacity-50"
-                      >
-                        {actionId === booking._id ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Trophy className="w-4 h-4" />
-                        )}
-                        Mark Complete
-                      </button>
+                      {isVeterinary ? (
+                        <button
+                          onClick={() => router.push("/admin/vet-records")}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-teal-50 text-teal-700 text-sm font-medium border border-teal-200 hover:bg-teal-100 transition-colors"
+                        >
+                          <HeartPulse className="w-4 h-4" />
+                          Continue in Vet Records
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleComplete(booking._id)}
+                          disabled={actionId === booking._id}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-teal-500 text-white text-sm font-medium hover:bg-teal-600 transition-colors disabled:opacity-50"
+                        >
+                          {actionId === booking._id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Trophy className="w-4 h-4" />
+                          )}
+                          Mark Complete
+                        </button>
+                      )}
                       <button
                         onClick={() => handleChatWithUser(userIdStr)}
                         className="p-2.5 rounded-xl border-2 border-gray-200 text-gray-500 hover:border-teal-300 transition-colors"
