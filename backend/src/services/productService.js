@@ -1,6 +1,59 @@
 import Product, { isValidObjectId } from "../models/Product.js";
+import Order from "../models/Order.js";
 import User from "../models/User.js";
 import { SUPER_ADMIN } from "../constants/roles.js";
+
+const withProductRatings = async (products) => {
+  if (!products || products.length === 0) {
+    return [];
+  }
+
+  const productIds = products.map((product) => product._id);
+  const productIdSet = new Set(productIds.map((id) => id.toString()));
+
+  const deliveredRatedOrders = await Order.find({
+    status: "delivered",
+    "rating.score": { $exists: true, $ne: null },
+    "items.productId": { $in: productIds },
+  }).select("items.productId rating.score");
+
+  const ratingStats = new Map();
+
+  for (const order of deliveredRatedOrders) {
+    const score = Number(order.rating?.score);
+    if (!Number.isFinite(score)) {
+      continue;
+    }
+
+    const uniqueProductIdsInOrder = new Set(
+      order.items
+        .map((item) => item.productId?.toString())
+        .filter((id) => id && productIdSet.has(id)),
+    );
+
+    for (const productId of uniqueProductIdsInOrder) {
+      const current = ratingStats.get(productId) || { totalScore: 0, count: 0 };
+      current.totalScore += score;
+      current.count += 1;
+      ratingStats.set(productId, current);
+    }
+  }
+
+  return products.map((product) => {
+    const plainProduct =
+      typeof product?.toObject === "function" ? product.toObject() : product;
+    const stat = ratingStats.get(product._id.toString());
+    const ratingCount = stat?.count || 0;
+    const ratingAverage =
+      ratingCount > 0 ? Number((stat.totalScore / ratingCount).toFixed(1)) : 0;
+
+    return {
+      ...plainProduct,
+      ratingAverage,
+      ratingCount,
+    };
+  });
+};
 
 // Create a new product (Admin only)
 const createProduct = async (adminId, data) => {
@@ -70,10 +123,12 @@ const getProducts = async (queryParams = {}) => {
     .limit(limitNum)
     .select("-__v");
 
+  const ratedProducts = await withProductRatings(products);
+
   const total = await Product.countDocuments(filter);
 
   return {
-    products,
+    products: ratedProducts,
     pagination: {
       total,
       page: pageNum,
@@ -99,7 +154,8 @@ const getProductById = async (productId) => {
     throw { statusCode: 404, message: "Product is no longer available" };
   }
 
-  return product;
+  const [ratedProduct] = await withProductRatings([product]);
+  return ratedProduct;
 };
 
 // Update product (Admin only - creator or super admin)
@@ -227,6 +283,38 @@ const getAdminProducts = async (adminId, queryParams = {}) => {
   };
 };
 
+// Get product reviews (ratings with comments)
+const getProductReviews = async (productId, limit = 5) => {
+  if (!isValidObjectId(productId)) {
+    return { reviews: [], total: 0 };
+  }
+
+  const reviews = await Order.find({
+    status: "delivered",
+    "rating.score": { $exists: true, $ne: null },
+    "items.productId": productId,
+  })
+    .select("rating userId items createdAt")
+    .populate("userId", "name")
+    .sort({ "rating.ratedAt": -1 })
+    .limit(limit);
+
+  const reviewCount = await Order.countDocuments({
+    status: "delivered",
+    "rating.score": { $exists: true, $ne: null },
+    "items.productId": productId,
+  });
+
+  const formattedReviews = reviews.map((order) => ({
+    score: order.rating?.score,
+    comment: order.rating?.comment || null,
+    buyerName: order.userId?.name || "Anonymous",
+    ratedAt: order.rating?.ratedAt || null,
+  }));
+
+  return { reviews: formattedReviews, total: reviewCount };
+};
+
 export default {
   createProduct,
   getProducts,
@@ -234,4 +322,5 @@ export default {
   updateProduct,
   deleteProduct,
   getAdminProducts,
+  getProductReviews,
 };

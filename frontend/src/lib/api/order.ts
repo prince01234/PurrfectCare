@@ -18,6 +18,12 @@ export interface PaymentRecord {
   createdAt: string;
 }
 
+export interface OrderRating {
+  score: number;
+  comment: string | null;
+  ratedAt: string;
+}
+
 export interface Order {
   _id: string;
   userId: string;
@@ -26,10 +32,16 @@ export interface Order {
   status: "pending" | "confirmed" | "processing" | "delivered" | "cancelled";
   deliveryAddress: string | null;
   notes: string | null;
+  rating: OrderRating | null;
   paymentMethod: "khalti" | "cod";
   payment: PaymentRecord | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface SubmitOrderRatingData {
+  score: number;
+  comment?: string;
 }
 
 export interface OrdersResponse {
@@ -105,6 +117,16 @@ export const orderApi = {
       {
         method: "PUT",
         body: JSON.stringify({ status }),
+      },
+      true,
+    ),
+
+  submitOrderRating: (orderId: string, data: SubmitOrderRatingData) =>
+    apiRequest<Order>(
+      `/api/orders/${orderId}/rating`,
+      {
+        method: "PUT",
+        body: JSON.stringify(data),
       },
       true,
     ),

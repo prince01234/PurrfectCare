@@ -32,4 +32,7 @@ router.put(
   orderController.confirmOrderPayment,
 );
 
+// URL: /api/orders/:id/rating - Submit or update customer rating for delivered order
+router.put("/:id/rating", auth, requireVerified, orderController.rateOrder);
+
 export default router;

@@ -381,6 +381,60 @@ const cancelOrder = async (orderId, userId) => {
   return order;
 };
 
+// Rate delivered order (user can submit or update their rating)
+const rateOrder = async (orderId, userId, data) => {
+  if (!isValidObjectId(orderId)) {
+    throw { statusCode: 400, message: "Invalid order ID" };
+  }
+
+  const order = await Order.findById(orderId).populate("payment");
+
+  if (!order) {
+    throw { statusCode: 404, message: "Order not found" };
+  }
+
+  if (order.userId.toString() !== userId.toString()) {
+    throw { statusCode: 403, message: "Access denied" };
+  }
+
+  if (order.status !== "delivered") {
+    throw {
+      statusCode: 400,
+      message: "You can only rate delivered orders",
+    };
+  }
+
+  const score = Number(data?.score);
+  if (!Number.isInteger(score) || score < 1 || score > 5) {
+    throw {
+      statusCode: 400,
+      message: "Rating score must be an integer between 1 and 5",
+    };
+  }
+
+  const comment =
+    typeof data?.comment === "string" && data.comment.trim().length > 0
+      ? data.comment.trim()
+      : null;
+
+  if (comment && comment.length > 500) {
+    throw {
+      statusCode: 400,
+      message: "Rating comment must be 500 characters or less",
+    };
+  }
+
+  order.rating = {
+    score,
+    comment,
+    ratedAt: new Date(),
+  };
+
+  await order.save();
+
+  return order;
+};
+
 export default {
   createOrder,
   orderPaymentViaKhalti,
@@ -388,4 +442,5 @@ export default {
   getOrders,
   getOrderById,
   cancelOrder,
+  rateOrder,
 };

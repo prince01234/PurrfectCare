@@ -7,7 +7,7 @@ import {
   TrendingDown,
   CreditCard,
   Clock,
-  DollarSign,
+  Banknote,
   BarChart3,
   RefreshCcw,
   Package,
@@ -189,7 +189,7 @@ export default function MarketplaceAnalyticsPage() {
         >
           <div className="bg-linear-to-br from-teal-500 to-teal-600 rounded-2xl p-4 text-white">
             <div className="flex items-center gap-2 mb-1">
-              <DollarSign className="w-4 h-4 text-teal-200" />
+              <Banknote className="w-4 h-4 text-teal-200" />
               <span className="text-xs text-teal-100">Total Revenue</span>
             </div>
             <p className="text-xl font-bold">
@@ -315,7 +315,7 @@ export default function MarketplaceAnalyticsPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 bg-emerald-50 rounded-lg flex items-center justify-center">
-                  <DollarSign className="w-4 h-4 text-emerald-500" />
+                  <Banknote className="w-4 h-4 text-emerald-500" />
                 </div>
                 <span className="text-sm text-gray-700">Cash on Delivery</span>
               </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { motion } from "framer-motion";
@@ -11,13 +11,21 @@ import {
   CreditCard,
   Truck,
   Package,
+  Search,
+  Navigation,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import dynamic from "next/dynamic";
 
 import MobileLayout from "@/components/layout/MobileLayout";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { orderApi } from "@/lib/api";
+
+// Dynamic import for map to avoid SSR issues
+const MapComponent = dynamic(() => import("@/components/checkout/AddressMap"), {
+  ssr: false,
+});
 
 type PaymentMethod = "khalti" | "cod";
 
@@ -27,9 +35,14 @@ export default function CheckoutPage() {
   const { items, totalPrice, refreshCart } = useCart();
 
   const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [coordinates, setCoordinates] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [notes, setNotes] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("khalti");
   const [isPlacing, setIsPlacing] = useState(false);
+  const [showMap, setShowMap] = useState(false);
 
   const [orderPlaced, setOrderPlaced] = React.useState(false);
 
@@ -165,14 +178,51 @@ export default function CheckoutPage() {
 
         {/* Delivery address */}
         <div>
-          <label className="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-2">
+          <label className="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-3">
             <MapPin className="w-4 h-4 text-teal-500" />
             Delivery Address
           </label>
+
+          {/* Map button */}
+          <button
+            onClick={() => setShowMap(!showMap)}
+            className="w-full flex items-center gap-2 px-4 py-3 mb-3 bg-blue-50 border border-blue-200 rounded-xl hover:bg-blue-100 transition-colors"
+          >
+            <Navigation className="w-4 h-4 text-blue-600" />
+            <span className="text-sm font-medium text-blue-900">
+              {showMap ? "Hide Map" : "Select from Map"}
+            </span>
+          </button>
+
+          {/* Map component */}
+          {showMap && (
+            <div className="mb-3 border border-gray-200 rounded-xl overflow-hidden h-64">
+              <MapComponent
+                onLocationSelect={(lat, lng, address) => {
+                  setCoordinates({ lat, lng });
+                  setDeliveryAddress(address);
+                  setShowMap(false);
+                  toast.success("Location selected!");
+                }}
+              />
+            </div>
+          )}
+
+          {/* Coordinates display */}
+          {coordinates && (
+            <div className="mb-3 p-3 bg-green-50 rounded-lg border border-green-200">
+              <p className="text-xs text-green-700 font-semibold">
+                📍 Coordinates: {coordinates.lat.toFixed(4)},{" "}
+                {coordinates.lng.toFixed(4)}
+              </p>
+            </div>
+          )}
+
+          {/* Address textarea */}
           <textarea
             value={deliveryAddress}
             onChange={(e) => setDeliveryAddress(e.target.value)}
-            placeholder="Enter your full delivery address..."
+            placeholder="Enter your full delivery address or select from map..."
             rows={3}
             className="w-full px-4 py-3 bg-gray-50 rounded-xl text-sm text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-teal-500/30 resize-none"
           />

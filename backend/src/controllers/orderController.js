@@ -95,6 +95,24 @@ const cancelOrder = async (req, res) => {
   }
 };
 
+// Submit or update rating for delivered order
+const rateOrder = async (req, res) => {
+  try {
+    const order = await orderService.rateOrder(
+      req.params.id,
+      req.user._id,
+      req.body,
+    );
+
+    res.status(200).send(order);
+  } catch (error) {
+    console.error("Error rating order:", error);
+    res
+      .status(error.statusCode || 500)
+      .send({ error: error.message || "Failed to rate order" });
+  }
+};
+
 export default {
   createOrder,
   orderPaymentViaKhalti,
@@ -102,4 +120,5 @@ export default {
   getOrders,
   getOrderById,
   cancelOrder,
+  rateOrder,
 };

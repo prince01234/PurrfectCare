@@ -25,8 +25,16 @@ const TOTAL_STEPS = 4;
 const SPECIES_OPTIONS = [
   { value: "dog", label: "Dog" },
   { value: "cat", label: "Cat" },
+  { value: "bird", label: "Bird" },
+  { value: "rabbit", label: "Rabbit" },
+  { value: "hamster", label: "Hamster" },
+  { value: "fish", label: "Fish" },
   { value: "other", label: "Other" },
 ];
+
+const PET_GENDER_OPTIONS = ["Unknown", "Male", "Female"];
+const PET_SIZE_OPTIONS = ["Unknown", "Small", "Medium", "Large"];
+const COMMON_COLOR_OPTIONS = ["Black", "White", "Brown", "Mixed"];
 
 export default function CreateLostFoundPage() {
   const router = useRouter();
@@ -41,6 +49,9 @@ export default function CreateLostFoundPage() {
   const [breed, setBreed] = useState("");
   const [color, setColor] = useState("");
   const [petName, setPetName] = useState("");
+  const [petGender, setPetGender] = useState("Unknown");
+  const [petSize, setPetSize] = useState("Unknown");
+  const [collarDetails, setCollarDetails] = useState("");
   const [description, setDescription] = useState("");
 
   // Step 3: Location & Time
@@ -58,27 +69,19 @@ export default function CreateLostFoundPage() {
 
   const isLost = postType === "lost";
 
-  // Dynamic theme classes
+  // Theme classes
   const theme = {
-    progressBar: isLost ? "bg-red-500" : "bg-emerald-500",
-    accentBg: isLost ? "bg-red-50" : "bg-emerald-50",
-    accentText: isLost ? "text-red-600" : "text-emerald-600",
-    accentBorder: isLost ? "border-red-500" : "border-emerald-500",
-    accentBorderLight: isLost ? "border-red-200" : "border-emerald-200",
-    button: isLost
-      ? "bg-red-500 hover:bg-red-600 active:bg-red-700"
-      : "bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700",
-    selectedCard: isLost
-      ? "border-red-500 bg-red-50"
-      : "border-emerald-500 bg-emerald-50",
-    selectedChip: isLost
-      ? "border-red-500 bg-red-50 text-red-700"
-      : "border-emerald-500 bg-emerald-50 text-emerald-700",
+    progressBar: "bg-teal-400",
+    accentBg: "bg-teal-50",
+    accentText: "text-teal-700",
+    accentBorder: "border-teal-300",
+    accentBorderLight: "border-teal-200",
+    button: "bg-teal-400 hover:bg-teal-500 active:bg-teal-600",
+    selectedCard: "border-teal-300 bg-teal-50",
+    selectedChip: "border-teal-300 bg-teal-50 text-teal-700",
     unselectedChip:
       "border-gray-200 bg-white text-gray-700 hover:border-gray-300",
-    uploadBorder: isLost
-      ? "border-red-200 bg-red-50/50"
-      : "border-emerald-200 bg-emerald-50/50",
+    uploadBorder: "border-teal-200 bg-teal-50/50",
   };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -175,10 +178,22 @@ export default function CreateLostFoundPage() {
       formData.append("longitude", String(longitude));
       formData.append("eventDate", eventDate);
 
+      const extraPetDetails = [
+        petGender && petGender !== "Unknown" ? `Gender: ${petGender}` : null,
+        petSize && petSize !== "Unknown" ? `Size: ${petSize}` : null,
+        collarDetails.trim()
+          ? `Collar / Accessory: ${collarDetails.trim()}`
+          : null,
+      ].filter(Boolean) as string[];
+
+      const mergedDescription = [description.trim(), ...extraPetDetails]
+        .filter(Boolean)
+        .join("\n");
+
       if (breed) formData.append("breed", breed);
       if (color) formData.append("color", color);
       if (petName) formData.append("petName", petName);
-      if (description) formData.append("description", description);
+      if (mergedDescription) formData.append("description", mergedDescription);
       if (reward && isLost) formData.append("reward", reward);
 
       photos.forEach((photo) => {
@@ -205,7 +220,7 @@ export default function CreateLostFoundPage() {
 
   return (
     <MobileLayout showBottomNav={false}>
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-slate-50">
         {/* Header */}
         <div className="sticky top-0 z-30 bg-white border-b border-gray-100">
           <div className="flex items-center gap-3 px-5 py-4">
@@ -232,7 +247,7 @@ export default function CreateLostFoundPage() {
         </div>
 
         {/* Content */}
-        <div className="px-5 py-6">
+        <div className="px-5 py-6 pb-24">
           <AnimatePresence mode="wait">
             {/* Step 1: What happened? */}
             {currentStep === 1 && (
@@ -243,7 +258,7 @@ export default function CreateLostFoundPage() {
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.25 }}
               >
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                <h1 className="text-2xl font-semibold text-gray-900 mb-2">
                   What happened?
                 </h1>
                 <p className="text-sm text-gray-500 mb-8">
@@ -256,20 +271,20 @@ export default function CreateLostFoundPage() {
                     onClick={() => setPostType("lost")}
                     className={`w-full p-5 rounded-2xl border-2 text-left transition-all ${
                       postType === "lost"
-                        ? "border-red-500 bg-red-50"
+                        ? "border-rose-300 bg-rose-50"
                         : "border-gray-200 hover:border-gray-300"
                     }`}
                   >
                     <div className="flex items-center gap-4">
                       <div
                         className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                          postType === "lost" ? "bg-red-100" : "bg-gray-100"
+                          postType === "lost" ? "bg-rose-100" : "bg-gray-100"
                         }`}
                       >
                         <AlertTriangle
                           className={`w-6 h-6 ${
                             postType === "lost"
-                              ? "text-red-500"
+                              ? "text-rose-500"
                               : "text-gray-400"
                           }`}
                         />
@@ -290,22 +305,20 @@ export default function CreateLostFoundPage() {
                     onClick={() => setPostType("found")}
                     className={`w-full p-5 rounded-2xl border-2 text-left transition-all ${
                       postType === "found"
-                        ? "border-emerald-500 bg-emerald-50"
+                        ? "border-teal-300 bg-teal-50"
                         : "border-gray-200 hover:border-gray-300"
                     }`}
                   >
                     <div className="flex items-center gap-4">
                       <div
                         className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                          postType === "found"
-                            ? "bg-emerald-100"
-                            : "bg-gray-100"
+                          postType === "found" ? "bg-teal-100" : "bg-gray-100"
                         }`}
                       >
                         <Search
                           className={`w-6 h-6 ${
                             postType === "found"
-                              ? "text-emerald-500"
+                              ? "text-teal-500"
                               : "text-gray-400"
                           }`}
                         />
@@ -333,21 +346,24 @@ export default function CreateLostFoundPage() {
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.25 }}
               >
-                <h1 className="text-2xl font-bold text-gray-900 mb-6">
+                <h1 className="text-2xl font-semibold text-gray-900 mb-2">
                   Pet Details
                 </h1>
+                <p className="text-sm text-gray-500 mb-6">
+                  Add clear details so people can identify this pet faster.
+                </p>
 
                 {/* Species */}
                 <div className="mb-5">
                   <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
                     Species
                   </label>
-                  <div className="flex gap-3">
+                  <div className="grid grid-cols-3 gap-2">
                     {SPECIES_OPTIONS.map((opt) => (
                       <button
                         key={opt.value}
                         onClick={() => setSpecies(opt.value)}
-                        className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${
+                        className={`py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${
                           species === opt.value
                             ? theme.selectedChip
                             : theme.unselectedChip
@@ -370,7 +386,7 @@ export default function CreateLostFoundPage() {
                       value={breed}
                       onChange={(e) => setBreed(e.target.value)}
                       placeholder="e.g. Lab"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-sm focus:outline-none focus:border-gray-400 transition-colors bg-white"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-sm focus:outline-none focus:border-teal-400 transition-colors bg-white"
                     />
                   </div>
                   <div>
@@ -382,9 +398,26 @@ export default function CreateLostFoundPage() {
                       value={color}
                       onChange={(e) => setColor(e.target.value)}
                       placeholder="e.g. Golden"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-sm focus:outline-none focus:border-gray-400 transition-colors bg-white"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-sm focus:outline-none focus:border-teal-400 transition-colors bg-white"
                     />
                   </div>
+                </div>
+
+                <div className="mb-5 flex flex-wrap gap-2">
+                  {COMMON_COLOR_OPTIONS.map((colorOption) => (
+                    <button
+                      key={colorOption}
+                      type="button"
+                      onClick={() => setColor(colorOption)}
+                      className={`px-3 py-1.5 rounded-full text-xs border transition ${
+                        color.toLowerCase() === colorOption.toLowerCase()
+                          ? "border-teal-500 bg-teal-50 text-teal-700"
+                          : "border-gray-200 text-gray-600 bg-white"
+                      }`}
+                    >
+                      {colorOption}
+                    </button>
+                  ))}
                 </div>
 
                 {/* Pet Name */}
@@ -397,7 +430,56 @@ export default function CreateLostFoundPage() {
                     value={petName}
                     onChange={(e) => setPetName(e.target.value)}
                     placeholder={isLost ? "Pet's name" : "Unknown"}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-sm focus:outline-none focus:border-gray-400 transition-colors bg-white"
+                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-sm focus:outline-none focus:border-teal-400 transition-colors bg-white"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mb-5">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                      Gender
+                    </label>
+                    <select
+                      value={petGender}
+                      onChange={(e) => setPetGender(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-sm focus:outline-none focus:border-teal-400 transition-colors bg-white"
+                    >
+                      {PET_GENDER_OPTIONS.map((genderOption) => (
+                        <option key={genderOption} value={genderOption}>
+                          {genderOption}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                      Size
+                    </label>
+                    <select
+                      value={petSize}
+                      onChange={(e) => setPetSize(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-sm focus:outline-none focus:border-teal-400 transition-colors bg-white"
+                    >
+                      {PET_SIZE_OPTIONS.map((sizeOption) => (
+                        <option key={sizeOption} value={sizeOption}>
+                          {sizeOption}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="mb-5">
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                    Collar / Accessory
+                  </label>
+                  <input
+                    type="text"
+                    value={collarDetails}
+                    onChange={(e) => setCollarDetails(e.target.value)}
+                    placeholder="e.g. Red collar with bell"
+                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-sm focus:outline-none focus:border-teal-400 transition-colors bg-white"
                   />
                 </div>
 
@@ -410,9 +492,12 @@ export default function CreateLostFoundPage() {
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Distinguishing marks, collar type, behavior..."
-                    rows={3}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-sm focus:outline-none focus:border-gray-400 transition-colors bg-white resize-none"
+                    rows={4}
+                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-sm focus:outline-none focus:border-teal-400 transition-colors bg-white resize-none"
                   />
+                  <p className="text-[11px] text-gray-400 mt-1.5">
+                    Tip: mention behavior, nearby landmark, and time last seen.
+                  </p>
                 </div>
               </motion.div>
             )}
@@ -426,7 +511,7 @@ export default function CreateLostFoundPage() {
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.25 }}
               >
-                <h1 className="text-2xl font-bold text-gray-900 mb-6">
+                <h1 className="text-2xl font-semibold text-gray-900 mb-6">
                   Location & Time
                 </h1>
 
@@ -442,7 +527,7 @@ export default function CreateLostFoundPage() {
                       value={locationAddress}
                       onChange={(e) => setLocationAddress(e.target.value)}
                       placeholder="Enter address or landmark"
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-gray-200 text-sm focus:outline-none focus:border-gray-400 transition-colors bg-white"
+                      className="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-gray-200 text-sm focus:outline-none focus:border-teal-400 transition-colors bg-white"
                     />
                   </div>
                   <button
@@ -487,7 +572,7 @@ export default function CreateLostFoundPage() {
                       value={eventDate}
                       onChange={(e) => setEventDate(e.target.value)}
                       max={new Date().toISOString().split("T")[0]}
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-gray-200 text-sm focus:outline-none focus:border-gray-400 transition-colors bg-white"
+                      className="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-gray-200 text-sm focus:outline-none focus:border-teal-400 transition-colors bg-white"
                     />
                   </div>
                 </div>
@@ -503,7 +588,7 @@ export default function CreateLostFoundPage() {
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.25 }}
               >
-                <h1 className="text-2xl font-bold text-gray-900 mb-6">
+                <h1 className="text-2xl font-semibold text-gray-900 mb-6">
                   Photos{isLost ? " & Reward" : ""}
                 </h1>
 
@@ -587,7 +672,7 @@ export default function CreateLostFoundPage() {
                         onChange={(e) => setReward(e.target.value)}
                         placeholder="Amount"
                         min="0"
-                        className="w-full pl-8 pr-4 py-3 rounded-xl border-2 border-gray-200 text-sm focus:outline-none focus:border-gray-400 transition-colors bg-white"
+                        className="w-full pl-8 pr-4 py-3 rounded-xl border-2 border-gray-200 text-sm focus:outline-none focus:border-teal-400 transition-colors bg-white"
                       />
                     </div>
                     <p className="text-xs text-gray-400 mt-1.5">
@@ -601,12 +686,12 @@ export default function CreateLostFoundPage() {
         </div>
 
         {/* Bottom Action */}
-        <div className="sticky bottom-0 bg-white border-t border-gray-100 px-5 py-4">
+        <div className="sticky bottom-0 bg-white/95 backdrop-blur border-t border-gray-100 px-5 py-4">
           {currentStep < TOTAL_STEPS ? (
             <button
               onClick={handleNext}
               disabled={!canProceed()}
-              className={`w-full py-3.5 rounded-xl font-semibold text-white text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${theme.button}`}
+              className={`w-full py-3.5 rounded-xl font-semibold text-white text-sm transition-all disabled:bg-gray-300 disabled:cursor-not-allowed ${theme.button}`}
             >
               Next Step &gt;
             </button>

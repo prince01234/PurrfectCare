@@ -10,6 +10,7 @@ import {
   Plus,
   Search,
   SlidersHorizontal,
+  LocateFixed,
   MapPin,
   X,
   Clock,
@@ -22,7 +23,16 @@ import { lostFoundApi } from "@/lib/api/lostFound";
 import type { LostFoundPost } from "@/lib/api/lostFound";
 import { useGeolocation } from "@/lib/hooks/useGeolocation";
 
-const SPECIES_FILTERS = ["All", "Dog", "Cat", "Bird", "Rabbit", "Other"];
+const SPECIES_FILTERS = [
+  { value: "all", label: "All" },
+  { value: "dog", label: "Dog" },
+  { value: "cat", label: "Cat" },
+  { value: "bird", label: "Bird" },
+  { value: "rabbit", label: "Rabbit" },
+  { value: "hamster", label: "Hamster" },
+  { value: "fish", label: "Fish" },
+  { value: "other", label: "Other" },
+];
 
 export default function LostAndFoundPage() {
   const router = useRouter();
@@ -30,8 +40,9 @@ export default function LostAndFoundPage() {
   const [posts, setPosts] = useState<LostFoundPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"lost" | "found">("lost");
-  const [speciesFilter, setSpeciesFilter] = useState("All");
+  const [speciesFilter, setSpeciesFilter] = useState("all");
   const [showFilters, setShowFilters] = useState(false);
+  const [sortMode, setSortMode] = useState<"recent" | "nearest">("recent");
   const [searchQuery, setSearchQuery] = useState("");
   const userCoords = useGeolocation();
   const [pagination, setPagination] = useState({
@@ -47,9 +58,18 @@ export default function LostAndFoundPage() {
         limit: 20,
         postType: activeTab,
       };
-      if (speciesFilter !== "All") params.species = speciesFilter.toLowerCase();
+      if (speciesFilter !== "all") params.species = speciesFilter;
       if (searchQuery.trim()) params.search = searchQuery.trim();
       if (pagination.page > 1) params.page = pagination.page;
+
+      if (sortMode === "nearest" && userCoords) {
+        params.sortBy = "distance";
+        params.sortOrder = "asc";
+      } else {
+        params.sortBy = "createdAt";
+        params.sortOrder = "desc";
+      }
+
       if (userCoords) {
         params.latitude = userCoords.lat;
         params.longitude = userCoords.lng;
@@ -67,7 +87,14 @@ export default function LostAndFoundPage() {
       setIsLoading(false);
     };
     fetchPosts();
-  }, [activeTab, speciesFilter, searchQuery, pagination.page, userCoords]);
+  }, [
+    activeTab,
+    speciesFilter,
+    sortMode,
+    searchQuery,
+    pagination.page,
+    userCoords,
+  ]);
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString("en-US", {
@@ -82,13 +109,16 @@ export default function LostAndFoundPage() {
     return `${km.toFixed(1)}km away`;
   };
 
+  const toTitleCase = (value: string) =>
+    value ? value.charAt(0).toUpperCase() + value.slice(1) : "";
+
   const isLostTab = activeTab === "lost";
 
   return (
     <MobileLayout showBottomNav={false}>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-slate-50">
         {/* Header */}
-        <div className="sticky top-0 z-30 bg-white shadow-sm">
+        <div className="sticky top-0 z-30 bg-white border-b border-gray-100">
           <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
             <div className="flex items-center gap-3">
               <button
@@ -97,7 +127,9 @@ export default function LostAndFoundPage() {
               >
                 <ArrowLeft className="w-5 h-5 text-gray-700" />
               </button>
-              <h1 className="text-lg font-bold text-gray-900">Lost & Found</h1>
+              <h1 className="text-lg font-semibold text-gray-900">
+                Lost & Found
+              </h1>
             </div>
           </div>
 
@@ -109,14 +141,16 @@ export default function LostAndFoundPage() {
                 setPagination((p) => ({ ...p, page: 1 }));
               }}
               className={`flex-1 py-3.5 text-sm font-semibold text-center transition-all relative ${
-                isLostTab ? "text-red-500" : "text-gray-500 hover:text-gray-700"
+                isLostTab
+                  ? "text-rose-400"
+                  : "text-gray-500 hover:text-gray-700"
               }`}
             >
               Lost Pets
               {isLostTab && (
                 <motion.div
                   layoutId="tabIndicator"
-                  className="absolute bottom-0 left-0 right-0 h-1 bg-red-500"
+                  className="absolute bottom-0 left-0 right-0 h-1 bg-rose-400"
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 />
               )}
@@ -128,7 +162,7 @@ export default function LostAndFoundPage() {
               }}
               className={`flex-1 py-3.5 text-sm font-semibold text-center transition-all relative ${
                 !isLostTab
-                  ? "text-emerald-500"
+                  ? "text-teal-500"
                   : "text-gray-500 hover:text-gray-700"
               }`}
             >
@@ -136,7 +170,7 @@ export default function LostAndFoundPage() {
               {!isLostTab && (
                 <motion.div
                   layoutId="tabIndicator"
-                  className="absolute bottom-0 left-0 right-0 h-1 bg-emerald-500"
+                  className="absolute bottom-0 left-0 right-0 h-1 bg-teal-400"
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 />
               )}
@@ -155,7 +189,7 @@ export default function LostAndFoundPage() {
                   setPagination((p) => ({ ...p, page: 1 }));
                 }}
                 placeholder={`Search ${isLostTab ? "lost" : "found"} pets...`}
-                className="w-full pl-10 pr-4 py-2 rounded-lg bg-gray-100 text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-gray-300 transition"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-teal-200 focus:border-teal-300 transition"
               />
               {searchQuery && (
                 <button
@@ -169,8 +203,8 @@ export default function LostAndFoundPage() {
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={`w-10 h-10 flex items-center justify-center rounded-lg border-2 transition-all ${
-                speciesFilter !== "All"
-                  ? "border-amber-400 bg-amber-50 text-amber-600"
+                speciesFilter !== "all"
+                  ? "border-teal-300 bg-teal-50 text-teal-700"
                   : "border-gray-200 text-gray-400 hover:border-gray-300 hover:bg-gray-100"
               }`}
             >
@@ -178,23 +212,68 @@ export default function LostAndFoundPage() {
             </button>
           </div>
 
+          <div className="px-5 pb-3 flex items-center justify-between gap-3">
+            <p className="text-xs text-gray-500">
+              {isLoading
+                ? "Loading posts..."
+                : `${pagination.total} ${pagination.total === 1 ? "post" : "posts"}`}
+            </p>
+            <div className="inline-flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => {
+                  setSortMode("recent");
+                  setPagination((p) => ({ ...p, page: 1 }));
+                }}
+                className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition ${
+                  sortMode === "recent"
+                    ? "bg-white text-gray-800 shadow-sm"
+                    : "text-gray-500"
+                }`}
+              >
+                Recent
+              </button>
+              <button
+                onClick={() => {
+                  if (!userCoords) return;
+                  setSortMode("nearest");
+                  setPagination((p) => ({ ...p, page: 1 }));
+                }}
+                disabled={!userCoords}
+                className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition inline-flex items-center gap-1 ${
+                  sortMode === "nearest"
+                    ? "bg-white text-gray-800 shadow-sm"
+                    : "text-gray-500"
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                <LocateFixed className="w-3 h-3" />
+                Nearest
+              </button>
+            </div>
+          </div>
+
+          {!userCoords && (
+            <p className="px-5 pb-2 text-[11px] text-gray-500">
+              Enable location for nearest-first sorting and distance labels.
+            </p>
+          )}
+
           {/* Species filter chips */}
           {showFilters && (
             <div className="px-5 pb-4 flex gap-2 flex-wrap border-t border-gray-100">
-              {SPECIES_FILTERS.map((s) => (
+              {SPECIES_FILTERS.map((speciesOption) => (
                 <button
-                  key={s}
+                  key={speciesOption.value}
                   onClick={() => {
-                    setSpeciesFilter(s);
+                    setSpeciesFilter(speciesOption.value);
                     setPagination((p) => ({ ...p, page: 1 }));
                   }}
                   className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                    speciesFilter === s
-                      ? "bg-gray-900 text-white"
+                    speciesFilter === speciesOption.value
+                      ? "bg-teal-500 text-white"
                       : "bg-white border border-gray-200 text-gray-600 hover:border-gray-300"
                   }`}
                 >
-                  {s}
+                  {speciesOption.label}
                 </button>
               ))}
             </div>
@@ -227,7 +306,7 @@ export default function LostAndFoundPage() {
                 No {isLostTab ? "lost" : "found"} pets
               </h3>
               <p className="text-sm text-gray-500">
-                {searchQuery || speciesFilter !== "All"
+                {searchQuery || speciesFilter !== "all"
                   ? "Try adjusting your search or filters"
                   : `No ${isLostTab ? "lost" : "found"} pet reports yet`}
               </p>
@@ -244,9 +323,9 @@ export default function LostAndFoundPage() {
                 >
                   <Link href={`/lost-and-found/${post._id}`} className="block">
                     {/* Card Container */}
-                    <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-100 overflow-hidden">
+                    <div className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow border border-gray-100 overflow-hidden">
                       {/* Photo section */}
-                      <div className="relative w-full aspect-16/10 bg-gray-100 overflow-hidden">
+                      <div className="relative w-full aspect-4/3 bg-gray-100 overflow-hidden">
                         {post.photos[0] ? (
                           <Image
                             src={post.photos[0]}
@@ -265,8 +344,8 @@ export default function LostAndFoundPage() {
                           <span
                             className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white shadow-md ${
                               post.postType === "lost"
-                                ? "bg-red-500"
-                                : "bg-emerald-500"
+                                ? "bg-rose-400"
+                                : "bg-teal-400"
                             }`}
                           >
                             <AlertTriangle className="w-3.5 h-3.5" />
@@ -288,8 +367,9 @@ export default function LostAndFoundPage() {
                       {/* Info section */}
                       <div className="p-4">
                         <div className="flex items-center justify-between gap-2 mb-1">
-                          <h3 className="font-bold text-gray-900 text-base">
-                            {post.petName || `Unknown ${post.species}`}
+                          <h3 className="font-semibold text-gray-900 text-base">
+                            {post.petName ||
+                              `Unknown ${toTitleCase(post.species)}`}
                           </h3>
                           <span className="flex items-center gap-1 text-xs text-gray-500 shrink-0">
                             <Clock className="w-3 h-3" />
@@ -297,17 +377,31 @@ export default function LostAndFoundPage() {
                           </span>
                         </div>
 
-                        {post.breed && (
-                          <p className="text-xs text-gray-500 mb-2">
-                            {post.breed}
-                          </p>
-                        )}
+                        <div className="flex items-center gap-1.5 flex-wrap mb-2">
+                          <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-teal-50 text-teal-700">
+                            {toTitleCase(post.species)}
+                          </span>
+                          {post.breed && (
+                            <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-600">
+                              {post.breed}
+                            </span>
+                          )}
+                          {post.color && (
+                            <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-600">
+                              {post.color}
+                            </span>
+                          )}
+                        </div>
 
                         {post.description && (
                           <p className="text-sm text-gray-600 line-clamp-2 mb-2">
                             {post.description}
                           </p>
                         )}
+
+                        <p className="text-xs text-gray-500 truncate mb-2">
+                          {post.locationAddress}
+                        </p>
 
                         {post.status === "resolved" && (
                           <span className="inline-block px-2 py-1 rounded-lg bg-gray-100 text-gray-600 text-xs font-medium">
@@ -353,7 +447,7 @@ export default function LostAndFoundPage() {
         {/* FAB */}
         <Link
           href="/lost-and-found/create"
-          className="fixed bottom-6 right-5 z-40 w-14 h-14 bg-amber-500 hover:bg-amber-600  text-white rounded-full shadow-lg shadow-amber-500/40 flex items-center justify-center active:scale-95 transition-all"
+          className="fixed bottom-6 right-5 z-40 w-14 h-14 bg-teal-400 hover:bg-teal-500 text-white rounded-full shadow-lg shadow-teal-400/25 flex items-center justify-center active:scale-95 transition-all"
         >
           <Plus className="w-6 h-6" />
         </Link>

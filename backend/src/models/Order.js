@@ -30,6 +30,28 @@ const orderItemSchema = new mongoose.Schema(
   { _id: false },
 );
 
+const orderRatingSchema = new mongoose.Schema(
+  {
+    score: {
+      type: Number,
+      required: [true, "Rating score is required"],
+      min: [1, "Rating must be at least 1"],
+      max: [5, "Rating cannot be more than 5"],
+    },
+    comment: {
+      type: String,
+      default: null,
+      trim: true,
+      maxlength: [500, "Rating comment must be 500 characters or less"],
+    },
+    ratedAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: false },
+);
+
 const orderSchema = new mongoose.Schema(
   {
     // Reference to the user
@@ -81,6 +103,12 @@ const orderSchema = new mongoose.Schema(
       trim: true,
     },
 
+    // Customer rating (set after delivery)
+    rating: {
+      type: orderRatingSchema,
+      default: null,
+    },
+
     // Payment method chosen by user
     paymentMethod: {
       type: String,
@@ -108,6 +136,7 @@ const orderSchema = new mongoose.Schema(
 orderSchema.index({ userId: 1 });
 orderSchema.index({ status: 1 });
 orderSchema.index({ createdAt: -1 });
+orderSchema.index({ "rating.score": 1 });
 
 // Helper to check valid ObjectId
 export const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);

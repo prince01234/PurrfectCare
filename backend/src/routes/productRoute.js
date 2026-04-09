@@ -49,4 +49,7 @@ router.delete(
   productController.deleteProduct,
 );
 
+// URL: /api/products/:id/reviews - Get product reviews (public)
+router.get("/:id/reviews", productController.getProductReviews);
+
 export default router;
