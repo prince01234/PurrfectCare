@@ -17,7 +17,7 @@ import {
   Loader2,
   Trash2,
   CheckCircle,
-  DollarSign,
+  Banknote,
   AlertTriangle,
   Pencil,
 } from "lucide-react";
@@ -47,7 +47,7 @@ export default function LostFoundDetailPage() {
 
   const isOwner = user?._id === post?.createdBy?._id;
   const isLost = post?.postType === "lost";
-  const accentColor = isLost ? "red" : "emerald";
+  const accentColor = isLost ? "rose" : "teal";
 
   useEffect(() => {
     const fetchPost = async () => {
@@ -153,7 +153,7 @@ export default function LostFoundDetailPage() {
 
   return (
     <MobileLayout showBottomNav={false}>
-      <div className="min-h-screen bg-gray-50 pb-28">
+      <div className="min-h-screen bg-slate-50 pb-28">
         {/* ── Hero Photo Section ── */}
         <div className="relative w-full aspect-square bg-gray-100">
           {post.photos.length > 0 ? (
@@ -233,8 +233,10 @@ export default function LostFoundDetailPage() {
           {/* Status badge */}
           <div className="absolute bottom-3 left-3">
             <span
-              className={`px-3 py-1 rounded-full text-xs font-bold text-white shadow ${
-                isLost ? "bg-red-500" : "bg-emerald-500"
+              className={`px-3 py-1 rounded-full text-xs font-semibold border shadow-sm ${
+                isLost
+                  ? "bg-white/90 text-rose-700 border-rose-200"
+                  : "bg-white/90 text-teal-700 border-teal-200"
               }`}
             >
               {isLost ? "LOST" : "FOUND"}
@@ -261,10 +263,10 @@ export default function LostFoundDetailPage() {
           <div
             className={`rounded-2xl p-4 ${
               post.status === "resolved"
-                ? "bg-gray-50 border border-gray-200"
+                ? "bg-slate-50 border border-slate-200"
                 : isLost
-                  ? "bg-red-50 border border-red-100"
-                  : "bg-emerald-50 border border-emerald-100"
+                  ? "bg-rose-50/80 border border-rose-100"
+                  : "bg-teal-50/80 border border-teal-100"
             }`}
           >
             <div className="flex items-center justify-between">
@@ -275,10 +277,10 @@ export default function LostFoundDetailPage() {
                 <p
                   className={`text-sm font-semibold mt-0.5 ${
                     post.status === "resolved"
-                      ? "text-gray-600"
+                      ? "text-slate-600"
                       : isLost
-                        ? "text-red-600"
-                        : "text-emerald-600"
+                        ? "text-rose-700"
+                        : "text-teal-700"
                   }`}
                 >
                   {post.status === "resolved"
@@ -293,11 +295,7 @@ export default function LostFoundDetailPage() {
                 <button
                   onClick={handleStatusUpdate}
                   disabled={isUpdatingStatus}
-                  className={`px-4 py-2 rounded-xl text-xs font-semibold text-white flex items-center gap-1.5 transition-all active:scale-95 disabled:opacity-50 ${
-                    isLost
-                      ? "bg-emerald-500 hover:bg-emerald-600"
-                      : "bg-emerald-500 hover:bg-emerald-600"
-                  }`}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-teal-500 hover:bg-teal-600 flex items-center gap-1.5 transition-all active:scale-95 disabled:opacity-50"
                 >
                   {isUpdatingStatus ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -311,7 +309,7 @@ export default function LostFoundDetailPage() {
 
             {post.status === "resolved" && (
               <div className="flex items-center gap-1.5 mt-2 text-xs text-gray-500">
-                <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+                <CheckCircle className="w-3.5 h-3.5 text-teal-500" />
                 This post has been resolved
               </div>
             )}
@@ -320,27 +318,36 @@ export default function LostFoundDetailPage() {
           {/* Map section */}
           {post.latitude && post.longitude && (
             <div>
-              <h3 className="text-sm font-semibold text-gray-700 mb-2">
-                {isLost ? "Last Seen Location" : "Found Location"}
-              </h3>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold text-gray-700">
+                  {isLost ? "Last Seen Location" : "Found Location"}
+                </h3>
+              </div>
+              <div
+                onClick={() => setShowMap(true)}
+                className="w-full h-48 rounded-xl overflow-hidden bg-teal-50 relative border border-slate-200 group cursor-pointer"
+              >
+                <DynamicMapModal
+                  isOpen={true}
+                  onClose={() => {}}
+                  markers={mapMarkers}
+                  title={isLost ? "Last Seen Location" : "Found Location"}
+                  focusMarkerId={post._id}
+                  center={
+                    post.latitude && post.longitude
+                      ? [post.latitude, post.longitude]
+                      : undefined
+                  }
+                  zoom={14}
+                  isEmbedded={true}
+                />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 group-active:bg-black/10 transition-colors rounded-xl" />
+              </div>
               <button
                 onClick={() => setShowMap(true)}
-                className="w-full h-40 rounded-2xl overflow-hidden bg-gray-100 relative border border-gray-200 group"
+                className="w-full mt-2 py-2.5 text-xs font-medium text-teal-600 hover:text-teal-700 bg-teal-50 rounded-lg transition-colors"
               >
-                {/* Static map thumbnail using a placeholder until map opens */}
-                <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-emerald-50 to-teal-50">
-                  <div className="text-center">
-                    <MapPin
-                      className={`w-8 h-8 mx-auto mb-1 ${
-                        isLost ? "text-red-400" : "text-emerald-400"
-                      }`}
-                    />
-                    <p className="text-xs text-gray-500 font-medium">
-                      Tap to view map
-                    </p>
-                  </div>
-                </div>
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors rounded-2xl" />
+                Open Full Map
               </button>
             </div>
           )}
@@ -381,16 +388,16 @@ export default function LostFoundDetailPage() {
 
           {/* Reward */}
           {post.reward && isLost && (
-            <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-                <DollarSign className="w-5 h-5 text-amber-600" />
+            <div className="bg-teal-50 border border-teal-100 rounded-2xl p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center">
+                <Banknote className="w-5 h-5 text-teal-700" />
               </div>
               <div>
-                <p className="text-xs font-medium text-amber-700 uppercase tracking-wide">
+                <p className="text-xs font-medium text-teal-700 uppercase tracking-wide">
                   Reward Offered
                 </p>
-                <p className="text-lg font-bold text-amber-800">
-                  ${post.reward}
+                <p className="text-lg font-bold text-teal-800">
+                  Rs. {post.reward.toLocaleString("en-NP")}
                 </p>
               </div>
             </div>
@@ -450,7 +457,7 @@ export default function LostFoundDetailPage() {
               </button>
               <button
                 onClick={() => setShowDeleteConfirm(true)}
-                className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-red-50 text-red-600 text-sm font-medium hover:bg-red-100 transition-colors"
+                className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-rose-50 text-rose-600 text-sm font-medium hover:bg-rose-100 transition-colors"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -466,11 +473,7 @@ export default function LostFoundDetailPage() {
               context="lost_found"
               contextRef={post._id}
               label={isLost ? "Contact Owner" : "Contact Finder"}
-              className={`w-full! justify-center! py-3.5! rounded-2xl! text-base! font-semibold! ${
-                isLost
-                  ? "bg-red-500! hover:bg-red-600! text-white!"
-                  : "bg-emerald-500! hover:bg-emerald-600! text-white!"
-              }`}
+              className="w-full! justify-center! py-3.5! rounded-2xl! text-base! font-semibold! bg-teal-500! hover:bg-teal-600! text-white!"
               variant="primary"
             />
           </div>
@@ -485,8 +488,8 @@ export default function LostFoundDetailPage() {
               className="bg-white rounded-2xl p-6 w-full max-w-sm"
             >
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
-                  <AlertTriangle className="w-5 h-5 text-red-600" />
+                <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center">
+                  <AlertTriangle className="w-5 h-5 text-rose-600" />
                 </div>
                 <h3 className="font-semibold text-gray-900">Delete Post</h3>
               </div>
@@ -504,7 +507,7 @@ export default function LostFoundDetailPage() {
                 <button
                   onClick={handleDelete}
                   disabled={isDeleting}
-                  className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  className="flex-1 py-2.5 rounded-xl bg-rose-400 hover:bg-rose-500 text-white text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-1.5"
                 >
                   {isDeleting && (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -548,12 +551,12 @@ function InfoCard({
   accent: string;
 }) {
   const bgMap: Record<string, string> = {
-    red: "bg-red-50",
-    emerald: "bg-emerald-50",
+    rose: "bg-rose-50/80",
+    teal: "bg-teal-50/80",
   };
   const iconBgMap: Record<string, string> = {
-    red: "bg-red-100 text-red-500",
-    emerald: "bg-emerald-100 text-emerald-500",
+    rose: "bg-rose-100 text-rose-500",
+    teal: "bg-teal-100 text-teal-600",
   };
 
   return (

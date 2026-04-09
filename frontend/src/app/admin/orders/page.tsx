@@ -15,7 +15,7 @@ import {
   ChevronDown,
   ChevronUp,
   CreditCard,
-  DollarSign,
+  Banknote,
   StickyNote,
   ChevronLeft,
   ChevronRight,
@@ -561,7 +561,7 @@ export default function MerchantOrdersPage() {
                                 {order.paymentMethod === "khalti" ? (
                                   <CreditCard className="w-4 h-4 text-purple-500" />
                                 ) : (
-                                  <DollarSign className="w-4 h-4 text-emerald-500" />
+                                  <Banknote className="w-4 h-4 text-emerald-500" />
                                 )}
                                 <span className="text-sm text-gray-700">
                                   {order.paymentMethod === "khalti"

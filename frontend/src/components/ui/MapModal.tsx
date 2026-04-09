@@ -31,6 +31,8 @@ interface MapModalProps {
   focusMarkerId?: string;
   /** If provided, show user's location on the map */
   userLocation?: { lat: number; lng: number } | null;
+  /** If true, render as embedded map without modal overlay */
+  isEmbedded?: boolean;
 }
 
 // Service-type → emoji mapping for marker icons
@@ -87,12 +89,16 @@ export default function MapModal({
   zoom = 13,
   focusMarkerId,
   userLocation,
+  isEmbedded = false,
 }: MapModalProps) {
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
 
+  // For embedded mode, always initialize map
+  const shouldInitMap = isEmbedded || isOpen;
+
   useEffect(() => {
-    if (!isOpen || !mapContainerRef.current) return;
+    if (!shouldInitMap || !mapContainerRef.current) return;
 
     // Small delay to ensure the DOM container is rendered
     const timer = setTimeout(() => {
@@ -215,27 +221,55 @@ export default function MapModal({
     return () => {
       clearTimeout(timer);
       if (mapRef.current) {
+        mapRef.current.off("locationfound");
         mapRef.current.remove();
         mapRef.current = null;
       }
     };
-  }, [isOpen, markers, center, zoom, focusMarkerId, userLocation]);
+  }, [shouldInitMap, markers, center, zoom, focusMarkerId, userLocation]);
 
   // Locate user
-  const handleLocateUser = () => {
+  const handleLocateUser = (e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
     if (!mapRef.current) return;
     mapRef.current.locate({ setView: true, maxZoom: 15 });
-    mapRef.current.on("locationfound", (e: L.LocationEvent) => {
-      L.circleMarker(e.latlng, {
+    mapRef.current.on("locationfound", (ev: L.LocationEvent) => {
+      if (!mapRef.current) return;
+      L.circleMarker(ev.latlng, {
         radius: 8,
         color: "#3b82f6",
         fillColor: "#3b82f6",
         fillOpacity: 0.3,
         weight: 2,
-      }).addTo(mapRef.current!);
+      }).addTo(mapRef.current);
     });
   };
 
+  // Embedded mode render (no modal, just map)
+  if (isEmbedded) {
+    return (
+      <div className="w-full h-full relative">
+        <div
+          ref={mapContainerRef}
+          className="w-full h-full"
+          style={{ minHeight: "100%" }}
+        />
+        {/* Locate me button */}
+        <button
+          onClick={handleLocateUser}
+          className="absolute top-2 left-2 z-1000 w-9 h-9 bg-white rounded-lg shadow-sm flex items-center justify-center hover:bg-gray-50 active:bg-gray-100 transition-colors border border-gray-200"
+          title="My Location"
+        >
+          <Navigation className="w-3.5 h-3.5 text-blue-500" />
+        </button>
+      </div>
+    );
+  }
+
+  // Modal mode render
   return (
     <AnimatePresence>
       {isOpen && (

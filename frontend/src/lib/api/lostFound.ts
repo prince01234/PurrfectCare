@@ -53,6 +53,7 @@ export interface LostFoundPostsResponse {
 export interface LostFoundQueryParams {
   page?: number;
   limit?: number;
+  search?: string;
   postType?: PostType;
   species?: string;
   status?: PostStatus;
@@ -206,6 +207,23 @@ export const lostFoundApi = {
     const queryStr = query.toString();
     return apiRequest<LostFoundLocationsResponse>(
       `/api/map/lost-found${queryStr ? `?${queryStr}` : ""}`,
+    );
+  },
+
+  /** Get post locations from lost-found module endpoint */
+  getPostLocationsModule: (params?: {
+    postType?: PostType;
+    species?: string;
+  }) => {
+    const query = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) query.set(key, value);
+      });
+    }
+    const queryStr = query.toString();
+    return apiRequest<LostFoundLocationsResponse>(
+      `/api/lost-found/locations${queryStr ? `?${queryStr}` : ""}`,
     );
   },
 };
