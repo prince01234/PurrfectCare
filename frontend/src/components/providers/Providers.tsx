@@ -6,6 +6,7 @@ import { CartProvider } from "@/context/CartContext";
 import { SocketProvider } from "@/context/SocketContext";
 import { NotificationCenterProvider } from "@/context/NotificationCenterContext";
 import { useFCM } from "@/lib/hooks/useFCM";
+import PWAInstallPrompt from "@/components/pwa/PWAInstallPrompt";
 
 function FCMInitializer({ children }: { children: ReactNode }) {
   useFCM();
@@ -32,6 +33,7 @@ export default function Providers({ children }: { children: ReactNode }) {
         <SocketProvider>
           <NotificationCenterProvider>
             <CartProvider>
+              <PWAInstallPrompt />
               <FCMInitializer>{children}</FCMInitializer>
             </CartProvider>
           </NotificationCenterProvider>
