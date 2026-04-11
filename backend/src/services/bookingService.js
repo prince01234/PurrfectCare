@@ -61,22 +61,71 @@ const getBookingVaccinationDate = (booking) => {
   return parsed;
 };
 
+const normalizeText = (value, maxLength = null) => {
+  if (typeof value !== "string") return null;
+
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  if (typeof maxLength === "number") {
+    return trimmed.slice(0, maxLength);
+  }
+
+  return trimmed;
+};
+
+const parseOptionalDate = (value, label) => {
+  if (!value) return null;
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    throw {
+      statusCode: 400,
+      message: `Invalid ${label}`,
+    };
+  }
+
+  return parsed;
+};
+
+const normalizeSymptoms = (symptoms) => {
+  if (!Array.isArray(symptoms)) return [];
+
+  return symptoms
+    .map((item) => normalizeText(item, 120))
+    .filter(Boolean)
+    .slice(0, 20);
+};
+
 const isVaccinationBooking = (booking, provider) => {
   if (provider?.serviceType !== "veterinary") return false;
+
+  if ((booking?.serviceOption?.serviceCategory || "") === "vaccination") {
+    return true;
+  }
 
   const haystack = `${booking?.serviceOption?.name || ""} ${booking?.notes || ""}`;
   return /vaccin/i.test(haystack);
 };
 
-const createVaccinationsFromCompletedBooking = async (booking) => {
+const createVaccinationsFromCompletedBooking = async (
+  booking,
+  customVaccination = null,
+  session = null,
+) => {
   const provider = booking.providerId;
 
-  if (!isVaccinationBooking(booking, provider)) {
+  if (!customVaccination && !isVaccinationBooking(booking, provider)) {
     return 0;
   }
 
-  const vaccineName = booking.serviceOption?.name?.trim() || "Vaccination";
-  const dateGiven = getBookingVaccinationDate(booking);
+  const vaccineName =
+    normalizeText(customVaccination?.vaccineName, 120) ||
+    normalizeText(booking?.serviceOption?.vaccineType, 120) ||
+    booking.serviceOption?.name?.trim() ||
+    "Vaccination";
+  const dateGiven =
+    customVaccination?.dateGiven || getBookingVaccinationDate(booking);
   const dayStart = new Date(dateGiven);
   dayStart.setHours(0, 0, 0, 0);
   const dayEnd = new Date(dayStart);
@@ -85,25 +134,45 @@ const createVaccinationsFromCompletedBooking = async (booking) => {
   let createdCount = 0;
 
   for (const petId of getBookingPetIds(booking)) {
-    const duplicate = await Vaccination.findOne({
+    const duplicateQuery = Vaccination.findOne({
       petId,
       vaccineName,
       isDeleted: false,
       dateGiven: { $gte: dayStart, $lt: dayEnd },
     }).select("_id");
 
+    if (session) {
+      duplicateQuery.session(session);
+    }
+
+    const duplicate = await duplicateQuery;
+
     if (duplicate) {
       continue;
     }
 
-    await Vaccination.create({
+    const vaccinationPayload = {
       petId,
       vaccineName,
       dateGiven,
-      veterinarian: provider?.name || null,
-      clinic: provider?.name || null,
-      notes: `Auto-created from completed booking ${booking._id}`,
-    });
+      nextDueDate: customVaccination?.nextDueDate || null,
+      veterinarian:
+        normalizeText(customVaccination?.veterinarian, 120) ||
+        normalizeText(booking?.serviceOption?.veterinarian, 120) ||
+        provider?.name ||
+        null,
+      clinic:
+        normalizeText(customVaccination?.clinic, 120) || provider?.name || null,
+      notes:
+        normalizeText(customVaccination?.notes, 1000) ||
+        `Auto-created from completed booking ${booking._id}`,
+    };
+
+    if (session) {
+      await Vaccination.create([vaccinationPayload], { session });
+    } else {
+      await Vaccination.create(vaccinationPayload);
+    }
 
     createdCount += 1;
   }
@@ -111,40 +180,89 @@ const createVaccinationsFromCompletedBooking = async (booking) => {
   return createdCount;
 };
 
-const createMedicalRecordsFromCompletedBooking = async (booking) => {
+const createMedicalRecordsFromCompletedBooking = async (
+  booking,
+  customMedicalRecord = null,
+  session = null,
+) => {
   const provider = booking.providerId;
 
   if (provider?.serviceType !== "veterinary") {
     return 0;
   }
 
-  const visitDate = getBookingVaccinationDate(booking);
+  const visitDate =
+    customMedicalRecord?.visitDate || getBookingVaccinationDate(booking);
   const reasonForVisit =
-    booking.serviceOption?.name?.trim() || "Veterinary visit";
-  const autoNote = `Auto-created from completed booking ${booking._id}`;
+    normalizeText(customMedicalRecord?.reasonForVisit, 200) ||
+    normalizeText(booking?.serviceOption?.serviceCategory, 80) ||
+    booking.serviceOption?.name?.trim() ||
+    "Veterinary visit";
+
+  const dayStart = new Date(visitDate);
+  dayStart.setHours(0, 0, 0, 0);
+  const dayEnd = new Date(dayStart);
+  dayEnd.setDate(dayEnd.getDate() + 1);
 
   let createdCount = 0;
 
   for (const petId of getBookingPetIds(booking)) {
-    const duplicate = await MedicalRecord.findOne({
+    const duplicateQuery = MedicalRecord.findOne({
       petId,
       isDeleted: false,
-      notes: autoNote,
+      reasonForVisit,
+      visitDate: { $gte: dayStart, $lt: dayEnd },
     }).select("_id");
+
+    if (session) {
+      duplicateQuery.session(session);
+    }
+
+    const duplicate = await duplicateQuery;
 
     if (duplicate) {
       continue;
     }
 
-    await MedicalRecord.create({
+    const medicalPayload = {
       petId,
       visitDate,
       reasonForVisit,
-      vetName: provider?.name || null,
-      clinic: provider?.name || null,
-      treatment: booking.notes?.trim() || null,
-      notes: autoNote,
-    });
+      vetName:
+        normalizeText(customMedicalRecord?.vetName, 120) ||
+        normalizeText(booking?.serviceOption?.veterinarian, 120) ||
+        provider?.name ||
+        null,
+      clinic:
+        normalizeText(customMedicalRecord?.clinic, 120) ||
+        provider?.name ||
+        null,
+      weight:
+        typeof customMedicalRecord?.weight === "number" &&
+        Number.isFinite(customMedicalRecord.weight)
+          ? customMedicalRecord.weight
+          : null,
+      temperature:
+        typeof customMedicalRecord?.temperature === "number" &&
+        Number.isFinite(customMedicalRecord.temperature)
+          ? customMedicalRecord.temperature
+          : null,
+      symptoms: normalizeSymptoms(customMedicalRecord?.symptoms),
+      treatment:
+        normalizeText(customMedicalRecord?.treatment, 1000) ||
+        booking.notes?.trim() ||
+        null,
+      followUpDate: customMedicalRecord?.followUpDate || null,
+      notes:
+        normalizeText(customMedicalRecord?.notes, 1000) ||
+        `Auto-created from completed booking ${booking._id}`,
+    };
+
+    if (session) {
+      await MedicalRecord.create([medicalPayload], { session });
+    } else {
+      await MedicalRecord.create(medicalPayload);
+    }
 
     createdCount += 1;
   }
@@ -590,7 +708,7 @@ const cancelBooking = async (bookingId, userId) => {
 };
 
 // Complete a booking (provider only)
-const completeBooking = async (bookingId, userId) => {
+const completeBooking = async (bookingId, userId, completionData = {}) => {
   const booking = await Booking.findById(bookingId).populate("providerId");
 
   if (!booking) {
@@ -611,13 +729,119 @@ const completeBooking = async (bookingId, userId) => {
     };
   }
 
-  booking.status = BOOKING_STATUS.COMPLETED;
-  await booking.save();
+  const rawVaccination =
+    completionData?.vaccination &&
+    typeof completionData.vaccination === "object"
+      ? completionData.vaccination
+      : null;
 
-  const populatedBooking = await booking.populate([
-    { path: "userId", select: "name email profileImage" },
-    { path: "petIds", select: "name species photos" },
-  ]);
+  const rawMedicalRecord =
+    completionData?.medicalRecord &&
+    typeof completionData.medicalRecord === "object"
+      ? completionData.medicalRecord
+      : null;
+
+  const bookingDefaultDate = getBookingVaccinationDate(booking);
+
+  let parsedVaccination = null;
+  if (rawVaccination) {
+    const dateGiven =
+      parseOptionalDate(rawVaccination.dateGiven, "vaccination date") ||
+      bookingDefaultDate;
+    const nextDueDate = parseOptionalDate(
+      rawVaccination.nextDueDate,
+      "next due date",
+    );
+
+    if (nextDueDate && nextDueDate < dateGiven) {
+      throw {
+        statusCode: 400,
+        message: "Vaccination next due date cannot be earlier than date given",
+      };
+    }
+
+    parsedVaccination = {
+      ...rawVaccination,
+      dateGiven,
+      nextDueDate,
+    };
+  }
+
+  let parsedMedicalRecord = null;
+  if (rawMedicalRecord) {
+    const visitDate =
+      parseOptionalDate(rawMedicalRecord.visitDate, "visit date") ||
+      bookingDefaultDate;
+    const followUpDate = parseOptionalDate(
+      rawMedicalRecord.followUpDate,
+      "follow-up date",
+    );
+
+    if (followUpDate && followUpDate < visitDate) {
+      throw {
+        statusCode: 400,
+        message: "Medical follow-up date cannot be earlier than visit date",
+      };
+    }
+
+    parsedMedicalRecord = {
+      ...rawMedicalRecord,
+      visitDate,
+      followUpDate,
+    };
+  }
+
+  const session = await mongoose.startSession();
+  let populatedBooking = null;
+
+  try {
+    await session.withTransaction(async () => {
+      const bookingForUpdate = await Booking.findById(bookingId)
+        .session(session)
+        .populate("providerId");
+
+      if (!bookingForUpdate) {
+        throw { statusCode: 404, message: "Booking not found" };
+      }
+
+      if (bookingForUpdate.providerId.userId.toString() !== userId) {
+        throw {
+          statusCode: 403,
+          message: "Only the service provider can mark bookings as completed",
+        };
+      }
+
+      if (bookingForUpdate.status !== BOOKING_STATUS.CONFIRMED) {
+        throw {
+          statusCode: 400,
+          message: "Only confirmed bookings can be marked as completed",
+        };
+      }
+
+      bookingForUpdate.status = BOOKING_STATUS.COMPLETED;
+      await bookingForUpdate.save({ session });
+
+      populatedBooking = await Booking.findById(bookingId)
+        .session(session)
+        .populate("providerId")
+        .populate({ path: "userId", select: "name email profileImage" })
+        .populate({ path: "petIds", select: "name species photos" });
+
+      await createVaccinationsFromCompletedBooking(
+        populatedBooking,
+        parsedVaccination,
+        session,
+      );
+
+      await createMedicalRecordsFromCompletedBooking(
+        populatedBooking,
+        parsedMedicalRecord,
+        session,
+      );
+    });
+  } finally {
+    await session.endSession();
+  }
 
   await inAppNotificationService.createNotification({
     userId:
@@ -633,24 +857,6 @@ const completeBooking = async (bookingId, userId) => {
       providerName: booking.providerId.name,
     },
   });
-
-  try {
-    await createVaccinationsFromCompletedBooking(populatedBooking);
-  } catch (error) {
-    console.error(
-      `Failed to auto-create vaccination records for booking ${booking._id}:`,
-      error,
-    );
-  }
-
-  try {
-    await createMedicalRecordsFromCompletedBooking(populatedBooking);
-  } catch (error) {
-    console.error(
-      `Failed to auto-create medical records for booking ${booking._id}:`,
-      error,
-    );
-  }
 
   return populatedBooking;
 };

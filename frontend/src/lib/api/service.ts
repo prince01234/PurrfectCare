@@ -24,6 +24,9 @@ export interface ServiceOption {
   price?: number | null;
   duration?: number | null;
   image?: string | null;
+  serviceCategory?: string | null;
+  vaccineType?: string | null;
+  veterinarian?: string | null;
 }
 
 export interface ServiceProviderUser {
@@ -110,6 +113,9 @@ export interface Booking {
     name?: string | null;
     price?: number | null;
     duration?: number | null;
+    serviceCategory?: string | null;
+    vaccineType?: string | null;
+    veterinarian?: string | null;
   };
   notes?: string | null;
   paymentMethod?: "khalti" | "cod";
@@ -152,6 +158,9 @@ export interface CreateBookingData {
     name: string;
     price?: number;
     duration?: number;
+    serviceCategory?: string;
+    vaccineType?: string;
+    veterinarian?: string;
   };
   notes?: string;
   paymentMethod?: "khalti" | "cod";
@@ -169,6 +178,29 @@ export interface CreateProviderData {
   availability?: AvailabilitySlot[];
   serviceOptions?: ServiceOption[];
   slotDuration?: number;
+}
+
+export interface VeterinaryCompletionData {
+  vaccination?: {
+    vaccineName?: string;
+    dateGiven?: string;
+    nextDueDate?: string;
+    veterinarian?: string;
+    clinic?: string;
+    notes?: string;
+  };
+  medicalRecord?: {
+    visitDate?: string;
+    reasonForVisit?: string;
+    vetName?: string;
+    clinic?: string;
+    weight?: number;
+    temperature?: number;
+    symptoms?: string[];
+    treatment?: string;
+    followUpDate?: string;
+    notes?: string;
+  };
 }
 
 // ── Helpers ──
@@ -445,8 +477,18 @@ export const bookingApi = {
     apiRequest(`/api/bookings/${id}/cancel`, { method: "PUT" }, true),
 
   // Complete booking (provider)
-  completeBooking: (id: string): Promise<ApiResponse<Booking>> =>
-    apiRequest(`/api/bookings/${id}/complete`, { method: "PUT" }, true),
+  completeBooking: (
+    id: string,
+    completionData?: VeterinaryCompletionData,
+  ): Promise<ApiResponse<Booking>> =>
+    apiRequest(
+      `/api/bookings/${id}/complete`,
+      {
+        method: "PUT",
+        body: completionData ? JSON.stringify(completionData) : undefined,
+      },
+      true,
+    ),
 
   // Get provider analytics
   getProviderAnalytics: (): Promise<ApiResponse<ServiceProviderAnalytics>> =>

@@ -5,6 +5,85 @@ import Vaccination, {
 import Pet from "../models/Pet.js";
 import reminderService from "./reminderService.js";
 
+const ALLOWED_VACCINATION_SORT_FIELDS = new Set([
+  "dateGiven",
+  "nextDueDate",
+  "status",
+  "vaccineName",
+  "createdAt",
+  "updatedAt",
+]);
+
+const normalizeText = (value, maxLength = null) => {
+  if (typeof value !== "string") return null;
+
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  if (typeof maxLength === "number") {
+    return trimmed.slice(0, maxLength);
+  }
+
+  return trimmed;
+};
+
+const parseDate = (value, label) => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    throw { statusCode: 400, message: `Invalid ${label}` };
+  }
+  return parsed;
+};
+
+const parseOptionalDate = (value, label) => {
+  if (value === undefined || value === null || value === "") return null;
+  return parseDate(value, label);
+};
+
+const normalizeVaccinationPayload = (data = {}, { isCreate = false } = {}) => {
+  const normalized = {};
+
+  if (isCreate || Object.hasOwn(data, "vaccineName")) {
+    const vaccineName = normalizeText(data.vaccineName, 120);
+    if (!vaccineName) {
+      throw { statusCode: 400, message: "Vaccine name is required" };
+    }
+    normalized.vaccineName = vaccineName;
+  }
+
+  if (isCreate || Object.hasOwn(data, "dateGiven")) {
+    if (
+      data.dateGiven === undefined ||
+      data.dateGiven === null ||
+      data.dateGiven === ""
+    ) {
+      throw { statusCode: 400, message: "Date given is required" };
+    }
+    normalized.dateGiven = parseDate(data.dateGiven, "date given");
+  }
+
+  if (isCreate || Object.hasOwn(data, "nextDueDate")) {
+    normalized.nextDueDate = parseOptionalDate(
+      data.nextDueDate,
+      "next due date",
+    );
+  }
+
+  if (Object.hasOwn(data, "veterinarian")) {
+    normalized.veterinarian = normalizeText(data.veterinarian, 120);
+  }
+
+  if (Object.hasOwn(data, "clinic")) {
+    normalized.clinic = normalizeText(data.clinic, 120);
+  }
+
+  if (Object.hasOwn(data, "notes")) {
+    normalized.notes = normalizeText(data.notes, 1000);
+  }
+
+  return normalized;
+};
+
 // Verify pet ownership before any operation
 const verifyPetOwnership = async (petId, userId) => {
   if (!isValidObjectId(petId)) {
@@ -31,22 +110,33 @@ const verifyPetOwnership = async (petId, userId) => {
 const createVaccination = async (petId, userId, data) => {
   const pet = await verifyPetOwnership(petId, userId);
 
-  // Remove petId from body if provided (we use the URL param)
-  delete data.petId;
+  const { petId: _ignoredPetId, ...input } = data || {};
+  const normalizedPayload = normalizeVaccinationPayload(input, {
+    isCreate: true,
+  });
+
+  if (
+    normalizedPayload.nextDueDate &&
+    normalizedPayload.dateGiven &&
+    normalizedPayload.nextDueDate < normalizedPayload.dateGiven
+  ) {
+    throw {
+      statusCode: 400,
+      message: "Next due date cannot be earlier than date given",
+    };
+  }
 
   const vaccination = await Vaccination.create({
-    ...data,
+    ...normalizedPayload,
     petId: petId,
   });
 
   // Auto-create reminder for next vaccination due date
-  if (vaccination.nextDueDate) {
-    try {
-      await reminderService.createVaccinationReminder(vaccination, pet, userId);
-    } catch (error) {
-      console.error("Failed to create vaccination reminder:", error);
-      // Don't fail the vaccination creation if reminder fails
-    }
+  try {
+    await reminderService.upsertVaccinationReminder(vaccination, pet, userId);
+  } catch (error) {
+    console.error("Failed to sync vaccination reminder:", error);
+    // Don't fail the vaccination creation if reminder sync fails
   }
 
   return vaccination;
@@ -65,6 +155,13 @@ const getVaccinationsByPetId = async (petId, userId, queryParams = {}) => {
     includeDeleted = false,
   } = queryParams;
 
+  if (!ALLOWED_VACCINATION_SORT_FIELDS.has(sortBy)) {
+    throw {
+      statusCode: 400,
+      message: `Invalid sort field: ${sortBy}`,
+    };
+  }
+
   // Build filter
   const filter = { petId: toObjectId(petId) };
 
@@ -77,8 +174,8 @@ const getVaccinationsByPetId = async (petId, userId, queryParams = {}) => {
   }
 
   // Pagination
-  const pageNum = parseInt(page) || 1;
-  const limitNum = parseInt(limit) || 10;
+  const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+  const limitNum = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 100);
   const skip = (pageNum - 1) * limitNum;
 
   // Sort
@@ -113,7 +210,7 @@ const getVaccinationById = async (vaccinationId, petId, userId) => {
 
   const vaccination = await Vaccination.findOne({
     _id: vaccinationId,
-    petId: petId,
+    petId: toObjectId(petId),
     isDeleted: false,
   });
 
@@ -126,7 +223,7 @@ const getVaccinationById = async (vaccinationId, petId, userId) => {
 
 // Update a vaccination record
 const updateVaccination = async (vaccinationId, petId, userId, data) => {
-  await verifyPetOwnership(petId, userId);
+  const pet = await verifyPetOwnership(petId, userId);
 
   if (!isValidObjectId(vaccinationId)) {
     throw { statusCode: 400, message: "Invalid vaccination ID" };
@@ -142,15 +239,43 @@ const updateVaccination = async (vaccinationId, petId, userId, data) => {
   }
 
   // Remove fields that shouldn't be updated
-  const { petId: _, isDeleted, deletedAt, ...updateData } = data;
+  const {
+    petId: _ignoredPetId,
+    isDeleted,
+    deletedAt,
+    status,
+    ...input
+  } = data || {};
 
-  const updatedVaccination = await Vaccination.findByIdAndUpdate(
-    vaccinationId,
-    updateData,
-    { new: true, runValidators: true },
-  );
+  const normalizedPayload = normalizeVaccinationPayload(input);
 
-  return updatedVaccination;
+  const effectiveDateGiven =
+    normalizedPayload.dateGiven || vaccination.dateGiven;
+  const effectiveNextDueDate = Object.hasOwn(normalizedPayload, "nextDueDate")
+    ? normalizedPayload.nextDueDate
+    : vaccination.nextDueDate;
+
+  if (
+    effectiveNextDueDate &&
+    effectiveDateGiven &&
+    effectiveNextDueDate < effectiveDateGiven
+  ) {
+    throw {
+      statusCode: 400,
+      message: "Next due date cannot be earlier than date given",
+    };
+  }
+
+  vaccination.set(normalizedPayload);
+  await vaccination.save();
+
+  try {
+    await reminderService.upsertVaccinationReminder(vaccination, pet, userId);
+  } catch (error) {
+    console.error("Failed to sync vaccination reminder:", error);
+  }
+
+  return vaccination;
 };
 
 // Soft delete a vaccination record
@@ -175,6 +300,15 @@ const deleteVaccination = async (vaccinationId, petId, userId) => {
     { isDeleted: true, deletedAt: new Date() },
     { new: true },
   );
+
+  try {
+    await reminderService.deleteReminderByRelatedRecord(
+      vaccination._id,
+      "Vaccination",
+    );
+  } catch (error) {
+    console.error("Failed to delete related vaccination reminders:", error);
+  }
 
   return deletedVaccination;
 };
@@ -207,7 +341,6 @@ const getVaccinationReminders = async (petId, userId) => {
     petId: toObjectId(petId),
     isDeleted: false,
     nextDueDate: { $lt: today },
-    status: { $ne: "completed" },
   })
     .select("vaccineName nextDueDate")
     .sort({ nextDueDate: 1 })

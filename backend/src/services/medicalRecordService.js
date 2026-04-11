@@ -5,6 +5,141 @@ import MedicalRecord, {
 import Pet from "../models/Pet.js";
 import reminderService from "./reminderService.js";
 
+const ALLOWED_MEDICAL_SORT_FIELDS = new Set([
+  "visitDate",
+  "followUpDate",
+  "createdAt",
+  "updatedAt",
+  "reasonForVisit",
+  "vetName",
+]);
+
+const normalizeText = (value, maxLength = null) => {
+  if (typeof value !== "string") return null;
+
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  if (typeof maxLength === "number") {
+    return trimmed.slice(0, maxLength);
+  }
+
+  return trimmed;
+};
+
+const parseDate = (value, label) => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    throw { statusCode: 400, message: `Invalid ${label}` };
+  }
+  return parsed;
+};
+
+const parseOptionalDate = (value, label) => {
+  if (value === undefined || value === null || value === "") return null;
+  return parseDate(value, label);
+};
+
+const normalizeSymptoms = (symptoms) => {
+  if (symptoms === undefined) return undefined;
+  if (symptoms === null || symptoms === "") return [];
+
+  if (!Array.isArray(symptoms)) {
+    throw {
+      statusCode: 400,
+      message: "Symptoms must be an array of strings",
+    };
+  }
+
+  return symptoms
+    .map((item) => normalizeText(item, 120))
+    .filter(Boolean)
+    .slice(0, 20);
+};
+
+const normalizeNumber = (
+  value,
+  label,
+  { min = Number.NEGATIVE_INFINITY } = {},
+) => {
+  if (value === undefined) return undefined;
+  if (value === null || value === "") return null;
+
+  const numberValue = Number(value);
+  if (!Number.isFinite(numberValue)) {
+    throw { statusCode: 400, message: `${label} must be a valid number` };
+  }
+  if (numberValue < min) {
+    throw { statusCode: 400, message: `${label} cannot be below ${min}` };
+  }
+
+  return numberValue;
+};
+
+const normalizeMedicalRecordPayload = (
+  data = {},
+  { isCreate = false } = {},
+) => {
+  const normalized = {};
+
+  if (isCreate || Object.hasOwn(data, "visitDate")) {
+    if (
+      data.visitDate === undefined ||
+      data.visitDate === null ||
+      data.visitDate === ""
+    ) {
+      throw { statusCode: 400, message: "Visit date is required" };
+    }
+    normalized.visitDate = parseDate(data.visitDate, "visit date");
+  }
+
+  if (isCreate || Object.hasOwn(data, "reasonForVisit")) {
+    const reason = normalizeText(data.reasonForVisit, 200);
+    if (!reason) {
+      throw { statusCode: 400, message: "Reason for visit is required" };
+    }
+    normalized.reasonForVisit = reason;
+  }
+
+  if (Object.hasOwn(data, "vetName")) {
+    normalized.vetName = normalizeText(data.vetName, 120);
+  }
+
+  if (Object.hasOwn(data, "clinic")) {
+    normalized.clinic = normalizeText(data.clinic, 120);
+  }
+
+  if (Object.hasOwn(data, "weight")) {
+    normalized.weight = normalizeNumber(data.weight, "Weight", { min: 0 });
+  }
+
+  if (Object.hasOwn(data, "temperature")) {
+    normalized.temperature = normalizeNumber(data.temperature, "Temperature");
+  }
+
+  const normalizedSymptoms = normalizeSymptoms(data.symptoms);
+  if (normalizedSymptoms !== undefined) {
+    normalized.symptoms = normalizedSymptoms;
+  }
+
+  if (Object.hasOwn(data, "treatment")) {
+    normalized.treatment = normalizeText(data.treatment, 1000);
+  }
+
+  if (isCreate || Object.hasOwn(data, "followUpDate")) {
+    normalized.followUpDate = parseOptionalDate(
+      data.followUpDate,
+      "follow-up date",
+    );
+  }
+
+  if (Object.hasOwn(data, "notes")) {
+    normalized.notes = normalizeText(data.notes, 1000);
+  }
+
+  return normalized;
+};
+
 // Verify pet ownership before any operation
 const verifyPetOwnership = async (petId, userId) => {
   if (!isValidObjectId(petId)) {
@@ -31,24 +166,37 @@ const verifyPetOwnership = async (petId, userId) => {
 const createMedicalRecord = async (petId, userId, data) => {
   const pet = await verifyPetOwnership(petId, userId);
 
+  const { petId: _ignoredPetId, ...input } = data || {};
+  const normalizedPayload = normalizeMedicalRecordPayload(input, {
+    isCreate: true,
+  });
+
+  if (
+    normalizedPayload.followUpDate &&
+    normalizedPayload.visitDate &&
+    normalizedPayload.followUpDate < normalizedPayload.visitDate
+  ) {
+    throw {
+      statusCode: 400,
+      message: "Follow-up date cannot be earlier than visit date",
+    };
+  }
 
   const medicalRecord = await MedicalRecord.create({
-    ...data,
+    ...normalizedPayload,
     petId: petId,
   });
 
   // Auto-create reminder for follow-up date
-  if (medicalRecord.followUpDate) {
-    try {
-      await reminderService.createMedicalFollowUpReminder(
-        medicalRecord,
-        pet,
-        userId,
-      );
-    } catch (error) {
-      console.error("Failed to create medical follow-up reminder:", error);
-      // Don't fail the record creation if reminder fails
-    }
+  try {
+    await reminderService.upsertMedicalFollowUpReminder(
+      medicalRecord,
+      pet,
+      userId,
+    );
+  } catch (error) {
+    console.error("Failed to sync medical follow-up reminder:", error);
+    // Don't fail the record creation if reminder sync fails
   }
 
   return medicalRecord;
@@ -68,6 +216,13 @@ const getMedicalRecordsByPetId = async (petId, userId, queryParams = {}) => {
     endDate,
   } = queryParams;
 
+  if (!ALLOWED_MEDICAL_SORT_FIELDS.has(sortBy)) {
+    throw {
+      statusCode: 400,
+      message: `Invalid sort field: ${sortBy}`,
+    };
+  }
+
   // Build filter
   const filter = { petId: toObjectId(petId) };
 
@@ -79,16 +234,27 @@ const getMedicalRecordsByPetId = async (petId, userId, queryParams = {}) => {
   if (startDate || endDate) {
     filter.visitDate = {};
     if (startDate) {
-      filter.visitDate.$gte = new Date(startDate);
+      filter.visitDate.$gte = parseDate(startDate, "start date");
     }
     if (endDate) {
-      filter.visitDate.$lte = new Date(endDate);
+      filter.visitDate.$lte = parseDate(endDate, "end date");
+    }
+
+    if (
+      filter.visitDate.$gte &&
+      filter.visitDate.$lte &&
+      filter.visitDate.$gte > filter.visitDate.$lte
+    ) {
+      throw {
+        statusCode: 400,
+        message: "Start date cannot be later than end date",
+      };
     }
   }
 
   // Pagination
-  const pageNum = parseInt(page) || 1;
-  const limitNum = parseInt(limit) || 10;
+  const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+  const limitNum = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 100);
   const skip = (pageNum - 1) * limitNum;
 
   // Sort
@@ -123,7 +289,7 @@ const getMedicalRecordById = async (recordId, petId, userId) => {
 
   const medicalRecord = await MedicalRecord.findOne({
     _id: recordId,
-    petId: petId,
+    petId: toObjectId(petId),
     isDeleted: false,
   });
 
@@ -136,7 +302,7 @@ const getMedicalRecordById = async (recordId, petId, userId) => {
 
 // Update a medical record
 const updateMedicalRecord = async (recordId, petId, userId, data) => {
-  await verifyPetOwnership(petId, userId);
+  const pet = await verifyPetOwnership(petId, userId);
 
   if (!isValidObjectId(recordId)) {
     throw { statusCode: 400, message: "Invalid medical record ID" };
@@ -152,15 +318,41 @@ const updateMedicalRecord = async (recordId, petId, userId, data) => {
   }
 
   // Remove fields that shouldn't be updated
-  const { petId: _, isDeleted, deletedAt, ...updateData } = data;
+  const { petId: _ignoredPetId, isDeleted, deletedAt, ...input } = data || {};
 
-  const updatedRecord = await MedicalRecord.findByIdAndUpdate(
-    recordId,
-    updateData,
-    { new: true, runValidators: true },
-  );
+  const normalizedPayload = normalizeMedicalRecordPayload(input);
 
-  return updatedRecord;
+  const effectiveVisitDate =
+    normalizedPayload.visitDate || medicalRecord.visitDate;
+  const effectiveFollowUpDate = Object.hasOwn(normalizedPayload, "followUpDate")
+    ? normalizedPayload.followUpDate
+    : medicalRecord.followUpDate;
+
+  if (
+    effectiveFollowUpDate &&
+    effectiveVisitDate &&
+    effectiveFollowUpDate < effectiveVisitDate
+  ) {
+    throw {
+      statusCode: 400,
+      message: "Follow-up date cannot be earlier than visit date",
+    };
+  }
+
+  medicalRecord.set(normalizedPayload);
+  await medicalRecord.save();
+
+  try {
+    await reminderService.upsertMedicalFollowUpReminder(
+      medicalRecord,
+      pet,
+      userId,
+    );
+  } catch (error) {
+    console.error("Failed to sync medical follow-up reminder:", error);
+  }
+
+  return medicalRecord;
 };
 
 // Soft delete a medical record
@@ -185,6 +377,15 @@ const deleteMedicalRecord = async (recordId, petId, userId) => {
     { isDeleted: true, deletedAt: new Date() },
     { new: true },
   );
+
+  try {
+    await reminderService.deleteReminderByRelatedRecord(
+      medicalRecord._id,
+      "MedicalRecord",
+    );
+  } catch (error) {
+    console.error("Failed to delete related medical reminders:", error);
+  }
 
   return deletedRecord;
 };

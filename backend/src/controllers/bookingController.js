@@ -122,6 +122,7 @@ const completeBooking = async (req, res) => {
     const booking = await bookingService.completeBooking(
       req.params.id,
       req.user._id,
+      req.body,
     );
     res.status(200).send(booking);
   } catch (error) {

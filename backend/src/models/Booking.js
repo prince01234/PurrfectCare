@@ -64,6 +64,9 @@ const bookingSchema = new mongoose.Schema(
       name: { type: String, default: null },
       price: { type: Number, default: null },
       duration: { type: Number, default: null },
+      serviceCategory: { type: String, default: null },
+      vaccineType: { type: String, default: null },
+      veterinarian: { type: String, default: null },
     },
 
     // Booking details

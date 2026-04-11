@@ -270,6 +270,9 @@ export default function BookAppointmentPage() {
         name: selectedOption.name,
         price: selectedOption.price,
         duration: selectedOption.duration,
+        serviceCategory: selectedOption.serviceCategory || undefined,
+        vaccineType: selectedOption.vaccineType || undefined,
+        veterinarian: selectedOption.veterinarian || undefined,
       };
     }
     if (isPetSitting) {
@@ -398,6 +401,19 @@ export default function BookAppointmentPage() {
                       <p className="text-xs text-white/75 flex items-center gap-1 mt-0.5">
                         <Clock className="w-3 h-3" />
                         {selectedOption.duration} min
+                      </p>
+                    )}
+                    {(selectedOption.serviceCategory ||
+                      selectedOption.vaccineType ||
+                      selectedOption.veterinarian) && (
+                      <p className="text-xs text-white/80 mt-1">
+                        {[
+                          selectedOption.serviceCategory,
+                          selectedOption.vaccineType,
+                          selectedOption.veterinarian,
+                        ]
+                          .filter(Boolean)
+                          .join(" • ")}
                       </p>
                     )}
                   </div>
@@ -533,7 +549,7 @@ export default function BookAppointmentPage() {
                           .toISOString()
                           .split("T")[0]
                       }
-                      className="w-full p-4 rounded-xl border-2 border-gray-200 text-sm font-semibold text-gray-700 focus:border-teal-500 focus:outline-none focus:ring-4 focus:ring-teal-50 transition-all bg-gradient-to-br from-gray-50 to-white hover:shadow-md"
+                      className="w-full p-4 rounded-xl border-2 border-gray-200 text-sm font-semibold text-gray-700 focus:border-teal-500 focus:outline-none focus:ring-4 focus:ring-teal-50 transition-all bg-linear-to-br from-gray-50 to-white hover:shadow-md"
                     />
                   </div>
                 </div>
@@ -554,7 +570,7 @@ export default function BookAppointmentPage() {
                               .toISOString()
                               .split("T")[0]
                       }
-                      className="w-full p-4 rounded-xl border-2 border-gray-200 text-sm font-semibold text-gray-700 focus:border-teal-500 focus:outline-none focus:ring-4 focus:ring-teal-50 transition-all bg-gradient-to-br from-gray-50 to-white hover:shadow-md"
+                      className="w-full p-4 rounded-xl border-2 border-gray-200 text-sm font-semibold text-gray-700 focus:border-teal-500 focus:outline-none focus:ring-4 focus:ring-teal-50 transition-all bg-linear-to-br from-gray-50 to-white hover:shadow-md"
                     />
                   </div>
                 </div>
@@ -563,7 +579,7 @@ export default function BookAppointmentPage() {
               /* Normal: week calendar + time slots */
               <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
                 {/* Calendar header */}
-                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-linear-to-r from-gray-50 to-white">
                   <button
                     onClick={() => shiftWeek(-1)}
                     className="p-2 hover:bg-white rounded-xl transition-all active:scale-95 shadow-sm border border-gray-100"
@@ -611,9 +627,9 @@ export default function BookAppointmentPage() {
                           setSelectedDate(d);
                           setSelectedTime(null);
                         }}
-                        className={`flex flex-col items-center justify-center py-3 px-2 rounded-2xl transition-all duration-200 min-h-[68px] aspect-square ${
+                        className={`flex flex-col items-center justify-center py-3 px-2 rounded-2xl transition-all duration-200 min-h-17 aspect-square ${
                           isSelected
-                            ? "bg-gradient-to-br from-teal-500 to-teal-600 text-white shadow-lg shadow-teal-500/40 scale-105"
+                            ? "bg-linear-to-br from-teal-500 to-teal-600 text-white shadow-lg shadow-teal-500/40 scale-105"
                             : isToday && !disabled
                               ? "text-teal-600 bg-teal-50 font-bold ring-2 ring-teal-200 shadow-sm"
                               : disabled
@@ -623,16 +639,18 @@ export default function BookAppointmentPage() {
                       >
                         <span
                           className={`text-[9px] font-bold uppercase tracking-wide mb-1 text-center leading-tight ${
-                            isSelected 
-                              ? "text-white/90" 
-                              : isToday && !disabled 
-                                ? "text-teal-600" 
+                            isSelected
+                              ? "text-white/90"
+                              : isToday && !disabled
+                                ? "text-teal-600"
                                 : "text-gray-500"
                           }`}
                         >
                           {SHORT_DAY[i]}
                         </span>
-                        <span className={`text-base font-bold text-center leading-none ${isSelected ? "text-white" : ""}`}>
+                        <span
+                          className={`text-base font-bold text-center leading-none ${isSelected ? "text-white" : ""}`}
+                        >
                           {d.getDate()}
                         </span>
                       </button>
@@ -670,19 +688,21 @@ export default function BookAppointmentPage() {
                             key={slot.time}
                             disabled={!slot.available}
                             onClick={() => setSelectedTime(slot.time)}
-                            className={`flex items-center justify-center py-4 px-4 rounded-xl text-sm font-bold transition-all duration-200 min-h-[52px] ${
+                            className={`flex items-center justify-center py-4 px-4 rounded-xl text-sm font-bold transition-all duration-200 min-h-13 ${
                               selectedTime === slot.time
-                                ? "bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-lg shadow-teal-500/40 scale-105"
+                                ? "bg-linear-to-r from-teal-500 to-teal-600 text-white shadow-lg shadow-teal-500/40 scale-105"
                                 : slot.available
-                                  ? "bg-gradient-to-br from-gray-50 to-white text-gray-700 hover:from-teal-50 hover:to-teal-50/50 hover:text-teal-700 hover:shadow-md hover:scale-105 border border-gray-200 active:scale-95"
+                                  ? "bg-linear-to-br from-gray-50 to-white text-gray-700 hover:from-teal-50 hover:to-teal-50/50 hover:text-teal-700 hover:shadow-md hover:scale-105 border border-gray-200 active:scale-95"
                                   : "bg-gray-50 text-gray-400 cursor-not-allowed opacity-60 line-through"
                             }`}
                           >
                             <div className="flex items-center justify-center gap-1.5">
                               {selectedTime === slot.time && (
-                                <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+                                <Clock className="w-3.5 h-3.5 shrink-0" />
                               )}
-                              <span className="text-center leading-none">{slot.label}</span>
+                              <span className="text-center leading-none">
+                                {slot.label}
+                              </span>
                             </div>
                           </button>
                         ))}

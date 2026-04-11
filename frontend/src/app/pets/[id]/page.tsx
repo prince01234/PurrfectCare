@@ -181,6 +181,22 @@ export default function PetProfilePage({
   const [showAddReminder, setShowAddReminder] = useState(false);
   const [showAddVaccination, setShowAddVaccination] = useState(false);
   const [showAddMedicalRecord, setShowAddMedicalRecord] = useState(false);
+  const [editingVaccinationId, setEditingVaccinationId] = useState<
+    string | null
+  >(null);
+  const [editingMedicalRecordId, setEditingMedicalRecordId] = useState<
+    string | null
+  >(null);
+  const [showDeleteVaccinationConfirm, setShowDeleteVaccinationConfirm] =
+    useState(false);
+  const [showDeleteMedicalRecordConfirm, setShowDeleteMedicalRecordConfirm] =
+    useState(false);
+  const [vaccinationToDelete, setVaccinationToDelete] =
+    useState<Vaccination | null>(null);
+  const [medicalRecordToDelete, setMedicalRecordToDelete] =
+    useState<MedicalRecord | null>(null);
+  const [isVaccinationDeleting, setIsVaccinationDeleting] = useState(false);
+  const [isMedicalRecordDeleting, setIsMedicalRecordDeleting] = useState(false);
 
   const [vaccinationForm, setVaccinationForm] = useState({
     vaccineName: "",
@@ -203,6 +219,32 @@ export default function PetProfilePage({
     followUpDate: "",
     notes: "",
   });
+
+  const resetVaccinationForm = useCallback(() => {
+    setVaccinationForm({
+      vaccineName: "",
+      dateGiven: todayISODate(),
+      nextDueDate: "",
+      veterinarian: "",
+      clinic: "",
+      notes: "",
+    });
+  }, []);
+
+  const resetMedicalRecordForm = useCallback(() => {
+    setMedicalRecordForm({
+      visitDate: todayISODate(),
+      reasonForVisit: "",
+      vetName: "",
+      clinic: "",
+      weight: "",
+      temperature: "",
+      symptoms: "",
+      treatment: "",
+      followUpDate: "",
+      notes: "",
+    });
+  }, []);
 
   const [reminderForm, setReminderForm] = useState({
     title: "",
@@ -265,27 +307,9 @@ export default function PetProfilePage({
       ]);
 
       if (!cancelled) {
-        if (vacRes.data) {
-          const list = Array.isArray(vacRes.data)
-            ? vacRes.data
-            : (vacRes.data as unknown as { vaccinations: Vaccination[] })
-                .vaccinations || [];
-          setVaccinations(list);
-        }
-        if (mrRes.data) {
-          const list = Array.isArray(mrRes.data)
-            ? mrRes.data
-            : (mrRes.data as unknown as { medicalRecords: MedicalRecord[] })
-                .medicalRecords || [];
-          setMedicalRecords(list);
-        }
-        if (remRes.data) {
-          const list = Array.isArray(remRes.data)
-            ? remRes.data
-            : (remRes.data as unknown as { reminders: Reminder[] }).reminders ||
-              [];
-          setReminders(list);
-        }
+        setVaccinations(vacRes.data?.vaccinations || []);
+        setMedicalRecords(mrRes.data?.medicalRecords || []);
+        setReminders(remRes.data?.reminders || []);
       }
 
       if (!cancelled) setIsLoading(false);
@@ -303,14 +327,14 @@ export default function PetProfilePage({
   const nextPhoto = useCallback(() => {
     if (!pet?.photos?.length) return;
     setPhotoIndex((index) => (index + 1) % pet.photos.length);
-  }, [pet?.photos]);
+  }, [pet]);
 
   const prevPhoto = useCallback(() => {
     if (!pet?.photos?.length) return;
     setPhotoIndex(
       (index) => (index - 1 + pet.photos.length) % pet.photos.length,
     );
-  }, [pet?.photos]);
+  }, [pet]);
 
   const handleGalleryDragEnd = useCallback(
     (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
@@ -323,7 +347,7 @@ export default function PetProfilePage({
         prevPhoto();
       }
     },
-    [nextPhoto, pet?.photos, prevPhoto],
+    [nextPhoto, pet, prevPhoto],
   );
 
   const handleSave = async () => {
@@ -445,6 +469,85 @@ export default function PetProfilePage({
     }
   };
 
+  const closeVaccinationModal = useCallback(() => {
+    setShowAddVaccination(false);
+    setEditingVaccinationId(null);
+    resetVaccinationForm();
+  }, [resetVaccinationForm]);
+
+  const closeMedicalRecordModal = useCallback(() => {
+    setShowAddMedicalRecord(false);
+    setEditingMedicalRecordId(null);
+    resetMedicalRecordForm();
+  }, [resetMedicalRecordForm]);
+
+  const openCreateVaccination = () => {
+    setEditingVaccinationId(null);
+    resetVaccinationForm();
+    setShowAddVaccination(true);
+  };
+
+  const openEditVaccination = (record: Vaccination) => {
+    setEditingVaccinationId(record._id);
+    setVaccinationForm({
+      vaccineName: record.vaccineName,
+      dateGiven: record.dateGiven
+        ? new Date(record.dateGiven).toISOString().split("T")[0]
+        : todayISODate(),
+      nextDueDate: record.nextDueDate
+        ? new Date(record.nextDueDate).toISOString().split("T")[0]
+        : "",
+      veterinarian: record.veterinarian || "",
+      clinic: record.clinic || "",
+      notes: record.notes || "",
+    });
+    setShowAddVaccination(true);
+  };
+
+  const requestDeleteVaccination = (record: Vaccination) => {
+    setVaccinationToDelete(record);
+    setShowDeleteVaccinationConfirm(true);
+  };
+
+  const openCreateMedicalRecord = () => {
+    setEditingMedicalRecordId(null);
+    resetMedicalRecordForm();
+    setShowAddMedicalRecord(true);
+  };
+
+  const openEditMedicalRecord = (record: MedicalRecord) => {
+    setEditingMedicalRecordId(record._id);
+    setMedicalRecordForm({
+      visitDate: record.visitDate
+        ? new Date(record.visitDate).toISOString().split("T")[0]
+        : todayISODate(),
+      reasonForVisit: record.reasonForVisit,
+      vetName: record.vetName || "",
+      clinic: record.clinic || "",
+      weight:
+        typeof record.weight === "number" && Number.isFinite(record.weight)
+          ? String(record.weight)
+          : "",
+      temperature:
+        typeof record.temperature === "number" &&
+        Number.isFinite(record.temperature)
+          ? String(record.temperature)
+          : "",
+      symptoms: record.symptoms.join(", "),
+      treatment: record.treatment || "",
+      followUpDate: record.followUpDate
+        ? new Date(record.followUpDate).toISOString().split("T")[0]
+        : "",
+      notes: record.notes || "",
+    });
+    setShowAddMedicalRecord(true);
+  };
+
+  const requestDeleteMedicalRecord = (record: MedicalRecord) => {
+    setMedicalRecordToDelete(record);
+    setShowDeleteMedicalRecordConfirm(true);
+  };
+
   const addReminder = async () => {
     if (!reminderForm.title.trim() || !reminderForm.dueDate) {
       toast.error("Title and due date are required");
@@ -466,9 +569,7 @@ export default function PetProfilePage({
       toast.error(res.error);
       return;
     }
-    const newReminder =
-      (res.data as unknown as { reminder?: Reminder })?.reminder ??
-      (res.data as Reminder | undefined);
+    const newReminder = res.data?.reminder;
     if (newReminder) {
       setReminders((prev) => [...prev, newReminder]);
       toast.success("Reminder added");
@@ -485,7 +586,7 @@ export default function PetProfilePage({
     }
   };
 
-  const addVaccination = async () => {
+  const saveVaccination = async () => {
     if (!vaccinationForm.vaccineName.trim() || !vaccinationForm.dateGiven) {
       toast.error("Vaccine name and date given are required");
       return;
@@ -510,41 +611,58 @@ export default function PetProfilePage({
       }
     }
 
-    const payload = {
-      vaccineName: vaccinationForm.vaccineName.trim(),
-      dateGiven: vaccinationForm.dateGiven,
-      nextDueDate: vaccinationForm.nextDueDate || undefined,
-      veterinarian: vaccinationForm.veterinarian.trim() || undefined,
-      clinic: vaccinationForm.clinic.trim() || undefined,
-      notes: vaccinationForm.notes.trim() || undefined,
-    };
+    const currentVaccinationId = editingVaccinationId;
+    const vaccineName = vaccinationForm.vaccineName.trim();
+    const dateGivenValue = vaccinationForm.dateGiven;
+    const nextDueDate = vaccinationForm.nextDueDate;
+    const veterinarian = vaccinationForm.veterinarian.trim();
+    const clinic = vaccinationForm.clinic.trim();
+    const notes = vaccinationForm.notes.trim();
 
-    const res = await petApi.createVaccination(id, payload);
+    const res = currentVaccinationId
+      ? await petApi.updateVaccination(id, currentVaccinationId, {
+          vaccineName,
+          dateGiven: dateGivenValue,
+          nextDueDate: nextDueDate || null,
+          veterinarian: veterinarian || null,
+          clinic: clinic || null,
+          notes: notes || null,
+        })
+      : await petApi.createVaccination(id, {
+          vaccineName,
+          dateGiven: dateGivenValue,
+          ...(nextDueDate ? { nextDueDate } : {}),
+          ...(veterinarian ? { veterinarian } : {}),
+          ...(clinic ? { clinic } : {}),
+          ...(notes ? { notes } : {}),
+        });
+
     if (res.error) {
       toast.error(res.error);
       return;
     }
 
-    const createdVaccination =
-      (res.data as unknown as { vaccination?: Vaccination })?.vaccination ??
-      (res.data as Vaccination | undefined);
+    const savedVaccination = res.data?.vaccination;
 
-    if (!createdVaccination) return;
+    if (!savedVaccination) return;
 
-    setVaccinations((prev) => [createdVaccination, ...prev]);
-    setShowAddVaccination(false);
-    setVaccinationForm({
-      vaccineName: "",
-      dateGiven: todayISODate(),
-      nextDueDate: "",
-      veterinarian: "",
-      clinic: "",
-      notes: "",
-    });
-    toast.success("Vaccination record added");
+    setVaccinations((prev) =>
+      currentVaccinationId
+        ? prev.map((item) =>
+            item._id === currentVaccinationId ? savedVaccination : item,
+          )
+        : [savedVaccination, ...prev],
+    );
+
+    closeVaccinationModal();
+    toast.success(
+      currentVaccinationId
+        ? "Vaccination record updated"
+        : "Vaccination record added",
+    );
   };
 
-  const addMedicalRecord = async () => {
+  const saveMedicalRecord = async () => {
     if (
       !medicalRecordForm.visitDate ||
       !medicalRecordForm.reasonForVisit.trim()
@@ -572,24 +690,30 @@ export default function PetProfilePage({
       }
     }
 
+    const currentMedicalRecordId = editingMedicalRecordId;
+
     const weightValue = medicalRecordForm.weight.trim();
-    let weight: number | undefined;
+    let weight: number | null | undefined;
     if (weightValue) {
       weight = Number(weightValue);
       if (Number.isNaN(weight) || weight < 0) {
         toast.error("Weight must be a valid non-negative number");
         return;
       }
+    } else {
+      weight = currentMedicalRecordId ? null : undefined;
     }
 
     const temperatureValue = medicalRecordForm.temperature.trim();
-    let temperature: number | undefined;
+    let temperature: number | null | undefined;
     if (temperatureValue) {
       temperature = Number(temperatureValue);
       if (Number.isNaN(temperature)) {
         toast.error("Temperature must be a valid number");
         return;
       }
+    } else {
+      temperature = currentMedicalRecordId ? null : undefined;
     }
 
     const symptoms = medicalRecordForm.symptoms
@@ -597,46 +721,113 @@ export default function PetProfilePage({
       .map((item) => item.trim())
       .filter(Boolean);
 
-    const payload = {
-      visitDate: medicalRecordForm.visitDate,
-      reasonForVisit: medicalRecordForm.reasonForVisit.trim(),
-      vetName: medicalRecordForm.vetName.trim() || undefined,
-      clinic: medicalRecordForm.clinic.trim() || undefined,
-      weight,
-      temperature,
-      symptoms: symptoms.length ? symptoms : undefined,
-      treatment: medicalRecordForm.treatment.trim() || undefined,
-      followUpDate: medicalRecordForm.followUpDate || undefined,
-      notes: medicalRecordForm.notes.trim() || undefined,
-    };
+    const visitDateValue = medicalRecordForm.visitDate;
+    const reasonForVisit = medicalRecordForm.reasonForVisit.trim();
+    const vetName = medicalRecordForm.vetName.trim();
+    const clinic = medicalRecordForm.clinic.trim();
+    const treatment = medicalRecordForm.treatment.trim();
+    const followUpDate = medicalRecordForm.followUpDate;
+    const notes = medicalRecordForm.notes.trim();
+    const createWeight = weight ?? undefined;
+    const createTemperature = temperature ?? undefined;
 
-    const res = await petApi.createMedicalRecord(id, payload);
+    const res = currentMedicalRecordId
+      ? await petApi.updateMedicalRecord(id, currentMedicalRecordId, {
+          visitDate: visitDateValue,
+          reasonForVisit,
+          vetName: vetName || null,
+          clinic: clinic || null,
+          weight: weight ?? null,
+          temperature: temperature ?? null,
+          symptoms: symptoms.length > 0 ? symptoms : [],
+          treatment: treatment || null,
+          followUpDate: followUpDate || null,
+          notes: notes || null,
+        })
+      : await petApi.createMedicalRecord(id, {
+          visitDate: visitDateValue,
+          reasonForVisit,
+          ...(vetName ? { vetName } : {}),
+          ...(clinic ? { clinic } : {}),
+          ...(createWeight !== undefined ? { weight: createWeight } : {}),
+          ...(createTemperature !== undefined
+            ? { temperature: createTemperature }
+            : {}),
+          ...(symptoms.length > 0 ? { symptoms } : {}),
+          ...(treatment ? { treatment } : {}),
+          ...(followUpDate ? { followUpDate } : {}),
+          ...(notes ? { notes } : {}),
+        });
+
     if (res.error) {
       toast.error(res.error);
       return;
     }
 
-    const createdMedicalRecord =
-      (res.data as unknown as { medicalRecord?: MedicalRecord })
-        ?.medicalRecord ?? (res.data as MedicalRecord | undefined);
+    const savedMedicalRecord = res.data?.medicalRecord;
 
-    if (!createdMedicalRecord) return;
+    if (!savedMedicalRecord) return;
 
-    setMedicalRecords((prev) => [createdMedicalRecord, ...prev]);
-    setShowAddMedicalRecord(false);
-    setMedicalRecordForm({
-      visitDate: todayISODate(),
-      reasonForVisit: "",
-      vetName: "",
-      clinic: "",
-      weight: "",
-      temperature: "",
-      symptoms: "",
-      treatment: "",
-      followUpDate: "",
-      notes: "",
-    });
-    toast.success("Medical record added");
+    setMedicalRecords((prev) =>
+      currentMedicalRecordId
+        ? prev.map((item) =>
+            item._id === currentMedicalRecordId ? savedMedicalRecord : item,
+          )
+        : [savedMedicalRecord, ...prev],
+    );
+
+    closeMedicalRecordModal();
+    toast.success(
+      currentMedicalRecordId
+        ? "Medical record updated"
+        : "Medical record added",
+    );
+  };
+
+  const confirmDeleteVaccination = async () => {
+    if (!vaccinationToDelete) return;
+
+    setIsVaccinationDeleting(true);
+    const targetId = vaccinationToDelete._id;
+    const res = await petApi.deleteVaccination(id, targetId);
+
+    if (res.error) {
+      toast.error(res.error);
+      setIsVaccinationDeleting(false);
+      return;
+    }
+
+    setVaccinations((prev) => prev.filter((item) => item._id !== targetId));
+    if (editingVaccinationId === targetId) {
+      closeVaccinationModal();
+    }
+    setVaccinationToDelete(null);
+    setShowDeleteVaccinationConfirm(false);
+    setIsVaccinationDeleting(false);
+    toast.success("Vaccination record deleted");
+  };
+
+  const confirmDeleteMedicalRecord = async () => {
+    if (!medicalRecordToDelete) return;
+
+    setIsMedicalRecordDeleting(true);
+    const targetId = medicalRecordToDelete._id;
+    const res = await petApi.deleteMedicalRecord(id, targetId);
+
+    if (res.error) {
+      toast.error(res.error);
+      setIsMedicalRecordDeleting(false);
+      return;
+    }
+
+    setMedicalRecords((prev) => prev.filter((item) => item._id !== targetId));
+    if (editingMedicalRecordId === targetId) {
+      closeMedicalRecordModal();
+    }
+    setMedicalRecordToDelete(null);
+    setShowDeleteMedicalRecordConfirm(false);
+    setIsMedicalRecordDeleting(false);
+    toast.success("Medical record deleted");
   };
 
   const deleteReminder = async (reminderId: string) => {
@@ -656,9 +847,7 @@ export default function PetProfilePage({
       return;
     }
 
-    const updatedReminder =
-      (res.data as unknown as { reminder?: Reminder })?.reminder ??
-      (res.data as Reminder | undefined);
+    const updatedReminder = res.data?.reminder;
 
     if (!updatedReminder) return;
 
@@ -675,9 +864,7 @@ export default function PetProfilePage({
       return;
     }
 
-    const updatedReminder =
-      (res.data as unknown as { reminder?: Reminder })?.reminder ??
-      (res.data as Reminder | undefined);
+    const updatedReminder = res.data?.reminder;
 
     if (!updatedReminder) return;
 
@@ -694,9 +881,7 @@ export default function PetProfilePage({
       return;
     }
 
-    const updatedReminder =
-      (res.data as unknown as { reminder?: Reminder })?.reminder ??
-      (res.data as Reminder | undefined);
+    const updatedReminder = res.data?.reminder;
 
     if (!updatedReminder) return;
 
@@ -781,6 +966,13 @@ export default function PetProfilePage({
         new Date(b.nextDueDate ?? b.dateGiven).getTime(),
     );
 
+  const recentVaccinations = [...vaccinations]
+    .sort(
+      (a, b) =>
+        new Date(b.dateGiven).getTime() - new Date(a.dateGiven).getTime(),
+    )
+    .slice(0, 3);
+
   const recentMedicalRecords = [...medicalRecords]
     .sort(
       (a, b) =>
@@ -815,6 +1007,8 @@ export default function PetProfilePage({
   const highPriorityReminders = activeReminders.filter(
     (r) => r.priority === "high" || r.priority === "critical",
   );
+  const isEditingVaccination = editingVaccinationId !== null;
+  const isEditingMedicalRecord = editingMedicalRecordId !== null;
 
   return (
     <MobileLayout showBottomNav={false}>
@@ -1364,7 +1558,7 @@ export default function PetProfilePage({
                     </div>
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => setShowAddVaccination(true)}
+                        onClick={openCreateVaccination}
                         className="inline-flex items-center gap-1 rounded-full border border-teal-200 bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-700"
                       >
                         <Plus className="h-3.5 w-3.5" /> Add
@@ -1388,15 +1582,96 @@ export default function PetProfilePage({
                       key={vaccine._id}
                       className="mt-3 rounded-xl border border-gray-100 px-3 py-2"
                     >
-                      <p className="text-sm font-semibold text-gray-900">
-                        {vaccine.vaccineName}
-                      </p>
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-sm font-semibold text-gray-900">
+                          {vaccine.vaccineName}
+                        </p>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => openEditVaccination(vaccine)}
+                            className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-teal-600"
+                            aria-label="Edit vaccination record"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => requestDeleteVaccination(vaccine)}
+                            className="rounded-lg p-1 text-gray-400 hover:bg-red-50 hover:text-red-500"
+                            aria-label="Delete vaccination record"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
                       <p className="mt-0.5 text-xs text-gray-500">
                         Due {fmtDate(vaccine.nextDueDate)}
+                        {vaccine.veterinarian
+                          ? ` · Vet: ${vaccine.veterinarian}`
+                          : ""}
                         {vaccine.clinic ? ` · ${vaccine.clinic}` : ""}
                       </p>
+                      <p className="mt-0.5 text-xs text-gray-500">
+                        Given on {fmtDate(vaccine.dateGiven)}
+                      </p>
+                      {vaccine.notes && (
+                        <p className="mt-1 text-xs text-gray-500">
+                          Notes: {vaccine.notes}
+                        </p>
+                      )}
                     </div>
                   ))}
+
+                  {recentVaccinations.length > 0 && (
+                    <div className="mt-4 border-t border-gray-100 pt-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                        Recent Records
+                      </p>
+                      {recentVaccinations.map((record) => (
+                        <div
+                          key={record._id}
+                          className="mt-2 rounded-xl border border-gray-100 px-3 py-2"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-sm font-semibold text-gray-900">
+                              {record.vaccineName}
+                            </p>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => openEditVaccination(record)}
+                                className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-teal-600"
+                                aria-label="Edit vaccination record"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={() => requestDeleteVaccination(record)}
+                                className="rounded-lg p-1 text-gray-400 hover:bg-red-50 hover:text-red-500"
+                                aria-label="Delete vaccination record"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                          <p className="mt-0.5 text-xs text-gray-500">
+                            Given {fmtDate(record.dateGiven)}
+                            {record.nextDueDate
+                              ? ` · Next due ${fmtDate(record.nextDueDate)}`
+                              : ""}
+                          </p>
+                          {(record.veterinarian || record.clinic) && (
+                            <p className="mt-0.5 text-xs text-gray-500">
+                              {record.veterinarian
+                                ? `Vet: ${record.veterinarian}`
+                                : "Vet: N/A"}
+                              {record.clinic
+                                ? ` · Clinic: ${record.clinic}`
+                                : ""}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   {vaccinations.length === 0 && (
                     <p className="mt-3 text-sm text-gray-400">
@@ -1423,7 +1698,7 @@ export default function PetProfilePage({
                     </div>
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => setShowAddMedicalRecord(true)}
+                        onClick={openCreateMedicalRecord}
                         className="inline-flex items-center gap-1 rounded-full border border-teal-200 bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-700"
                       >
                         <Plus className="h-3.5 w-3.5" /> Add
@@ -1446,16 +1721,50 @@ export default function PetProfilePage({
                       key={record._id}
                       className="mt-3 rounded-xl border border-gray-100 px-3 py-2"
                     >
-                      <p className="text-sm font-semibold text-gray-900">
-                        {record.reasonForVisit}
-                      </p>
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-sm font-semibold text-gray-900">
+                          {record.reasonForVisit}
+                        </p>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => openEditMedicalRecord(record)}
+                            className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-teal-600"
+                            aria-label="Edit medical record"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => requestDeleteMedicalRecord(record)}
+                            className="rounded-lg p-1 text-gray-400 hover:bg-red-50 hover:text-red-500"
+                            aria-label="Delete medical record"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
                       <p className="mt-0.5 text-xs text-gray-500">
                         {fmtDate(record.visitDate)}
-                        {record.vetName ? ` · Dr. ${record.vetName}` : ""}
+                        {record.vetName ? ` · Vet: ${record.vetName}` : ""}
+                        {record.clinic ? ` · Clinic: ${record.clinic}` : ""}
                       </p>
+                      {record.symptoms.length > 0 && (
+                        <p className="mt-1 text-xs text-gray-500">
+                          Symptoms: {record.symptoms.join(", ")}
+                        </p>
+                      )}
+                      {record.treatment && (
+                        <p className="mt-1 text-xs text-gray-500">
+                          Treatment: {record.treatment}
+                        </p>
+                      )}
                       {record.followUpDate && (
                         <p className="mt-1 text-xs text-gray-500">
                           Follow-up: {fmtDate(record.followUpDate)}
+                        </p>
+                      )}
+                      {record.notes && (
+                        <p className="mt-1 text-xs text-gray-500">
+                          Notes: {record.notes}
                         </p>
                       )}
                     </div>
@@ -1807,7 +2116,7 @@ export default function PetProfilePage({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4"
-            onClick={() => setShowAddVaccination(false)}
+            onClick={closeVaccinationModal}
           >
             <motion.div
               initial={{ y: 80, opacity: 0 }}
@@ -1817,7 +2126,7 @@ export default function PetProfilePage({
               className="w-full max-w-lg bg-white rounded-2xl p-6 max-h-[80vh] overflow-y-auto"
             >
               <h3 className="font-bold text-lg text-gray-900 mb-4">
-                Add Vaccination
+                {isEditingVaccination ? "Edit Vaccination" : "Add Vaccination"}
               </h3>
 
               <div className="space-y-4">
@@ -1927,16 +2236,16 @@ export default function PetProfilePage({
 
               <div className="flex gap-3 mt-6">
                 <button
-                  onClick={() => setShowAddVaccination(false)}
+                  onClick={closeVaccinationModal}
                   className="flex-1 py-2.5 rounded-lg border border-gray-200 text-gray-700 font-medium"
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={addVaccination}
+                  onClick={saveVaccination}
                   className="flex-1 py-2.5 rounded-lg bg-teal-600 text-white font-medium"
                 >
-                  Create
+                  {isEditingVaccination ? "Save" : "Create"}
                 </button>
               </div>
             </motion.div>
@@ -1951,7 +2260,7 @@ export default function PetProfilePage({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4"
-            onClick={() => setShowAddMedicalRecord(false)}
+            onClick={closeMedicalRecordModal}
           >
             <motion.div
               initial={{ y: 80, opacity: 0 }}
@@ -1961,7 +2270,9 @@ export default function PetProfilePage({
               className="w-full max-w-lg bg-white rounded-2xl p-6 max-h-[80vh] overflow-y-auto"
             >
               <h3 className="font-bold text-lg text-gray-900 mb-4">
-                Add Medical Record
+                {isEditingMedicalRecord
+                  ? "Edit Medical Record"
+                  : "Add Medical Record"}
               </h3>
 
               <div className="space-y-4">
@@ -2145,16 +2456,118 @@ export default function PetProfilePage({
 
               <div className="flex gap-3 mt-6">
                 <button
-                  onClick={() => setShowAddMedicalRecord(false)}
+                  onClick={closeMedicalRecordModal}
                   className="flex-1 py-2.5 rounded-lg border border-gray-200 text-gray-700 font-medium"
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={addMedicalRecord}
+                  onClick={saveMedicalRecord}
                   className="flex-1 py-2.5 rounded-lg bg-teal-600 text-white font-medium"
                 >
-                  Create
+                  {isEditingMedicalRecord ? "Save" : "Create"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showDeleteVaccinationConfirm && vaccinationToDelete && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4"
+            onClick={() => {
+              if (isVaccinationDeleting) return;
+              setShowDeleteVaccinationConfirm(false);
+              setVaccinationToDelete(null);
+            }}
+          >
+            <motion.div
+              initial={{ y: 80, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 80, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-lg bg-white rounded-2xl p-6 space-y-4"
+            >
+              <h3 className="font-bold text-gray-900 text-lg">
+                Delete Vaccination Record?
+              </h3>
+              <p className="text-sm text-gray-500">
+                This will permanently remove
+                <strong> {vaccinationToDelete.vaccineName}</strong>.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowDeleteVaccinationConfirm(false);
+                    setVaccinationToDelete(null);
+                  }}
+                  disabled={isVaccinationDeleting}
+                  className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-700 font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDeleteVaccination}
+                  disabled={isVaccinationDeleting}
+                  className="flex-1 py-3 rounded-xl bg-red-500 text-white font-medium disabled:opacity-50"
+                >
+                  {isVaccinationDeleting ? "Deleting" : "Delete"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showDeleteMedicalRecordConfirm && medicalRecordToDelete && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4"
+            onClick={() => {
+              if (isMedicalRecordDeleting) return;
+              setShowDeleteMedicalRecordConfirm(false);
+              setMedicalRecordToDelete(null);
+            }}
+          >
+            <motion.div
+              initial={{ y: 80, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 80, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-lg bg-white rounded-2xl p-6 space-y-4"
+            >
+              <h3 className="font-bold text-gray-900 text-lg">
+                Delete Medical Record?
+              </h3>
+              <p className="text-sm text-gray-500">
+                This will permanently remove
+                <strong> {medicalRecordToDelete.reasonForVisit}</strong>.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowDeleteMedicalRecordConfirm(false);
+                    setMedicalRecordToDelete(null);
+                  }}
+                  disabled={isMedicalRecordDeleting}
+                  className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-700 font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDeleteMedicalRecord}
+                  disabled={isMedicalRecordDeleting}
+                  className="flex-1 py-3 rounded-xl bg-red-500 text-white font-medium disabled:opacity-50"
+                >
+                  {isMedicalRecordDeleting ? "Deleting" : "Delete"}
                 </button>
               </div>
             </motion.div>

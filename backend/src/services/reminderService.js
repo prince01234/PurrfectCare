@@ -1,6 +1,5 @@
 import Reminder, { isValidObjectId, toObjectId } from "../models/Reminder.js";
 import Pet from "../models/Pet.js";
-import User from "../models/User.js";
 import {
   REMINDER_STATUS,
   REMINDER_FREQUENCY,
@@ -561,12 +560,72 @@ const markEmailSent = async (reminderId) => {
   });
 };
 
-// Auto-generate reminder from vaccination record
-const createVaccinationReminder = async (vaccination, pet, userId) => {
-  if (!vaccination.nextDueDate) return null;
+const upsertReminderByRelatedRecord = async (
+  relatedRecordId,
+  relatedRecordType,
+  payload,
+) => {
+  const existingReminder = await Reminder.findOne({
+    relatedRecordId,
+    relatedRecordType,
+  });
 
-  const reminder = await Reminder.create({
-    userId: userId,
+  if (!existingReminder) {
+    return Reminder.create({
+      ...payload,
+      relatedRecordId,
+      relatedRecordType,
+    });
+  }
+
+  existingReminder.set({
+    ...payload,
+    relatedRecordId,
+    relatedRecordType,
+    isDeleted: false,
+    deletedAt: null,
+    status: REMINDER_STATUS.ACTIVE,
+    completedAt: null,
+    dismissedAt: null,
+    snoozedUntil: null,
+  });
+
+  return existingReminder.save();
+};
+
+const deleteReminderByRelatedRecord = async (
+  relatedRecordId,
+  relatedRecordType,
+) => {
+  if (!relatedRecordId || !relatedRecordType) return;
+
+  await Reminder.updateMany(
+    {
+      relatedRecordId,
+      relatedRecordType,
+      isDeleted: false,
+    },
+    {
+      $set: {
+        isDeleted: true,
+        deletedAt: new Date(),
+        status: REMINDER_STATUS.DISMISSED,
+        dismissedAt: new Date(),
+      },
+    },
+  );
+};
+
+const upsertVaccinationReminder = async (vaccination, pet, userId) => {
+  if (!vaccination?._id || !pet?._id || !userId) return null;
+
+  if (!vaccination.nextDueDate) {
+    await deleteReminderByRelatedRecord(vaccination._id, "Vaccination");
+    return null;
+  }
+
+  return upsertReminderByRelatedRecord(vaccination._id, "Vaccination", {
+    userId,
     petId: pet._id,
     title: `Vaccination Due: ${vaccination.vaccineName}`,
     description: `${pet.name}'s ${vaccination.vaccineName} vaccination is due`,
@@ -574,24 +633,25 @@ const createVaccinationReminder = async (vaccination, pet, userId) => {
     dueDate: vaccination.nextDueDate,
     priority: "critical",
     sendEmail: true,
-    relatedRecordId: vaccination._id,
-    relatedRecordType: "Vaccination",
+    status: REMINDER_STATUS.ACTIVE,
     details: {
       vaccineName: vaccination.vaccineName,
       vetName: vaccination.veterinarian,
       clinic: vaccination.clinic,
     },
   });
-
-  return reminder;
 };
 
-// Auto-generate reminder from medical record follow-up
-const createMedicalFollowUpReminder = async (medicalRecord, pet, userId) => {
-  if (!medicalRecord.followUpDate) return null;
+const upsertMedicalFollowUpReminder = async (medicalRecord, pet, userId) => {
+  if (!medicalRecord?._id || !pet?._id || !userId) return null;
 
-  const reminder = await Reminder.create({
-    userId: userId,
+  if (!medicalRecord.followUpDate) {
+    await deleteReminderByRelatedRecord(medicalRecord._id, "MedicalRecord");
+    return null;
+  }
+
+  return upsertReminderByRelatedRecord(medicalRecord._id, "MedicalRecord", {
+    userId,
     petId: pet._id,
     title: `Vet Follow-up: ${medicalRecord.reasonForVisit}`,
     description: `${pet.name} has a follow-up appointment scheduled`,
@@ -599,15 +659,22 @@ const createMedicalFollowUpReminder = async (medicalRecord, pet, userId) => {
     dueDate: medicalRecord.followUpDate,
     priority: "medium",
     sendEmail: false,
-    relatedRecordId: medicalRecord._id,
-    relatedRecordType: "MedicalRecord",
+    status: REMINDER_STATUS.ACTIVE,
     details: {
       vetName: medicalRecord.vetName,
       clinic: medicalRecord.clinic,
     },
   });
+};
 
-  return reminder;
+// Auto-generate reminder from vaccination record
+const createVaccinationReminder = async (vaccination, pet, userId) => {
+  return upsertVaccinationReminder(vaccination, pet, userId);
+};
+
+// Auto-generate reminder from medical record follow-up
+const createMedicalFollowUpReminder = async (medicalRecord, pet, userId) => {
+  return upsertMedicalFollowUpReminder(medicalRecord, pet, userId);
 };
 
 export default {
@@ -623,6 +690,9 @@ export default {
   getReminderStats,
   getRemindersForEmailNotification,
   markEmailSent,
+  upsertVaccinationReminder,
+  upsertMedicalFollowUpReminder,
+  deleteReminderByRelatedRecord,
   createVaccinationReminder,
   createMedicalFollowUpReminder,
 };

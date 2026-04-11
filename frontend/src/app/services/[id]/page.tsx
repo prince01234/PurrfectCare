@@ -128,7 +128,7 @@ export default function ProviderDetailPage() {
   const [provider, setProvider] = useState<ServiceProvider | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activePhoto, setActivePhoto] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
+  const [, setIsDragging] = useState(false);
   const [justCopied, setJustCopied] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("services");
@@ -184,7 +184,11 @@ export default function ProviderDetailPage() {
   }, [provider]);
 
   useEffect(() => {
-    setActivePhoto(0);
+    const resetPhotoTimer = setTimeout(() => {
+      setActivePhoto(0);
+    }, 0);
+
+    return () => clearTimeout(resetPhotoTimer);
   }, [provider?._id, galleryImages.length]);
 
   const nextPhoto = useCallback(() => {
@@ -454,6 +458,9 @@ export default function ProviderDetailPage() {
         name: selectedOption.name,
         price: selectedOption.price || undefined,
         duration: selectedOption.duration || undefined,
+        serviceCategory: selectedOption.serviceCategory || undefined,
+        vaccineType: selectedOption.vaccineType || undefined,
+        veterinarian: selectedOption.veterinarian || undefined,
       },
       paymentMethod: selectedPayment,
     });
@@ -789,6 +796,14 @@ export default function ProviderDetailPage() {
                           <p className="text-sm font-semibold text-gray-800">
                             {option.name}
                           </p>
+                          {provider.serviceType === "veterinary" &&
+                            (option.serviceCategory || option.vaccineType) && (
+                              <p className="text-[11px] text-teal-600 mt-0.5">
+                                {[option.serviceCategory, option.vaccineType]
+                                  .filter(Boolean)
+                                  .join(" • ")}
+                              </p>
+                            )}
                           <p className="text-xs text-gray-400 mt-0.5">
                             {option.duration
                               ? `${option.duration} min`
@@ -813,6 +828,22 @@ export default function ProviderDetailPage() {
                       <p className="text-sm font-bold text-teal-800">
                         Booking: {selectedOption.name}
                       </p>
+                      {provider.serviceType === "veterinary" &&
+                        (selectedOption.serviceCategory ||
+                          selectedOption.vaccineType ||
+                          selectedOption.veterinarian) && (
+                          <div className="mt-2 space-y-1 text-xs text-teal-700">
+                            {selectedOption.serviceCategory && (
+                              <p>Category: {selectedOption.serviceCategory}</p>
+                            )}
+                            {selectedOption.vaccineType && (
+                              <p>Vaccine: {selectedOption.vaccineType}</p>
+                            )}
+                            {selectedOption.veterinarian && (
+                              <p>{selectedOption.veterinarian}</p>
+                            )}
+                          </div>
+                        )}
 
                       <div className="mt-3 space-y-4">
                         <div>

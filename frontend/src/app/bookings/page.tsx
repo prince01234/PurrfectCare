@@ -53,14 +53,6 @@ const STATUS_CONFIG: Record<
   },
 };
 
-const SERVICE_EMOJIS: Record<string, string> = {
-  veterinary: "🩺",
-  grooming: "✂️",
-  training: "🎓",
-  pet_sitting: "🏠",
-  other: "📦",
-};
-
 const TABS = [
   { key: "all", label: "All" },
   { key: "pending", label: "Pending" },
@@ -139,9 +131,6 @@ export default function BookingsPage() {
           {/* Filter Pills inside header */}
           <div className="max-w-lg mx-auto px-4 pb-3 flex flex-wrap gap-2">
             {TABS.map((tab) => {
-              const count = bookings.filter((b) =>
-                tab.key === "all" ? true : b.status === tab.key
-              ).length;
               return (
                 <button
                   key={tab.key}
@@ -185,7 +174,9 @@ export default function BookingsPage() {
               animate={{ opacity: 1 }}
               className="text-center py-16"
             >
-              <div className="text-5xl mb-4">📋</div>
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
+                <Calendar className="h-5 w-5 text-gray-400" />
+              </div>
               <p className="text-gray-500 font-medium">No bookings found</p>
               <p className="text-gray-400 text-sm mt-1">
                 {activeTab !== "all"
@@ -209,98 +200,92 @@ export default function BookingsPage() {
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100"
+                    className="bg-white rounded-2xl p-4 border border-gray-100"
                   >
-                    <div className="flex gap-3">
-                      {/* Service emoji */}
-                      <div className="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center text-2xl shrink-0">
-                        {typeof providerData === "object"
-                          ? SERVICE_EMOJIS[providerData.serviceType] || "📦"
-                          : "📦"}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        {/* Provider name */}
-                        <p className="text-sm font-bold text-gray-900 truncate">
-                          {typeof providerData === "object"
-                            ? providerData.name
-                            : "Service Provider"}
-                        </p>
-
-                        {/* Service option if selected */}
-                        {booking.serviceOption && (
-                          <p className="text-xs text-gray-500 mt-0.5">
-                            {booking.serviceOption.name}
-                            {booking.serviceOption.price != null && (
-                              <span className="text-emerald-600 font-medium ml-1">
-                                Rs. {booking.serviceOption.price}
-                              </span>
-                            )}
+                    <div className="space-y-2.5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-base font-semibold text-gray-900 truncate">
+                            {typeof providerData === "object"
+                              ? providerData.name
+                              : "Service Provider"}
                           </p>
-                        )}
 
-                        {/* Date & Time */}
-                        <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-3.5 h-3.5" />
-                            {isPetSitting
-                              ? `${formatDate(booking.startDate!)} → ${formatDate(booking.endDate!)}`
-                              : formatDate(booking.date!)}
-                          </span>
-                          {!isPetSitting && booking.startTime && (
-                            <span className="flex items-center gap-1">
-                              <Clock className="w-3.5 h-3.5" />
-                              {formatTime12(booking.startTime)}
-                            </span>
+                          {booking.serviceOption && (
+                            <p className="text-sm text-gray-500 mt-0.5">
+                              {booking.serviceOption.name}
+                              {booking.serviceOption.price != null && (
+                                <span className="text-emerald-600 font-medium ml-1">
+                                  Rs. {booking.serviceOption.price}
+                                </span>
+                              )}
+                            </p>
                           )}
                         </div>
 
-                        {/* Pet names */}
-                        {booking.petIds && booking.petIds.length > 0 && (
-                          <p className="text-xs text-gray-400 mt-1">
-                            🐾{" "}
-                            {booking.petIds
-                              .map((p) => (typeof p === "object" ? p.name : p))
-                              .join(", ")}
-                          </p>
-                        )}
-
-                        {/* Provider notes */}
-                        {booking.providerNotes && (
-                          <div className="mt-2 px-2.5 py-1.5 bg-gray-50 rounded-lg">
-                            <p className="text-xs text-gray-500 italic">
-                              &ldquo;{booking.providerNotes}&rdquo;
-                            </p>
-                          </div>
-                        )}
+                        <div
+                          className={`flex items-center gap-1 px-2.5 py-1 rounded-full h-fit ${status.bg}`}
+                        >
+                          <StatusIcon
+                            className={`w-3.5 h-3.5 ${status.color}`}
+                          />
+                          <span
+                            className={`text-xs font-medium ${status.color}`}
+                          >
+                            {status.label}
+                          </span>
+                        </div>
                       </div>
 
-                      {/* Status badge */}
-                      <div
-                        className={`flex items-center gap-1 px-2.5 py-1 rounded-full h-fit ${status.bg}`}
-                      >
-                        <StatusIcon className={`w-3.5 h-3.5 ${status.color}`} />
-                        <span className={`text-xs font-medium ${status.color}`}>
-                          {status.label}
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5" />
+                          {isPetSitting
+                            ? `${formatDate(booking.startDate!)} → ${formatDate(booking.endDate!)}`
+                            : formatDate(booking.date!)}
                         </span>
+                        {!isPetSitting && booking.startTime && (
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5" />
+                            {formatTime12(booking.startTime)}
+                          </span>
+                        )}
                       </div>
+
+                      {booking.petIds && booking.petIds.length > 0 && (
+                        <p className="text-xs text-gray-400">
+                          Pets:{" "}
+                          {booking.petIds
+                            .map((p) => (typeof p === "object" ? p.name : p))
+                            .join(", ")}
+                        </p>
+                      )}
+
+                      {booking.providerNotes && (
+                        <div className="px-2.5 py-1.5 bg-gray-50 rounded-lg">
+                          <p className="text-xs text-gray-500">
+                            Note: {booking.providerNotes}
+                          </p>
+                        </div>
+                      )}
                     </div>
 
-                    {/* Cancel button */}
                     {(booking.status === "pending" ||
                       booking.status === "confirmed") && (
                       <div className="mt-3 pt-3 border-t border-gray-100 flex justify-end">
                         <button
                           onClick={() => handleCancel(booking._id)}
                           disabled={cancellingId === booking._id}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                          className="px-2 py-1 text-sm font-medium text-red-500 hover:text-red-600 transition-colors disabled:opacity-50"
                         >
                           {cancellingId === booking._id ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span className="inline-flex items-center gap-1.5">
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              Cancelling...
+                            </span>
                           ) : (
-                            <X className="w-3.5 h-3.5" />
+                            "Cancel booking"
                           )}
-                          Cancel Booking
                         </button>
                       </div>
                     )}

@@ -128,6 +128,7 @@ const getHealthOverview = async (petId, userId) => {
       total: totalVaccinations,
       overdue: overdueVaccinations,
       upcoming: upcomingVaccinations,
+      upcomingCount: upcomingVaccinations.length,
     },
     medicalRecords: {
       total: totalMedicalRecords,

@@ -135,9 +135,7 @@ export default function DashboardPage() {
           ]),
         );
 
-        const reminders = Array.isArray(remindersRes.data)
-          ? remindersRes.data
-          : [];
+        const reminders = remindersRes.data?.reminders || [];
 
         const allReminders: UpcomingReminder[] = reminders
           .filter(

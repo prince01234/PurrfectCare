@@ -10,11 +10,25 @@ import AdminLayout from "@/components/layout/AdminLayout";
 import { serviceProviderApi } from "@/lib/api/service";
 import type { ServiceOption, ServiceProvider } from "@/lib/api/service";
 
+const VETERINARY_CATEGORIES = [
+  "consultation",
+  "vaccination",
+  "diagnostic",
+  "surgery",
+  "dental",
+  "deworming",
+  "other",
+];
+
+const normalizeText = (value?: string | null) => value?.trim() || null;
+
 export default function AdminServicesPage() {
   const [provider, setProvider] = useState<ServiceProvider | null>(null);
   const [serviceOptions, setServiceOptions] = useState<ServiceOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  const isVeterinary = provider?.serviceType === "veterinary";
 
   useEffect(() => {
     const fetchProvider = async () => {
@@ -27,6 +41,9 @@ export default function AdminServicesPage() {
           res.data.serviceOptions.map((option) => ({
             ...option,
             description: option.description || "",
+            serviceCategory: option.serviceCategory || "",
+            vaccineType: option.vaccineType || "",
+            veterinarian: option.veterinarian || "",
           })),
         );
       }
@@ -40,7 +57,15 @@ export default function AdminServicesPage() {
   const addServiceOption = () => {
     setServiceOptions((prev) => [
       ...prev,
-      { name: "", description: "", price: null, duration: null },
+      {
+        name: "",
+        description: "",
+        price: null,
+        duration: null,
+        serviceCategory: isVeterinary ? "consultation" : "",
+        vaccineType: "",
+        veterinarian: "",
+      },
     ]);
   };
 
@@ -64,9 +89,12 @@ export default function AdminServicesPage() {
     options.map((option) => ({
       ...(option._id ? { _id: option._id } : {}),
       name: option.name.trim(),
-      description: option.description?.trim() || null,
+      description: normalizeText(option.description),
       price: option.price ?? null,
       duration: option.duration ?? null,
+      serviceCategory: normalizeText(option.serviceCategory),
+      vaccineType: normalizeText(option.vaccineType),
+      veterinarian: normalizeText(option.veterinarian),
     }));
 
   const handleSave = async () => {
@@ -96,6 +124,9 @@ export default function AdminServicesPage() {
         res.data.serviceOptions.map((option) => ({
           ...option,
           description: option.description || "",
+          serviceCategory: option.serviceCategory || "",
+          vaccineType: option.vaccineType || "",
+          veterinarian: option.veterinarian || "",
         })),
       );
     }
@@ -285,6 +316,78 @@ export default function AdminServicesPage() {
                         />
                       </div>
                     </div>
+
+                    {isVeterinary && (
+                      <div className="space-y-3 rounded-lg border border-teal-100 bg-teal-50/40 p-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-teal-700">
+                          Veterinary Listing Details
+                        </p>
+
+                        <div>
+                          <label className="mb-1 block text-xs font-medium text-gray-500">
+                            Category
+                          </label>
+                          <select
+                            value={option.serviceCategory || "consultation"}
+                            onChange={(e) =>
+                              updateServiceOption(
+                                index,
+                                "serviceCategory",
+                                e.target.value,
+                              )
+                            }
+                            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-teal-400 focus:outline-none"
+                          >
+                            {VETERINARY_CATEGORIES.map((category) => (
+                              <option key={category} value={category}>
+                                {category.charAt(0).toUpperCase() +
+                                  category.slice(1)}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {(option.serviceCategory || "") === "vaccination" && (
+                          <div>
+                            <label className="mb-1 block text-xs font-medium text-gray-500">
+                              Vaccine Type
+                            </label>
+                            <input
+                              type="text"
+                              value={option.vaccineType || ""}
+                              onChange={(e) =>
+                                updateServiceOption(
+                                  index,
+                                  "vaccineType",
+                                  e.target.value,
+                                )
+                              }
+                              placeholder="e.g. Rabies, DHPP, FVRCP"
+                              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-teal-400 focus:outline-none"
+                            />
+                          </div>
+                        )}
+
+                        <div>
+                          <label className="mb-1 block text-xs font-medium text-gray-500">
+                            Veterinarian / Doctor
+                          </label>
+                          <input
+                            type="text"
+                            value={option.veterinarian || ""}
+                            onChange={(e) =>
+                              updateServiceOption(
+                                index,
+                                "veterinarian",
+                                e.target.value,
+                              )
+                            }
+                            placeholder="e.g. Dr. Shrestha"
+                            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-teal-400 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                    )}
                   </motion.div>
                 ))}
               </AnimatePresence>

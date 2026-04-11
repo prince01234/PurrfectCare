@@ -124,23 +124,62 @@ export interface ReminderQueryParams {
   includeCompleted?: boolean;
 }
 
+export interface PaginationMeta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface VaccinationListResponse {
+  vaccinations: Vaccination[];
+  pagination: PaginationMeta;
+}
+
+export interface MedicalRecordListResponse {
+  medicalRecords: MedicalRecord[];
+  pagination: PaginationMeta;
+}
+
+export interface ReminderListResponse {
+  reminders: Reminder[];
+  pagination: PaginationMeta;
+}
+
 // ---- Health Overview ----
 export interface HealthOverview {
-  pet: Pet;
+  pet: {
+    id: string;
+    name: string;
+    species: string;
+    breed: string | null;
+    age: number | null;
+  };
   vaccinations: {
     total: number;
-    upcoming: number;
     overdue: number;
-    lastVaccination: Vaccination | null;
+    upcoming: Vaccination[];
+    upcomingCount: number;
   };
   medicalRecords: {
     total: number;
-    lastVisit: MedicalRecord | null;
+    lastVisit: {
+      date: string;
+      reason: string;
+      vetName: string | null;
+    } | null;
+    upcomingFollowUps: MedicalRecord[];
   };
-  reminders: {
-    active: number;
-    overdue: number;
-    upcoming: Reminder[];
+  careLogs: {
+    total: number;
+    lastWeek: number;
+    byType: Record<string, number>;
+    today: unknown[];
+  };
+  alerts: {
+    overdueVaccinations: number;
+    upcomingVaccinationsCount: number;
+    pendingFollowUps: number;
   };
 }
 
@@ -261,12 +300,33 @@ export const petApi = {
     apiRequest<HealthOverview>(`/api/pets/${petId}/health`, {}, true),
 
   // ---- Vaccinations ----
-  getVaccinations: (petId: string) =>
-    apiRequest<Vaccination[]>(
-      `/api/pets/${petId}/health/vaccinations`,
+  getVaccinations: (
+    petId: string,
+    params?: {
+      page?: number;
+      limit?: number;
+      status?: string;
+      sortBy?: string;
+      sortOrder?: "asc" | "desc";
+      includeDeleted?: boolean;
+    },
+  ) => {
+    const query = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+          query.append(key, String(value));
+        }
+      });
+    }
+
+    const qs = query.toString();
+    return apiRequest<VaccinationListResponse>(
+      `/api/pets/${petId}/health/vaccinations${qs ? `?${qs}` : ""}`,
       {},
       true,
-    ),
+    );
+  },
 
   createVaccination: (
     petId: string,
@@ -279,7 +339,7 @@ export const petApi = {
       notes?: string;
     },
   ) =>
-    apiRequest<Vaccination>(
+    apiRequest<{ message: string; vaccination: Vaccination }>(
       `/api/pets/${petId}/health/vaccinations`,
       {
         method: "POST",
@@ -289,13 +349,66 @@ export const petApi = {
       true,
     ),
 
-  // ---- Medical Records ----
-  getMedicalRecords: (petId: string) =>
-    apiRequest<MedicalRecord[]>(
-      `/api/pets/${petId}/health/medical-records`,
-      {},
+  updateVaccination: (
+    petId: string,
+    vaccinationId: string,
+    data: Partial<{
+      vaccineName: string;
+      dateGiven: string;
+      nextDueDate: string | null;
+      veterinarian: string | null;
+      clinic: string | null;
+      notes: string | null;
+    }>,
+  ) =>
+    apiRequest<{ message: string; vaccination: Vaccination }>(
+      `/api/pets/${petId}/health/vaccinations/${vaccinationId}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(data),
+        headers: { "Content-Type": "application/json" },
+      },
       true,
     ),
+
+  deleteVaccination: (petId: string, vaccinationId: string) =>
+    apiRequest<{ message: string }>(
+      `/api/pets/${petId}/health/vaccinations/${vaccinationId}`,
+      {
+        method: "DELETE",
+      },
+      true,
+    ),
+
+  // ---- Medical Records ----
+  getMedicalRecords: (
+    petId: string,
+    params?: {
+      page?: number;
+      limit?: number;
+      sortBy?: string;
+      sortOrder?: "asc" | "desc";
+      includeDeleted?: boolean;
+      startDate?: string;
+      endDate?: string;
+    },
+  ) => {
+    const query = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+          query.append(key, String(value));
+        }
+      });
+    }
+
+    const qs = query.toString();
+    return apiRequest<MedicalRecordListResponse>(
+      `/api/pets/${petId}/health/medical-records${qs ? `?${qs}` : ""}`,
+      {},
+      true,
+    );
+  },
 
   createMedicalRecord: (
     petId: string,
@@ -312,12 +425,47 @@ export const petApi = {
       notes?: string;
     },
   ) =>
-    apiRequest<MedicalRecord>(
+    apiRequest<{ message: string; medicalRecord: MedicalRecord }>(
       `/api/pets/${petId}/health/medical-records`,
       {
         method: "POST",
         body: JSON.stringify(data),
         headers: { "Content-Type": "application/json" },
+      },
+      true,
+    ),
+
+  updateMedicalRecord: (
+    petId: string,
+    recordId: string,
+    data: Partial<{
+      visitDate: string;
+      reasonForVisit: string;
+      vetName: string | null;
+      clinic: string | null;
+      weight: number | null;
+      temperature: number | null;
+      symptoms: string[];
+      treatment: string | null;
+      followUpDate: string | null;
+      notes: string | null;
+    }>,
+  ) =>
+    apiRequest<{ message: string; medicalRecord: MedicalRecord }>(
+      `/api/pets/${petId}/health/medical-records/${recordId}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(data),
+        headers: { "Content-Type": "application/json" },
+      },
+      true,
+    ),
+
+  deleteMedicalRecord: (petId: string, recordId: string) =>
+    apiRequest<{ message: string }>(
+      `/api/pets/${petId}/health/medical-records/${recordId}`,
+      {
+        method: "DELETE",
       },
       true,
     ),
@@ -334,7 +482,7 @@ export const petApi = {
     }
 
     const qs = query.toString();
-    return apiRequest<Reminder[]>(
+    return apiRequest<ReminderListResponse>(
       `/api/pets/${petId}/health/reminders${qs ? `?${qs}` : ""}`,
       {},
       true,
@@ -342,7 +490,8 @@ export const petApi = {
   },
 
   // Reminders for all pets (user-level)
-  getAllReminders: () => apiRequest<Reminder[]>("/api/reminders", {}, true),
+  getAllReminders: () =>
+    apiRequest<ReminderListResponse>("/api/reminders", {}, true),
 
   // Create reminder for pet
   createReminder: (
@@ -357,7 +506,7 @@ export const petApi = {
       priority: string;
     },
   ) =>
-    apiRequest<Reminder>(
+    apiRequest<{ message: string; reminder: Reminder }>(
       `/api/pets/${petId}/health/reminders`,
       {
         method: "POST",
@@ -373,7 +522,7 @@ export const petApi = {
     reminderId: string,
     data: Partial<Reminder>,
   ) =>
-    apiRequest<Reminder>(
+    apiRequest<{ message: string; reminder: Reminder }>(
       `/api/pets/${petId}/health/reminders/${reminderId}`,
       {
         method: "PUT",
@@ -393,7 +542,7 @@ export const petApi = {
 
   // Complete reminder
   completeReminder: (petId: string, reminderId: string) =>
-    apiRequest<Reminder>(
+    apiRequest<{ message: string; reminder: Reminder }>(
       `/api/pets/${petId}/health/reminders/${reminderId}/complete`,
       { method: "PATCH" },
       true,
@@ -401,7 +550,7 @@ export const petApi = {
 
   // Snooze reminder
   snoozeReminder: (petId: string, reminderId: string, snoozeMinutes?: number) =>
-    apiRequest<Reminder>(
+    apiRequest<{ message: string; reminder: Reminder }>(
       `/api/pets/${petId}/health/reminders/${reminderId}/snooze`,
       {
         method: "PATCH",
@@ -419,7 +568,7 @@ export const petApi = {
 
   // Dismiss reminder
   dismissReminder: (petId: string, reminderId: string) =>
-    apiRequest<Reminder>(
+    apiRequest<{ message: string; reminder: Reminder }>(
       `/api/pets/${petId}/health/reminders/${reminderId}/dismiss`,
       { method: "PATCH" },
       true,

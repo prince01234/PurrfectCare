@@ -27,6 +27,21 @@ const serviceOptionSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    serviceCategory: {
+      type: String,
+      default: null,
+      trim: true,
+    },
+    vaccineType: {
+      type: String,
+      default: null,
+      trim: true,
+    },
+    veterinarian: {
+      type: String,
+      default: null,
+      trim: true,
+    },
   },
   { _id: true },
 );
