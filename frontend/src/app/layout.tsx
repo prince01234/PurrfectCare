@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "react-hot-toast";
@@ -16,13 +16,41 @@ const appMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  applicationName: "PurrfectCare",
   title: "PurrfectCare - Pet Care Made Easy",
   description: "Your trusted companion for pet care management",
+  manifest: "/manifest.webmanifest",
   icons: {
-    icon: "/favicon.png",
+    icon: [
+      {
+        url: "/favicon.png",
+        sizes: "512x512",
+        type: "image/png",
+      },
+      {
+        url: "/icons/icon-192x192.png",
+        sizes: "192x192",
+        type: "image/png",
+      },
+      {
+        url: "/icons/icon-512x512.png",
+        sizes: "512x512",
+        type: "image/png",
+      },
+    ],
     shortcut: "/favicon.png",
-    apple: "/favicon.png",
+    apple: "/icons/apple-touch-icon.png",
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "PurrfectCare",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0f766e",
+  colorScheme: "light",
 };
 
 export default function RootLayout({
