@@ -136,6 +136,7 @@ export default function ProviderDetailPage() {
   const [pets, setPets] = useState<Pet[]>([]);
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedEndDate, setSelectedEndDate] = useState("");
   const [weekMonday, setWeekMonday] = useState<Date>(() => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -154,7 +155,11 @@ export default function ProviderDetailPage() {
       (option) => option._id === selectedOptionId,
     ) || null;
 
-  const stepDateTimeReady = Boolean(selectedDate && selectedTime);
+  const isPetSitting = provider?.serviceType === "pet_sitting";
+
+  const stepDateTimeReady = isPetSitting
+    ? Boolean(selectedDate && selectedEndDate)
+    : Boolean(selectedDate && selectedTime);
 
   const estimatedTotal =
     selectedOption?.price != null && selectedPetIds.length > 0
@@ -294,7 +299,7 @@ export default function ProviderDetailPage() {
 
   useEffect(() => {
     const fetchBookedSlots = async () => {
-      if (!provider || !selectedDate || !selectedOption?.name) {
+      if (!provider || !selectedDate || !selectedOption?.name || isPetSitting) {
         setBookedSlots([]);
         return;
       }
@@ -315,10 +320,10 @@ export default function ProviderDetailPage() {
     };
 
     fetchBookedSlots();
-  }, [provider, selectedDate, selectedOption?.name]);
+  }, [provider, selectedDate, selectedOption?.name, isPetSitting]);
 
   const availableTimeSlots = (() => {
-    if (!provider || !selectedDate) return [];
+    if (!provider || !selectedDate || isPetSitting) return [];
 
     const dayName = DAY_NAME_MAP[selectedDate.getDay()];
     const availability = provider.availability.find(
@@ -360,6 +365,7 @@ export default function ProviderDetailPage() {
 
   const resetInlineBookingState = () => {
     setSelectedDate(null);
+    setSelectedEndDate("");
     setSelectedTime("");
     setSelectedPetIds([]);
     setBookedSlots([]);
@@ -379,6 +385,7 @@ export default function ProviderDetailPage() {
     if (next < getMonday(today)) return;
     setWeekMonday(next);
     setSelectedDate(null);
+    setSelectedEndDate("");
     setSelectedTime("");
   };
 
@@ -415,7 +422,23 @@ export default function ProviderDetailPage() {
       return;
     }
 
-    if (!provider || !selectedOption || !selectedDate || !selectedTime) {
+    if (!provider || !selectedOption || !selectedDate) {
+      toast.error("Please select a service and date");
+      return;
+    }
+
+    if (isPetSitting) {
+      if (!selectedEndDate) {
+        toast.error("Please select an end date");
+        return;
+      }
+
+      const startDateValue = selectedDate.toISOString().split("T")[0];
+      if (selectedEndDate <= startDateValue) {
+        toast.error("End date must be after start date");
+        return;
+      }
+    } else if (!selectedTime) {
       toast.error("Please select service, date and time");
       return;
     }
@@ -432,28 +455,20 @@ export default function ProviderDetailPage() {
   const handleSubmitInlineBooking = async (
     selectedPayment: "khalti" | "cod" | null,
   ) => {
-    if (!provider || !selectedOption || !selectedDate || !selectedTime) return;
+    if (!provider || !selectedOption || !selectedDate) return;
+    if (isPetSitting && !selectedEndDate) return;
+    if (!isPetSitting && !selectedTime) return;
     if (selectedPetIds.length === 0) return;
     if (!selectedPayment) return;
 
     setIsSubmittingBooking(true);
     setShowPaymentModal(false);
 
-    const duration = provider.slotDuration || 30;
-    const [hour, minute] = selectedTime.split(":").map(Number);
-    const endMinutes = hour * 60 + minute + duration;
-    const endTime = `${Math.floor(endMinutes / 60)
-      .toString()
-      .padStart(2, "0")}:${(endMinutes % 60).toString().padStart(2, "0")}`;
-
     const dateStr = selectedDate.toISOString().split("T")[0];
 
-    const res = await bookingApi.createBooking({
+    const bookingPayload: Parameters<typeof bookingApi.createBooking>[0] = {
       providerId: provider._id,
       petIds: selectedPetIds,
-      date: dateStr,
-      startTime: selectedTime,
-      endTime,
       serviceOption: {
         name: selectedOption.name,
         price: selectedOption.price || undefined,
@@ -463,7 +478,25 @@ export default function ProviderDetailPage() {
         veterinarian: selectedOption.veterinarian || undefined,
       },
       paymentMethod: selectedPayment,
-    });
+    };
+
+    if (isPetSitting) {
+      bookingPayload.startDate = dateStr;
+      bookingPayload.endDate = selectedEndDate;
+    } else {
+      const duration = provider.slotDuration || 30;
+      const [hour, minute] = selectedTime.split(":").map(Number);
+      const endMinutes = hour * 60 + minute + duration;
+      const endTime = `${Math.floor(endMinutes / 60)
+        .toString()
+        .padStart(2, "0")}:${(endMinutes % 60).toString().padStart(2, "0")}`;
+
+      bookingPayload.date = dateStr;
+      bookingPayload.startTime = selectedTime;
+      bookingPayload.endTime = endTime;
+    }
+
+    const res = await bookingApi.createBooking(bookingPayload);
 
     if (res.error) {
       toast.error(res.error);
@@ -848,7 +881,9 @@ export default function ProviderDetailPage() {
                       <div className="mt-3 space-y-4">
                         <div>
                           <p className="text-xs font-semibold uppercase tracking-wide text-gray-600">
-                            1. Select date and time
+                            {isPetSitting
+                              ? "1. Select stay dates"
+                              : "1. Select date and time"}
                           </p>
 
                           <div className="mt-3 bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
@@ -895,6 +930,7 @@ export default function ProviderDetailPage() {
                                     disabled={disabled}
                                     onClick={() => {
                                       setSelectedDate(d);
+                                      setSelectedEndDate("");
                                       setSelectedTime("");
                                     }}
                                     className={`flex flex-col items-center py-2.5 rounded-xl transition-all ${
@@ -920,8 +956,36 @@ export default function ProviderDetailPage() {
                               })}
                             </div>
 
+                            {isPetSitting && selectedDate && (
+                              <div className="border-t border-gray-100 px-4 py-3">
+                                <label
+                                  htmlFor="pet-sitting-end-date"
+                                  className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider"
+                                >
+                                  End Date
+                                </label>
+                                <input
+                                  id="pet-sitting-end-date"
+                                  type="date"
+                                  value={selectedEndDate}
+                                  onChange={(e) =>
+                                    setSelectedEndDate(e.target.value)
+                                  }
+                                  min={
+                                    new Date(
+                                      selectedDate.getTime() +
+                                        24 * 60 * 60 * 1000,
+                                    )
+                                      .toISOString()
+                                      .split("T")[0]
+                                  }
+                                  className="mt-2 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 outline-none transition focus:border-teal-400 focus:bg-white"
+                                />
+                              </div>
+                            )}
+
                             {/* Time slot pills */}
-                            {selectedDate && (
+                            {selectedDate && !isPetSitting && (
                               <motion.div
                                 initial={{ height: 0, opacity: 0 }}
                                 animate={{ height: "auto", opacity: 1 }}
@@ -1032,11 +1096,13 @@ export default function ProviderDetailPage() {
                               <div className="mt-1 flex items-center justify-between text-sm">
                                 <span className="text-gray-500">When</span>
                                 <span className="font-semibold text-gray-800">
-                                  {selectedDate
-                                    ? selectedDate.toLocaleDateString() +
-                                      " " +
-                                      selectedTime
-                                    : "-"}
+                                  {isPetSitting
+                                    ? selectedDate && selectedEndDate
+                                      ? `${selectedDate.toLocaleDateString()} → ${new Date(selectedEndDate).toLocaleDateString()}`
+                                      : "-"
+                                    : selectedDate
+                                      ? `${selectedDate.toLocaleDateString()} ${selectedTime}`
+                                      : "-"}
                                 </span>
                               </div>
                               <div className="mt-1 flex items-center justify-between text-sm">
