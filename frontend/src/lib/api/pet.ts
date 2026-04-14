@@ -90,9 +90,16 @@ export interface MedicalRecord {
 }
 
 // ---- Reminder types ----
+export interface ReminderPetRef {
+  _id: string;
+  name?: string;
+  species?: string;
+  photos?: string[];
+}
+
 export interface Reminder {
   _id: string;
-  petId: string;
+  petId: string | ReminderPetRef;
   title: string;
   description: string | null;
   reminderType: string;
@@ -122,6 +129,9 @@ export interface ReminderQueryParams {
   sortOrder?: "asc" | "desc";
   includeDeleted?: boolean;
   includeCompleted?: boolean;
+  dueToday?: boolean;
+  upcoming?: boolean;
+  overdue?: boolean
 }
 
 export interface PaginationMeta {
@@ -490,8 +500,23 @@ export const petApi = {
   },
 
   // Reminders for all pets (user-level)
-  getAllReminders: () =>
-    apiRequest<ReminderListResponse>("/api/reminders", {}, true),
+  getAllReminders: (params?: ReminderQueryParams) => {
+    const query = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+          query.append(key, String(value));
+        }
+      });
+    }
+
+    const qs = query.toString();
+    return apiRequest<ReminderListResponse>(
+      `/api/reminders${qs ? `?${qs}` : ""}`,
+      {},
+      true,
+    );
+  },
 
   // Create reminder for pet
   createReminder: (

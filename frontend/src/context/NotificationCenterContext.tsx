@@ -43,6 +43,11 @@ const getNotificationHref = (
   roles?: string,
   serviceType?: string,
 ) => {
+  const explicitLink = notification.data?.link;
+  if (typeof explicitLink === "string" && explicitLink.trim().length > 0) {
+    return explicitLink;
+  }
+
   switch (notification.type) {
     case "message": {
       const conversationId =

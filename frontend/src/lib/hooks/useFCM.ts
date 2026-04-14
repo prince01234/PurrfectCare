@@ -24,12 +24,31 @@ export function useFCM() {
     if (!user?._id || !authToken) return;
 
     let cancelled = false;
+    let unsubscribeOnMessage: (() => void) | null = null;
 
     const initFCM = async () => {
       try {
         // Check browser support
-        if (!("Notification" in window) || !("serviceWorker" in navigator)) {
-          console.warn("[FCM] Push notifications are not supported in this browser.");
+        if (
+          !("Notification" in window) ||
+          !("serviceWorker" in navigator) ||
+          !("PushManager" in window)
+        ) {
+          console.warn(
+            "[FCM] Push notifications are not supported in this browser.",
+          );
+          return;
+        }
+
+        if (!window.isSecureContext) {
+          console.warn(
+            "[FCM] Push notifications require a secure context (HTTPS). ",
+          );
+          return;
+        }
+
+        if (!VAPID_KEY) {
+          console.warn("[FCM] Missing NEXT_PUBLIC_FIREBASE_VAPID_KEY.");
           return;
         }
 
@@ -42,30 +61,23 @@ export function useFCM() {
         }
         console.log("[FCM] Permission granted.");
 
-        // Unregister any old firebase service workers to clear stale state
-        const existingRegs = await navigator.serviceWorker.getRegistrations();
-        for (const reg of existingRegs) {
-          if (reg.active?.scriptURL.includes("firebase-messaging-sw")) {
-            // Clear any existing push subscription that may be stale
-            const existingSub = await reg.pushManager.getSubscription();
-            if (existingSub) {
-              console.log("[FCM] Unsubscribing stale push subscription...");
-              await existingSub.unsubscribe();
-            }
-            // Unregister this worker so we get a fresh registration
-            await reg.unregister();
-            console.log("[FCM] Unregistered old service worker.");
-          }
-        }
-
         if (cancelled) return;
 
-        // Register a fresh service worker
-        console.log("[FCM] Registering service worker...");
-        const registration = await navigator.serviceWorker.register(
-          "/firebase-messaging-sw.js",
-          { scope: "/" },
-        );
+        // Reuse existing service worker when possible to avoid token churn.
+        let registration = await navigator.serviceWorker.getRegistration("/");
+        if (
+          !registration ||
+          !registration.active?.scriptURL.includes("firebase-messaging-sw.js")
+        ) {
+          console.log("[FCM] Registering service worker...");
+          registration = await navigator.serviceWorker.register(
+            "/firebase-messaging-sw.js",
+            { scope: "/" },
+          );
+        } else {
+          console.log("[FCM] Reusing existing service worker registration.");
+          void registration.update();
+        }
         console.log("[FCM] Service worker registered, waiting for ready...");
 
         // Wait for service worker to be active
@@ -80,7 +92,12 @@ export function useFCM() {
 
         // Get FCM token
         console.log("[FCM] Getting FCM token with VAPID key...");
-        console.log("[FCM] VAPID key present:", !!VAPID_KEY, "length:", VAPID_KEY?.length);
+        console.log(
+          "[FCM] VAPID key present:",
+          !!VAPID_KEY,
+          "length:",
+          VAPID_KEY?.length,
+        );
 
         const fcmToken = await getToken(messaging, {
           vapidKey: VAPID_KEY,
@@ -106,12 +123,57 @@ export function useFCM() {
         console.log("[FCM] Token registered with backend successfully.");
 
         // Listen for foreground messages
-        onMessage(messaging, (payload) => {
+        unsubscribeOnMessage = onMessage(messaging, (payload) => {
           console.log("[FCM] Foreground message:", payload);
-          // In-app toasts are handled by Socket.IO / NotificationCenterContext,
-          // so we don't show a duplicate toast here.
+
+          // Use a browser-agnostic foreground fallback so notifications are
+          // surfaced consistently across Chrome/Edge/other Chromium browsers.
+          const shouldShowSystemNotification =
+            Notification.permission === "granted";
+          if (!shouldShowSystemNotification) {
+            return;
+          }
+
+          const title =
+            payload.notification?.title ||
+            payload.data?.title ||
+            "PurrfectCare";
+          const body = payload.notification?.body || payload.data?.body || "";
+
+          if (!body) {
+            return;
+          }
+
+          void registration
+            .showNotification(title, {
+              body,
+              icon: payload.notification?.icon || "/icons/icon-192x192.png",
+              badge: "/icons/icon-72x72.png",
+              tag:
+                payload.data?.entityId ||
+                payload.data?.notificationId ||
+                payload.messageId ||
+                payload.data?.type ||
+                "purrfectcare-notification",
+              data: {
+                link: payload.data?.link || "/dashboard",
+              },
+            })
+            .catch((error) => {
+              console.warn(
+                "[FCM] Failed to show foreground notification:",
+                error,
+              );
+            });
         });
       } catch (error) {
+        if ((error as { name?: string })?.name === "AbortError") {
+          console.warn(
+            "[FCM] Push registration aborted by browser/network. Will retry on next session.",
+          );
+          return;
+        }
+
         console.error("[FCM] Error initializing:", error);
       }
     };
@@ -133,6 +195,9 @@ export function useFCM() {
     return () => {
       cancelled = true;
       clearTimeout(timer);
+      if (unsubscribeOnMessage) {
+        unsubscribeOnMessage();
+      }
       navigator.serviceWorker?.removeEventListener("message", handleSWMessage);
     };
   }, [user?._id, authToken]);

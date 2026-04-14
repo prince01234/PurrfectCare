@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import toast from "react-hot-toast";
-import { AlertTriangle, Calendar, Pill, Syringe, Clock } from "lucide-react";
 
 import { useAuth } from "@/context/AuthContext";
 import { useNotifications } from "@/context/NotificationCenterContext";
@@ -17,13 +16,6 @@ import HeroSection from "@/components/home/HeroSection";
 import PetServices from "@/components/home/PetServices";
 import MarketplaceBanner from "@/components/home/MarketplaceBanner";
 import LostAndFound from "@/components/home/LostAndFound";
-
-interface DisplayPet {
-  id: string;
-  name: string;
-  image: string | null;
-  nextVetDate: string | null;
-}
 
 interface UpcomingReminder {
   id: string;
@@ -38,20 +30,31 @@ interface UpcomingReminder {
   isOverdue: boolean;
 }
 
-// Mock data replaced with real API in LostAndFound component
+const MAX_VISIBLE_REMINDERS = 2;
 
-function getReminderIcon(type: string) {
-  switch (type) {
-    case "vaccination_due":
-      return <Syringe className="w-4 h-4" />;
-    case "medication":
-      return <Pill className="w-4 h-4" />;
-    case "vet_checkup":
-      return <Calendar className="w-4 h-4" />;
-    default:
-      return <Clock className="w-4 h-4" />;
+const resolveReminderPetId = (petRef: unknown): string | null => {
+  if (typeof petRef === "string") {
+    return petRef;
   }
-}
+
+  if (petRef && typeof petRef === "object" && "_id" in petRef) {
+    const id = (petRef as { _id?: unknown })._id;
+    return typeof id === "string" ? id : null;
+  }
+
+  return null;
+};
+
+const isUpcomingReminder = (
+  reminder: UpcomingReminder | null,
+): reminder is UpcomingReminder => Boolean(reminder);
+
+const formatReminderType = (type: string) =>
+  type
+    .split("_")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 
 function formatDueDate(dateString: string): string {
   const due = new Date(dateString);
@@ -79,7 +82,6 @@ export default function DashboardPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { unreadCount, openSheet } = useNotifications();
   const router = useRouter();
-  const [pets, setPets] = useState<DisplayPet[]>([]);
   const [upcomingReminders, setUpcomingReminders] = useState<
     UpcomingReminder[]
   >([]);
@@ -113,7 +115,6 @@ export default function DashboardPage() {
 
         if (!petsRes.data?.pets) {
           if (!isCancelled) {
-            setPets([]);
             setUpcomingReminders([]);
           }
           setIsLoading(false);
@@ -121,12 +122,6 @@ export default function DashboardPage() {
         }
 
         const allPets = petsRes.data.pets;
-        const displayPets: DisplayPet[] = allPets.map((pet: Pet) => ({
-          id: pet._id,
-          name: pet.name,
-          image: pet.photos?.[0] || null,
-          nextVetDate: null,
-        }));
 
         const petById = new Map(
           allPets.map((pet: Pet) => [
@@ -138,16 +133,29 @@ export default function DashboardPage() {
         const reminders = remindersRes.data?.reminders || [];
 
         const allReminders: UpcomingReminder[] = reminders
-          .filter(
-            (reminder: Reminder) =>
+          .filter((reminder: Reminder) => {
+            const reminderPetId = resolveReminderPetId(reminder.petId);
+
+            return (
               (reminder.status === "active" || reminder.status === "snoozed") &&
-              Boolean(petById.get(reminder.petId)),
-          )
+              Boolean(reminderPetId && petById.get(reminderPetId))
+            );
+          })
           .map((reminder: Reminder) => {
-            const petMeta = petById.get(reminder.petId)!;
+            const reminderPetId = resolveReminderPetId(reminder.petId);
+
+            if (!reminderPetId) {
+              return null;
+            }
+
+            const petMeta = petById.get(reminderPetId);
+            if (!petMeta) {
+              return null;
+            }
+
             return {
               id: reminder._id,
-              petId: reminder.petId,
+              petId: reminderPetId,
               petName: petMeta.name,
               petImage: petMeta.image,
               title: reminder.title,
@@ -159,7 +167,8 @@ export default function DashboardPage() {
                 new Date(reminder.dueDate).getTime() < Date.now() &&
                 reminder.status === "active",
             };
-          });
+          })
+          .filter(isUpcomingReminder);
 
         // Sort by due date and priority
         allReminders.sort((a, b) => {
@@ -174,8 +183,7 @@ export default function DashboardPage() {
         });
 
         if (!isCancelled) {
-          setPets(displayPets);
-          setUpcomingReminders(allReminders.slice(0, 5));
+          setUpcomingReminders(allReminders);
         }
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -208,14 +216,7 @@ export default function DashboardPage() {
     );
   }
 
-  // Get the pet with the most urgent reminder
-  const mostUrgentReminder = upcomingReminders[0];
-  const mostUrgentPet = mostUrgentReminder
-    ? pets.find((p) => p.id === mostUrgentReminder.petId)
-    : null;
-  const mostUrgentDueText = mostUrgentReminder
-    ? formatDueDate(mostUrgentReminder.dueDate)
-    : null;
+  const visibleReminders = upcomingReminders.slice(0, MAX_VISIBLE_REMINDERS);
 
   return (
     <MobileLayout>
@@ -226,77 +227,9 @@ export default function DashboardPage() {
         onNotificationClick={user ? openSheet : undefined}
       />
 
-      {/* Most Urgent Pet Card */}
-      {user && mostUrgentPet && (
-        <div className="px-5 py-6">
-          <Link href={`/pets/${mostUrgentPet.id}`}>
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow flex items-center gap-4"
-            >
-              {/* Pet Image */}
-              <div className="relative w-20 h-20 rounded-full overflow-hidden shrink-0 bg-gray-100">
-                {mostUrgentPet.image ? (
-                  <Image
-                    src={mostUrgentPet.image}
-                    alt={mostUrgentPet.name}
-                    fill
-                    className="object-cover"
-                    sizes="80px"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-3xl">
-                    🐾
-                  </div>
-                )}
-              </div>
-
-              {/* Pet Info */}
-              <div className="flex-1">
-                <h3 className="text-lg font-bold text-gray-900">
-                  {mostUrgentPet.name}
-                </h3>
-                <p className="text-sm text-teal-600 font-medium">
-                  Next: {mostUrgentReminder?.title}
-                </p>
-                <p
-                  className={`text-sm font-semibold mt-1 ${
-                    mostUrgentReminder?.isOverdue
-                      ? "text-red-600"
-                      : "text-teal-600"
-                  }`}
-                >
-                  {mostUrgentReminder?.isOverdue
-                    ? "⚠️ OVERDUE"
-                    : mostUrgentDueText}
-                </p>
-              </div>
-
-              {/* Arrow */}
-              <div className="text-gray-400">
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </div>
-            </motion.div>
-          </Link>
-        </div>
-      )}
-
       {/* Upcoming Reminders Section */}
-      {user && upcomingReminders.length > 0 && (
-        <div className="px-5 py-6">
+      {user && visibleReminders.length > 0 && (
+        <div className="px-5 py-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-gray-900">
               Upcoming Reminders
@@ -309,74 +242,89 @@ export default function DashboardPage() {
             </Link>
           </div>
 
-          <div className="space-y-3">
-            {upcomingReminders.map((reminder) => (
-              <motion.div
+          <div className="flex flex-col gap-3">
+            {visibleReminders.map((reminder) => (
+              <Link
                 key={reminder.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`p-4 rounded-xl border ${
-                  reminder.isOverdue
-                    ? "bg-red-50 border-red-200"
-                    : "bg-teal-50 border-teal-200"
-                } flex items-start gap-4`}
+                href={`/pets/${reminder.petId}`}
+                className="block"
               >
-                {/* Icon */}
-                <div
-                  className={`mt-0.5 p-2 rounded-lg ${
-                    reminder.isOverdue
-                      ? "bg-red-100 text-red-600"
-                      : "bg-teal-100 text-teal-600"
-                  }`}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white border border-gray-100 rounded-2xl p-3.5 shadow-sm hover:shadow-md transition-shadow flex items-center gap-3"
                 >
-                  {reminder.isOverdue ? (
-                    <AlertTriangle className="w-4 h-4" />
-                  ) : (
-                    getReminderIcon(reminder.type)
-                  )}
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900">
-                    {reminder.title}
-                  </p>
-                  <p className="text-xs text-gray-600 mt-0.5">
-                    {reminder.petName}
-                  </p>
-                  <p
-                    className={`text-xs font-medium mt-1 ${
-                      reminder.isOverdue ? "text-red-600" : "text-teal-600"
-                    }`}
-                  >
-                    {reminder.isOverdue
-                      ? "OVERDUE"
-                      : formatDueDate(reminder.dueDate)}{" "}
-                    {!reminder.isOverdue && reminder.dueTime && (
-                      <span className="text-gray-500">
-                        • {reminder.dueTime}
-                      </span>
+                  <div className="relative w-14 h-14 rounded-full overflow-hidden shrink-0 bg-gray-100">
+                    {reminder.petImage ? (
+                      <Image
+                        src={reminder.petImage}
+                        alt={reminder.petName}
+                        fill
+                        className="object-cover"
+                        sizes="56px"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-xl">
+                        🐾
+                      </div>
                     )}
-                  </p>
-                </div>
+                  </div>
 
-                {/* Priority Badge */}
-                <div>
-                  <span
-                    className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                      reminder.priority === "critical" ||
-                      reminder.priority === "high"
-                        ? "bg-red-200 text-red-800"
-                        : reminder.priority === "medium"
-                          ? "bg-orange-200 text-orange-800"
-                          : "bg-gray-200 text-gray-800"
-                    }`}
-                  >
-                    {reminder.priority.charAt(0).toUpperCase() +
-                      reminder.priority.slice(1)}
-                  </span>
-                </div>
-              </motion.div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-base font-bold text-gray-900 truncate">
+                      {reminder.petName}
+                    </h3>
+                    <p className="text-sm text-teal-600 font-medium truncate">
+                      {formatReminderType(reminder.type)}
+                    </p>
+                    <p
+                      className={`text-sm font-semibold mt-0.5 ${
+                        reminder.isOverdue ? "text-red-600" : "text-teal-600"
+                      }`}
+                    >
+                      {reminder.isOverdue
+                        ? "⚠️ OVERDUE"
+                        : formatDueDate(reminder.dueDate)}
+                      {!reminder.isOverdue && reminder.dueTime && (
+                        <span className="text-gray-500">
+                          {" "}
+                          • {reminder.dueTime}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col items-end gap-2">
+                    <span
+                      className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                        reminder.priority === "critical" ||
+                        reminder.priority === "high"
+                          ? "bg-red-100 text-red-700"
+                          : reminder.priority === "medium"
+                            ? "bg-orange-100 text-orange-700"
+                            : "bg-gray-100 text-gray-700"
+                      }`}
+                    >
+                      {reminder.priority.charAt(0).toUpperCase() +
+                        reminder.priority.slice(1)}
+                    </span>
+
+                    <svg
+                      className="w-5 h-5 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </div>
+                </motion.div>
+              </Link>
             ))}
           </div>
         </div>

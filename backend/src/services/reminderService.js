@@ -29,6 +29,101 @@ const verifyPetOwnership = async (petId, userId) => {
   return pet;
 };
 
+const parseDueTime = (dueTime) => {
+  const fallback = { hours: 9, minutes: 0 };
+
+  if (typeof dueTime !== "string" || !dueTime.includes(":")) {
+    return fallback;
+  }
+
+  const [hourRaw, minuteRaw] = dueTime.split(":");
+  const hours = Number.parseInt(hourRaw, 10);
+  const minutes = Number.parseInt(minuteRaw, 10);
+
+  if (
+    !Number.isFinite(hours) ||
+    !Number.isFinite(minutes) ||
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59
+  ) {
+    return fallback;
+  }
+
+  return { hours, minutes };
+};
+
+const getReminderDueDateTime = (reminder) => {
+  if (!reminder?.dueDate) return null;
+
+  const dueDate = new Date(reminder.dueDate);
+  if (Number.isNaN(dueDate.getTime())) return null;
+
+  const { hours, minutes } = parseDueTime(reminder.dueTime);
+  dueDate.setHours(hours, minutes, 0, 0);
+
+  return dueDate;
+};
+
+const hasReminderBeenSentInCurrentCycle = (
+  sentAt,
+  frequency = REMINDER_FREQUENCY.ONCE,
+  now = new Date(),
+) => {
+  if (!sentAt) return false;
+
+  const sentDate = new Date(sentAt);
+  if (Number.isNaN(sentDate.getTime())) return false;
+
+  switch (frequency) {
+    case REMINDER_FREQUENCY.ONCE:
+      return true;
+
+    case REMINDER_FREQUENCY.DAILY: {
+      const startOfDay = new Date(now);
+      startOfDay.setHours(0, 0, 0, 0);
+      return sentDate >= startOfDay;
+    }
+
+    case REMINDER_FREQUENCY.WEEKLY: {
+      const startOfWeek = new Date(now);
+      const day = (startOfWeek.getDay() + 6) % 7; // Monday-based week
+      startOfWeek.setDate(startOfWeek.getDate() - day);
+      startOfWeek.setHours(0, 0, 0, 0);
+      return sentDate >= startOfWeek;
+    }
+
+    case REMINDER_FREQUENCY.MONTHLY:
+      return (
+        sentDate.getFullYear() === now.getFullYear() &&
+        sentDate.getMonth() === now.getMonth()
+      );
+
+    case REMINDER_FREQUENCY.YEARLY:
+      return sentDate.getFullYear() === now.getFullYear();
+
+    default:
+      return false;
+  }
+};
+
+const isReminderDueForDispatch = (reminder, sentAt, now = new Date()) => {
+  if (
+    !reminder ||
+    reminder.status !== REMINDER_STATUS.ACTIVE ||
+    reminder.isDeleted
+  ) {
+    return false;
+  }
+
+  const dueDateTime = getReminderDueDateTime(reminder);
+  if (!dueDateTime) return false;
+  if (dueDateTime > now) return false;
+
+  return !hasReminderBeenSentInCurrentCycle(sentAt, reminder.frequency, now);
+};
+
 // Create a new reminder
 const createReminder = async (petId, userId, data) => {
   await verifyPetOwnership(petId, userId);
@@ -39,10 +134,16 @@ const createReminder = async (petId, userId, data) => {
 
   // Apply default settings based on reminder type
   const defaults = REMINDER_DEFAULTS[data.reminderType] || {};
+  const effectivePriority = (
+    data.priority ||
+    defaults.priority ||
+    ""
+  ).toLowerCase();
   const shouldSendEmail =
     data.sendEmail !== undefined
-      ? data.sendEmail
-      : EMAIL_NOTIFICATION_TYPES.includes(data.reminderType);
+      ? Boolean(data.sendEmail)
+      : EMAIL_NOTIFICATION_TYPES.includes(data.reminderType) ||
+        effectivePriority === "critical";
 
   // Set isRecurring based on frequency
   const isRecurring =
@@ -266,6 +367,38 @@ const updateReminder = async (reminderId, petId, userId, data) => {
   // Update isRecurring based on frequency
   if (updateData.frequency) {
     updateData.isRecurring = updateData.frequency !== REMINDER_FREQUENCY.ONCE;
+  }
+
+  const effectiveReminderType =
+    updateData.reminderType || reminder.reminderType;
+  const effectivePriority = (
+    updateData.priority ||
+    reminder.priority ||
+    ""
+  ).toLowerCase();
+
+  if (updateData.sendEmail === undefined) {
+    const reminderTypeChanged =
+      updateData.reminderType !== undefined &&
+      updateData.reminderType !== reminder.reminderType;
+    const priorityChanged =
+      updateData.priority !== undefined &&
+      updateData.priority !== reminder.priority;
+
+    if (reminderTypeChanged || priorityChanged) {
+      updateData.sendEmail =
+        EMAIL_NOTIFICATION_TYPES.includes(effectiveReminderType) ||
+        effectivePriority === "critical";
+    }
+  }
+
+  if (
+    updateData.dueDate !== undefined ||
+    updateData.dueTime !== undefined ||
+    updateData.frequency !== undefined
+  ) {
+    updateData.lastNotificationSent = null;
+    updateData.emailSentAt = null;
   }
 
   const updatedReminder = await Reminder.findByIdAndUpdate(
@@ -526,37 +659,49 @@ const getReminderStats = async (userId) => {
 // Get reminders that need email notifications (for scheduler)
 const getRemindersForEmailNotification = async () => {
   const now = new Date();
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
 
-  // Find reminders that:
-  // 1. Should send email
-  // 2. Are active
-  // 3. Due today or overdue
-  // 4. Haven't sent email today
   const reminders = await Reminder.find({
-    sendEmail: true,
+    $or: [{ sendEmail: true }, { priority: "critical" }],
     status: REMINDER_STATUS.ACTIVE,
     isDeleted: false,
-    dueDate: { $lte: tomorrow },
-    $or: [
-      { lastNotificationSent: null },
-      { lastNotificationSent: { $lt: today } },
-    ],
+    dueDate: { $lte: now },
   })
     .populate("petId", "name species")
     .populate("userId", "name email");
 
-  return reminders;
+  return reminders.filter((reminder) =>
+    isReminderDueForDispatch(reminder, reminder.emailSentAt, now),
+  );
+};
+
+// Get reminders that need in-app/push notifications (for scheduler)
+const getRemindersForInAppNotification = async () => {
+  const now = new Date();
+
+  const reminders = await Reminder.find({
+    status: REMINDER_STATUS.ACTIVE,
+    isDeleted: false,
+    dueDate: { $lte: now },
+  })
+    .populate("petId", "name species")
+    .populate("userId", "name email");
+
+  return reminders.filter((reminder) =>
+    isReminderDueForDispatch(reminder, reminder.lastNotificationSent, now),
+  );
 };
 
 // Mark reminder as email sent
 const markEmailSent = async (reminderId) => {
   await Reminder.findByIdAndUpdate(reminderId, {
-    lastNotificationSent: new Date(),
     emailSentAt: new Date(),
+  });
+};
+
+// Mark reminder as in-app/push notification sent
+const markReminderNotificationSent = async (reminderId) => {
+  await Reminder.findByIdAndUpdate(reminderId, {
+    lastNotificationSent: new Date(),
   });
 };
 
@@ -689,7 +834,9 @@ export default {
   dismissReminder,
   getReminderStats,
   getRemindersForEmailNotification,
+  getRemindersForInAppNotification,
   markEmailSent,
+  markReminderNotificationSent,
   upsertVaccinationReminder,
   upsertMedicalFollowUpReminder,
   deleteReminderByRelatedRecord,
